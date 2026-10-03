@@ -21,6 +21,7 @@ mcp = ["mcp>=2.2,<3"]
 
 [project.scripts]
 agentgate = "agentgate.cli:main"
+agentgate-artifacts = "agentgate.artifacts:main"
 
 [dependency-groups]
 dev = [

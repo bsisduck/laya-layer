@@ -1,0 +1,7 @@
+{
+  "asset_id": "synthetic-safe-fixture",
+  "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "source": "https://unapproved.example.invalid/model.safetensors",
+  "serialization": "safetensors"
+}

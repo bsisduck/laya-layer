@@ -1,0 +1,13 @@
+{
+  "registry_id": "synthetic-demo",
+  "revision": 1,
+  "manifests": [
+    {
+      "asset_id": "synthetic-safe-fixture",
+      "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "source": "https://models.example.invalid/approved/model.safetensors",
+      "serialization": "safetensors"
+    }
+  ]
+}
