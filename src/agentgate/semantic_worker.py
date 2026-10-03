@@ -13,6 +13,7 @@ from fastapi.responses import JSONResponse
 
 from agentgate.app import read_body, reject_constant, unique_object
 from agentgate.contracts import SemanticResult
+from agentgate.semantic_quota import QuotaExhausted, QuotaUnavailable, SemanticQuota
 from agentgate.semantics import (
     REVISIONS,
     Backend,
@@ -26,12 +27,20 @@ from agentgate.service import GateError
 
 
 class Supervisor:
-    def __init__(self, command: Sequence[str], backend: Backend, *, timeout: float = 5.0) -> None:
+    def __init__(
+        self,
+        command: Sequence[str],
+        backend: Backend,
+        *,
+        timeout: float = 5.0,
+        quota: SemanticQuota | None = None,
+    ) -> None:
         if not 0 < timeout <= 5:
             raise ValueError("Job deadline must be within five seconds")
         self.command = command
         self.backend = backend
         self.timeout = timeout
+        self.quota = quota
         self.process: asyncio.subprocess.Process | None = None
         self.capabilities: Capabilities | None = None
         self.lock = asyncio.Lock()
@@ -94,6 +103,8 @@ class Supervisor:
         async with self.lock:
             assert self.process is not None
             assert self.process.stdin is not None and self.process.stdout is not None
+            if self.quota is not None:
+                await asyncio.to_thread(self.quota.admit)
             try:
                 async with asyncio.timeout(self.timeout):
                     self.process.stdin.write(request.model_dump_json().encode() + b"\n")
@@ -162,6 +173,22 @@ def create_worker(supervisor: Supervisor, token: str) -> FastAPI:
         except (ValueError, UnicodeError, RecursionError):
             return JSONResponse({"status": "invalid_request"}, status_code=422)
         except SemanticUnavailable:
+            return JSONResponse({"status": "unavailable"}, status_code=503)
+        except QuotaExhausted:
+            return JSONResponse({"status": "budget_exhausted"}, status_code=429)
+        except QuotaUnavailable:
+            return JSONResponse({"status": "budget_unavailable"}, status_code=503)
+
+    @app.get("/internal/v1/semantic/budget")
+    async def budget(request: Request) -> JSONResponse:
+        if not authenticated(request):
+            return JSONResponse({"status": "unauthorized"}, status_code=401)
+        if supervisor.quota is None:
+            return JSONResponse({"status": "not_configured"}, status_code=503)
+        try:
+            data = await asyncio.to_thread(supervisor.quota.status)
+            return JSONResponse(data, headers={"Cache-Control": "no-store"})
+        except QuotaUnavailable:
             return JSONResponse({"status": "unavailable"}, status_code=503)
 
     return app

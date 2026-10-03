@@ -6,8 +6,10 @@ a bank using a technology do not establish access to its internal interfaces,
 its current deployment, or approval of this product.
 
 **Implemented here:** document enforcement, local audit, and the scoped export
-formats described in [audit-export.md](audit-export.md). **Proposed below:** live
-collectors, enterprise identity, secret retrieval and threat-feed ingestion.
+formats described in [audit-export.md](audit-export.md), plus the
+[durable sender and local HTTP contract lab](telemetry-delivery.md).
+**Proposed below:** vendor collectors, enterprise identity, secret retrieval and
+threat-feed ingestion.
 No bank-system connection or vendor-server integration test has been performed.
 
 ## Connection map
@@ -21,7 +23,8 @@ flowchart LR
     Gate --> Sem["Laya / CoreML inspection<br/>implemented; experimental quality"]
     Gate --> Audit[("Minimized SQLite audit<br/>implemented")]
     Audit --> Export["Tenant-scoped JSONL / ECS-oriented / HEC envelopes<br/>implemented"]
-    Export -.-> Shipper["Durable async shipper<br/>planned"]
+    Export --> Shipper["Durable async shipper<br/>local contract implemented"]
+    Shipper --> Lab["Authenticated local HTTP contract lab<br/>durable receipt + event-ID dedup"]
     Shipper -.-> Kafka["Kafka / existing log pipeline"]
     Kafka -.-> Search["Elasticsearch or OpenSearch<br/>with corresponding dashboards"]
     Shipper -.-> Splunk["Splunk HEC"]
@@ -34,8 +37,9 @@ flowchart LR
 Solid edges show implemented relationships, dashed edges the proposed integration
 design. External analytics delivery is asynchronous; it does not become the
 synchronous permission or budget authority. A locally required audit failure
-already withholds output. A future shipper needs bounded backlog capacity and an
-explicit policy for exhaustion rather than silently discarding security evidence.
+already withholds output. The sender bounds its pending batch and reports source-lag backpressure without
+discarding evidence. Source audit retention/admission policy remains root
+integration work; the local collector has a hard row cap.
 
 ## Target interfaces and their limits
 
@@ -70,7 +74,10 @@ input; it is **not a newly verified inventory of each bank's infrastructure**.
 
 ## First live integration acceptance gate
 
-Start with one isolated local Elastic/OpenSearch deployment or a supplied Splunk
+The current contract lab is verified separately as documented in
+[telemetry-delivery.md](telemetry-delivery.md). It does not satisfy vendor-server
+acceptance. For a future vendor integration, start with one isolated local
+Elastic/OpenSearch deployment or a supplied Splunk
 test endpoint, after the core AI demo path. Use synthetic fixture interactions.
 
 1. Generate allow, redact, pre-dispatch deny and executed-but-withheld outcomes.
