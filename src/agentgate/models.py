@@ -1,7 +1,8 @@
 """Bounded Chat Completions over a private provider; nothing streams before inspection."""
 
+import asyncio
 import json
-from typing import Annotated, Literal, Protocol, Self
+from typing import Annotated, Literal, Protocol, Self, cast
 from urllib.parse import urlsplit
 
 import httpx
@@ -101,22 +102,34 @@ class PrivateProvider:
         self.timeout = timeout
 
     def complete(self, payload: dict[str, JsonValue]) -> bytes:
-        with httpx.Client(timeout=self.timeout, trust_env=False, follow_redirects=False) as client:
-            with client.stream(
-                "POST",
-                self.url,
-                headers={"Authorization": f"Bearer {self.token}", "Accept-Encoding": "identity"},
-                json=payload,
-            ) as response:
-                response.raise_for_status()
-                if response.headers.get("content-encoding", "identity") != "identity":
-                    raise ValueError("Compressed upstream responses are unsupported")
-                raw = bytearray()
-                for chunk in response.iter_bytes():
-                    if len(raw) + len(chunk) > 262144:
-                        raise ValueError("Provider response too large")
-                    raw.extend(chunk)
-                return bytes(raw)
+        return asyncio.run(self._complete(payload))
+
+    async def _complete(self, payload: dict[str, JsonValue]) -> bytes:
+        try:
+            async with asyncio.timeout(self.timeout):
+                async with httpx.AsyncClient(
+                    timeout=self.timeout, trust_env=False, follow_redirects=False
+                ) as client:
+                    async with client.stream(
+                        "POST",
+                        self.url,
+                        headers={
+                            "Authorization": f"Bearer {self.token}",
+                            "Accept-Encoding": "identity",
+                        },
+                        json=payload,
+                    ) as response:
+                        response.raise_for_status()
+                        if response.headers.get("content-encoding", "identity") != "identity":
+                            raise ValueError("Compressed upstream responses are unsupported")
+                        raw = bytearray()
+                        async for chunk in response.aiter_bytes():
+                            if len(raw) + len(chunk) > 262144:
+                                raise ValueError("Provider response too large")
+                            raw.extend(chunk)
+                        return bytes(raw)
+        except TimeoutError as error:
+            raise httpx.ReadTimeout("Private provider total deadline exceeded") from error
 
 
 class Usage(Contract):
@@ -153,6 +166,77 @@ class Completion(BaseModel):
     usage: Usage
 
 
+def unpack_calls(value: JsonValue, depth: int = 0) -> JsonValue:
+    """Decode the protocol's JSON-in-a-string boundary before inspecting contents."""
+    from agentgate.app import reject_constant, unique_object
+
+    if depth > 24:
+        raise ValueError("Tool argument depth exceeded")
+    if isinstance(value, list):
+        return [unpack_calls(item, depth + 1) for item in value]
+    if not isinstance(value, dict):
+        return value
+    result = dict(value)
+    function = result.get("function")
+    if "id" in result and result.get("type") == "function" and isinstance(function, dict):
+        arguments = function.get("arguments")
+        if isinstance(arguments, str):
+            decoded = json.loads(
+                arguments, object_pairs_hook=unique_object, parse_constant=reject_constant
+            )
+            if not isinstance(decoded, dict):
+                raise ValueError("Tool arguments must be a JSON object")
+            result["function"] = dict(function, arguments=decoded)
+    return {key: unpack_calls(item, depth + 1) for key, item in result.items()}
+
+
+def pack_calls(value: JsonValue) -> JsonValue:
+    if isinstance(value, list):
+        return [pack_calls(item) for item in value]
+    if not isinstance(value, dict):
+        return value
+    result = {key: pack_calls(item) for key, item in value.items()}
+    function = result.get("function")
+    if "id" in result and result.get("type") == "function" and isinstance(function, dict):
+        arguments = function.get("arguments")
+        if isinstance(arguments, dict):
+            result["function"] = dict(
+                function, arguments=json.dumps(arguments, ensure_ascii=False, separators=(",", ":"))
+            )
+    return result
+
+
+def text_leaves(value: JsonValue) -> list[str]:
+    if isinstance(value, str):
+        return [value]
+    if isinstance(value, list):
+        return [text for item in value for text in text_leaves(item)]
+    if isinstance(value, dict):
+        return [text for key, item in value.items() for text in [key, *text_leaves(item)]]
+    return []
+
+
+def redact_content(value: JsonValue, field: str = "") -> JsonValue:
+    if isinstance(value, str):
+        redacted = EMAIL.sub("[REDACTED_EMAIL]", value)
+        if redacted != value and field not in {
+            "content",
+            "body",
+            "subject",
+            "query",
+            "description",
+        }:
+            raise ValueError("Cannot redact routing, identity or schema fields")
+        return redacted
+    if isinstance(value, list):
+        return [redact_content(item, field) for item in value]
+    if isinstance(value, dict):
+        if any(EMAIL.search(key) for key in value):
+            raise ValueError("Cannot redact schema or argument names")
+        return {key: redact_content(item, key) for key, item in value.items()}
+    return value
+
+
 class ModelService:
     def __init__(self, actions: ActionService, provider: Provider) -> None:
         self.actions = actions
@@ -181,19 +265,23 @@ class ModelService:
     def inspect(service: ActionService, context: Context, content: str, *, incoming: bool) -> str:
         snapshot = service.context_controls(context)
         policy = snapshot.policy
+        invalid = Reason.MALFORMED_REQUEST if incoming else Reason.OUTPUT_INVALID
         try:
-            snapshot.inspect("model_input" if incoming else "model_output", content)
+            normalized = unpack_calls(cast(JsonValue, json.loads(content)))
+            strings = text_leaves(normalized)
+            inspected_text = "\n".join(strings)
+            snapshot.inspect("model_input" if incoming else "model_output", inspected_text)
         except ThreatBlocked as error:
             raise GateError(403, Reason.THREAT_FEED_BLOCKED) from error
-        except ValueError as error:
-            raise GateError(422 if incoming else 503, Reason.MALFORMED_REQUEST) from error
-        if SYNTHETIC_SECRET.search(content):
+        except (ValueError, UnicodeError, RecursionError) as error:
+            raise GateError(422 if incoming else 503, invalid) from error
+        if any(SYNTHETIC_SECRET.search(value) for value in strings):
             raise GateError(403, Reason.SECRET_IN_INPUT if incoming else Reason.SECRET_IN_OUTPUT)
         if policy.semantic_required:
             if not service.semantic_ready(policy) or service.semantic is None:
                 raise GateError(503, Reason.REQUIRED_SEMANTIC_UNAVAILABLE)
             try:
-                result = service.semantic.evaluate(context.action_id, content)
+                result = service.semantic.evaluate(context.action_id, inspected_text)
                 context.semantic = result
             except SemanticUnavailable as error:
                 context.semantic_failure = "unavailable"
@@ -208,7 +296,23 @@ class ModelService:
                     raise GateError(403, Reason.SEMANTIC_ABSTAIN)
                 if result.selected_labels["content_role"] == "behavior_instruction":
                     raise GateError(403, Reason.SEMANTIC_BLOCKED)
-        return EMAIL.sub("[REDACTED_EMAIL]", content) if policy.output.redact_emails else content
+        try:
+            if policy.output.redact_emails:
+                normalized = redact_content(normalized)
+            released = json.dumps(pack_calls(normalized), ensure_ascii=False, separators=(",", ":"))
+            maximum = (
+                policy.models.max_input_bytes
+                if incoming and policy.models
+                else policy.output.max_result_bytes
+            )
+            if len(released.encode()) > maximum:
+                raise GateError(
+                    413 if incoming else 403,
+                    Reason.BODY_TOO_LARGE if incoming else Reason.OUTPUT_TOO_LARGE,
+                )
+            return released
+        except (ValueError, UnicodeError, RecursionError) as error:
+            raise GateError(403, invalid) from error
 
     def complete(self, context: Context, request: ChatRequest) -> dict[str, JsonValue]:
         # Keep one immutable policy snapshot through reservation/inspection/evidence.
@@ -246,7 +350,13 @@ class ModelService:
                 raise GateError(413, Reason.BODY_TOO_LARGE)
             inspected = self.inspect(service, context, serialized, incoming=True)
             payload = json.loads(inspected)
-            redacted = serialized != inspected
+            redacted = (
+                EMAIL.search(
+                    "\n".join(text_leaves(unpack_calls(cast(JsonValue, json.loads(serialized)))))
+                )
+                is not None
+                and policy.output.redact_emails
+            )
             input_bound = len(inspected.encode()) + limits.template_token_allowance
             try:
                 self.ledger.reserve(
@@ -303,7 +413,13 @@ class ModelService:
             if len(output.encode()) > policy.output.max_result_bytes:
                 raise GateError(403, Reason.OUTPUT_TOO_LARGE)
             released = self.inspect(service, context, output, incoming=False)
-            redacted = redacted or output != released
+            redacted = redacted or (
+                EMAIL.search(
+                    "\n".join(text_leaves(unpack_calls(cast(JsonValue, json.loads(output)))))
+                )
+                is not None
+                and policy.output.redact_emails
+            )
             decision: Literal["redact", "allow"] = "redact" if redacted else "allow"
             reason = Reason.EMAIL_REDACTED if redacted else Reason.ALLOWED
             event = service.event(context, "action_completed", reason, decision)

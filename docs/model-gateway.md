@@ -91,3 +91,27 @@ Provider configuration follows the [LiteLLM configuration reference](https://doc
 and [Ollama adapter documentation](https://docs.litellm.ai/docs/providers/ollama).
 The gateway supplies the enforcement and durable ledger; neither vendor integration
 nor this fixture demonstration certifies a bank deployment.
+
+## Live operator integration
+
+The operator playground accepts `{mode:"model",model:"local-demo",messages:[...],max_tokens:128}`
+and uses a separate server-derived chat-only credential sharing the fixed operator
+principal/root. No agent token or upstream key reaches browser JavaScript. Overview
+exposes actual model ledger rows; `services.model=configured` describes configuration,
+not a fabricated health probe. Policy/feed generation is checked in the same SQLite
+transaction as model reservation/intent; a changed generation retries the decision
+at most three times. Output and audit retain the dispatched immutable snapshot.
+
+Tool arguments are decoded from their protocol JSON string before input/output
+DLP, feed and semantic inspection, then reconstructed. Unicode escapes do not
+hide a secret or literal indicator at this boundary. Email redaction may change
+content/body/subject/query/description fields; routing, identity and schema fields
+are denied if redaction would change them. This avoids silently changing a proposed
+recipient. Tool calls remain proposals that need the registered executor's authority.
+
+The private adapter applies an absolute deadline to connection and all response
+reads, in addition to inactivity timeouts. A trickling response cannot extend it.
+Cancellation closes the HTTP connection and retains uncertain admission/reservation;
+it does not assert that Ollama's native compute has stopped. Regression tests for
+decoded input/output arguments and a real loopback trickle server address the
+independent review findings on PR6.

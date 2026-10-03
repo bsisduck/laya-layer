@@ -1,6 +1,9 @@
 import json
+import threading
+import time
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 import httpx
@@ -595,3 +598,139 @@ def test_admin_model_playground_uses_real_authority_feed_and_ledger(model):
         assert overview["budgets"]["model"]
         assert "chat.completions" in overview["coverage"]["enforced"]
         assert overview["services"]["model"] == "configured"
+
+
+def proposal(arguments):
+    return {
+        "id": "call-mail",
+        "type": "function",
+        "function": {"name": "mail_send", "arguments": arguments},
+    }
+
+
+MAIL_TOOLS = [
+    {"type": "function", "function": {"name": "mail_send", "parameters": {"type": "object"}}}
+]
+
+
+@pytest.mark.parametrize("stream", [False, True])
+@pytest.mark.parametrize(
+    "arguments",
+    ['{"body":"AGENTGATE_SECRET[fixture]"}', r'{"body":"AGENTGATE_\u0053ECRET[fixture]"}'],
+)
+def test_decoded_output_argument_secret_is_withheld_and_spent(model, stream, arguments):
+    model.provider.content = None
+    model.provider.tool_calls = [proposal(arguments)]
+    response = model.call(stream=stream, tools=MAIL_TOOLS)
+    assert response.status_code == 403
+    assert response.json()["reason_codes"] == ["SECRET_IN_OUTPUT"]
+    assert "tool_calls" not in response.text
+    assert len(model.provider.calls) == 1
+    assert model.store.events()[-1].event_type == "output_blocked"
+    assert all(row["reserved"] == 0 for row in model.models.ledger.counters())
+
+
+def test_decoded_input_argument_secret_never_reaches_provider(model):
+    messages = [
+        {
+            "role": "assistant",
+            "tool_calls": [proposal(r'{"body":"AGENTGATE_\u0053ECRET[fixture]"}')],
+        },
+        {"role": "tool", "tool_call_id": "call-mail", "content": "pending"},
+    ]
+    response = model.call(messages=messages)
+    assert response.status_code == 403
+    assert response.json()["reason_codes"] == ["SECRET_IN_INPUT"]
+    assert model.provider.calls == []
+    assert model.models.ledger.counters() == []
+
+
+@pytest.mark.parametrize("incoming", [False, True])
+@pytest.mark.parametrize("stream", [False, True])
+def test_decoded_argument_feed_indicator_cannot_be_escaped(model, incoming, stream):
+    controls = live_controls(model)
+    controls.activate_feed(
+        ThreatFeed(
+            revision=2,
+            indicators=(Indicator(id="literal", kind="literal_text", value="badneedle"),),
+        ),
+        "local:1",
+    )
+    call = proposal(r'{"body":"b\u0061dneedle"}')
+    options = {"stream": stream, "tools": MAIL_TOOLS}
+    if incoming:
+        options["messages"] = [{"role": "assistant", "tool_calls": [call]}]
+    else:
+        model.provider.content = None
+        model.provider.tool_calls = [call]
+    response = model.call(**options)
+    assert response.status_code == 403
+    assert response.json()["reason_codes"] == ["THREAT_FEED_BLOCKED"]
+    assert len(model.provider.calls) == (0 if incoming else 1)
+    assert "tool_calls" not in response.text
+
+
+def test_argument_content_redaction_preserves_call_and_routing_fields(model):
+    model.provider.content = None
+    model.provider.tool_calls = [
+        proposal(r'{"body":"Contact person\u0040example.org","subject":"Hi"}')
+    ]
+    response = model.call(tools=MAIL_TOOLS)
+    assert response.status_code == 200
+    call = response.json()["choices"][0]["message"]["tool_calls"][0]
+    assert call["id"] == "call-mail" and call["function"]["name"] == "mail_send"
+    assert json.loads(call["function"]["arguments"]) == {
+        "body": "Contact [REDACTED_EMAIL]",
+        "subject": "Hi",
+    }
+    assert response.json()["agentgate"]["decision"] == "redact"
+
+
+def test_routing_fields_are_denied_instead_of_silently_redacted(model):
+    model.provider.tool_calls = [proposal('{"recipient":"person@example.org","body":"test"}')]
+    response = model.call(tools=MAIL_TOOLS)
+    assert response.status_code == 403
+    assert "tool_calls" not in response.text
+    assert all(row["reserved"] == 0 for row in model.models.ledger.counters())
+
+
+def test_private_provider_total_deadline_stops_a_trickling_response():
+    class Trickle(BaseHTTPRequestHandler):
+        def log_message(self, *_):
+            pass
+
+        def do_POST(self):
+            self.rfile.read(int(self.headers.get("Content-Length", "0")))
+            self.send_response(200)
+            self.send_header("Content-Length", "10")
+            self.end_headers()
+            try:
+                for _ in range(10):
+                    time.sleep(0.08)
+                    self.wfile.write(b"x")
+                    self.wfile.flush()
+            except (BrokenPipeError, ConnectionResetError):
+                pass
+
+    server = ThreadingHTTPServer(("127.0.0.1", 0), Trickle)
+    thread = threading.Thread(target=lambda: server.serve_forever(poll_interval=0.01), daemon=True)
+    thread.start()
+    try:
+        provider = PrivateProvider(
+            f"http://127.0.0.1:{server.server_port}/v1", "test-only", timeout=0.12
+        )
+        start = time.monotonic()
+        with pytest.raises(httpx.ReadTimeout):
+            provider.complete({})
+        assert time.monotonic() - start < 0.55
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
+
+
+def test_email_in_argument_name_is_denied_without_renaming(model):
+    model.provider.tool_calls = [proposal('{"person@example.org":"value"}')]
+    response = model.call(tools=MAIL_TOOLS)
+    assert response.status_code == 403
+    assert "tool_calls" not in response.text
