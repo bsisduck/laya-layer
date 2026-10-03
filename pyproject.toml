@@ -21,6 +21,7 @@ mcp = ["mcp>=2.3,<3"]
 
 [project.scripts]
 agentgate = "agentgate.cli:main"
+agentgate-telemetry = "agentgate.telemetry_cli:main"
 
 [dependency-groups]
 dev = [

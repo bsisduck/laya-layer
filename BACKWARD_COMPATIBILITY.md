@@ -23,6 +23,17 @@ that projection. Cursor metadata is emitted on stderr; it records local scan
 progress, not downstream delivery. See `docs/audit-export.md` for scope and
 snapshot semantics. No public HTTP endpoint or storage migration is added.
 
+`agentgate-telemetry` adds local send/status/collector commands and the operator-only
+`telemetry_status(source, config)` hook. Existing CLI/routes/config and audit
+schemas are unchanged; `export_page(require_contiguous=False)` preserves default
+file export behavior while the sender explicitly requires contiguous scans. A
+private version-1 sidecar stores one bounded batch/cursor/retry state; the separate
+contract collector owns its own version-1 receipt/scope database. No gateway
+migration is required. Preserve source and sidecars together on normal restarts;
+source relocation/replacement or tenant/destination changes require deliberate
+operator reconciliation. See `docs/telemetry-delivery.md` for wire contracts,
+restart/rollback limits and additive root integration for newer audit variants.
+
 The current operational contracts are `make setup`, `make validate`, `make doctor`,
 `make harness`, Python lint/type/test/build commands, local demo commands, and the
 upstream configuration formats under `.ai/`. Keep their
