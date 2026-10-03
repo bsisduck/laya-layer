@@ -64,6 +64,9 @@ class Reason(StrEnum):
     THREAT_FEED_BLOCKED = "THREAT_FEED_BLOCKED"
     CONTROLS_CHANGED = "CONTROLS_CHANGED"
     ALLOWED = "ALLOWED"
+    MODEL_NOT_ALLOWED = "MODEL_NOT_ALLOWED"
+    SECRET_IN_INPUT = "SECRET_IN_INPUT"
+    USAGE_INVALID = "USAGE_INVALID"
 
 
 class ActionResponse(Contract):
@@ -88,7 +91,7 @@ class AuditEvent(Contract):
     principal_id: str | None
     tenant_id: str | None
     root_run_id: str | None
-    operation: Literal["documents.read"] | None
+    operation: Literal["documents.read", "chat.completions"] | None
     decision: Literal["allow", "redact", "deny"]
     reason_codes: tuple[Reason, ...]
     policy_version: str

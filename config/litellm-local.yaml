@@ -1,0 +1,29 @@
+# Run on 127.0.0.1 only, in the isolated locked environment. No wildcard routes.
+model_list:
+  - model_name: local-demo
+    litellm_params:
+      model: ollama_chat/llama3.2:1b
+      api_base: http://127.0.0.1:11434
+      num_ctx: 16384
+      num_thread: 4
+      keep_alive: 0
+      timeout: 40
+router_settings:
+  num_retries: 0
+  timeout: 40
+  fallbacks: []
+  context_window_fallbacks: []
+  content_policy_fallbacks: []
+litellm_settings:
+  num_retries: 0
+  request_timeout: 40
+  telemetry: false
+  set_verbose: false
+  turn_off_message_logging: true
+  drop_params: false
+  success_callback: []
+  failure_callback: []
+general_settings:
+  master_key: os.environ/LITELLM_MASTER_KEY
+  store_model_in_db: false
+  disable_spend_logs: true

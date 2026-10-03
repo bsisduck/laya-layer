@@ -178,8 +178,23 @@ Agent credentials expire after 24 hours. Operator sessions last 15 minutes and
 can be reacquired with the separate operator token. The operator playground's
 credential lifecycle is specified in [the control-plane contract](control-plane-contract.md).
 Restart/reinstall does not renew expired authority or revive revoked authority.
-Use the explicit renewal workflow supplied by that contract when available;
-pending approvals from an old authority must be reviewed again after renewal.
+For an expired credential, stop the installation and explicitly renew:
+
+```sh
+./laya stop
+./laya renew-agent
+./laya renew-playground --scope tools
+./laya renew-playground --scope model
+./laya start
+```
+
+Renew only the expired scopes you need. Still-active, revoked or unissued authority
+is refused. Agent rotation writes/fsyncs a private pending file before its database
+commit; retry recovers the exact committed replacement after a crash. Identity,
+root spend and history remain unchanged. The new agent token is available only in
+`data/client.token`; the command prints its path. Playground tokens remain internal,
+with separate durable tools/model epochs. Pending approvals from an old authority
+must be proposed with a fresh idempotency key and approved again after renewal.
 Never replace state or change root IDs to work around expiry or budgets.
 
 ## Scope and evidence

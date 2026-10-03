@@ -1,0 +1,20 @@
+schema_version: 1
+policy_id: local-model-demo
+revision: 1
+semantic_required: false
+tool_budgets:
+  tenant_day: 1000
+  principal_day: 500
+  root_run: 100
+models:
+  aliases: [local-demo]
+  max_output_tokens: 256
+  max_input_bytes: 4096
+  template_token_allowance: 4096
+  max_concurrent: 1
+  tariff_revision: local-no-invoice-v1
+  input_micro_usd: 0
+  output_micro_usd: 0
+  tenant_day: {calls: 100, tokens: 100000, micro_usd: 0}
+  principal_day: {calls: 50, tokens: 50000, micro_usd: 0}
+  root_run: {calls: 20, tokens: 20000, micro_usd: 0}

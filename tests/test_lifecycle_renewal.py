@@ -136,7 +136,7 @@ def test_renewed_file_cannot_escape_exhausted_root_budget(installed):
 
     directory, store, old, _ = installed
     policy = load_policy(directory / "policy.yaml").model_copy(
-        update={"tool_budgets": ToolBudgets(root_run=1)}
+        update={"tool_budgets": ToolBudgets(tenant_day=10, principal_day=10, root_run=1)}
     )
     documents = demo_documents()
     service = ActionService(
