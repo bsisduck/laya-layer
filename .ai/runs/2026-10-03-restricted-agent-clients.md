@@ -56,11 +56,13 @@ Labels disabled. CLI/API task, no web UI changed.
 
 ## Progress
 
+PR: #30
+
 > Convention: `- [ ]` pending, `- [x]` done. Append ` — <commit sha>` when a step lands. Do not rename step titles.
 
 ### Phase 1: Direct client
 
-- [ ] 1.1 Implement direct discovery and bounded correlated cycles
+- [x] 1.1 Implement direct discovery and bounded correlated cycles — de35df3
 - [ ] 1.2 Test HTTP enforcement and pending resume
 
 ### Phase 2: Genuine restricted Hermes
