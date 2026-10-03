@@ -432,3 +432,134 @@ def test_operator_hooks_require_exact_fingerprint_and_tenant(tools):
         ).status_code
         == 404
     )
+
+
+def test_pr17_snapshot_binding_inspects_real_unicode_and_checks_transaction(tools, monkeypatch):
+    from dataclasses import dataclass
+
+    observed = []
+    generation = [1]
+
+    @dataclass(frozen=True)
+    class Snapshot:
+        policy: object
+        generation: int
+
+        def inspect(self, stage, text):
+            observed.append((stage, text))
+            if "niedozwolone żądanie" in text:
+                raise RuntimeError("fixture feed match")
+
+        def assert_current(self, connection):
+            assert connection.in_transaction
+            assert self.generation == generation[0]
+
+    monkeypatch.setattr(tools.service, "controls", object(), raising=False)
+    monkeypatch.setattr(
+        tools.service,
+        "current_controls",
+        lambda: Snapshot(tools.service.policy, generation[0]),
+        raising=False,
+    )
+    monkeypatch.setattr(
+        tools.service,
+        "context_controls",
+        lambda context: tools.service.current_controls(),
+        raising=False,
+    )
+    assert mail(tools, body="niedozwolone żądanie").status_code == 403
+    assert rows(tools, "tool_outbox") == rows(tools, "tool_actions") == []
+    action_id = mail(tools).json()["action_id"]
+    decide(tools)
+    assert resume(tools, action_id).status_code == 200
+    assert len(rows(tools, "tool_outbox")) == 1
+    assert any(stage == "tool_result" for stage, _ in observed)
+    action_id = mail(tools, idempotency_key="generation-change").json()["action_id"]
+    decide(tools)
+    generation[0] += 1
+    assert resume(tools, action_id).status_code == 403
+    assert len(rows(tools, "tool_outbox")) == 1
+
+
+def test_pr17_changed_snapshot_between_check_and_dispatch_denies(tools, monkeypatch):
+    from dataclasses import dataclass
+
+    generation = [1]
+
+    @dataclass(frozen=True)
+    class Snapshot:
+        policy: object
+        generation: int
+
+        def inspect(self, stage, text):
+            if stage == "tool_action":
+                generation[0] += 1
+
+        def assert_current(self, connection):
+            assert connection.in_transaction
+            if self.generation != generation[0]:
+                raise RuntimeError("fixture concurrent activation")
+
+    # Create/approve before attaching the provider; preserve binding=static to
+    # test the execution-time callback separately from fingerprint invalidation.
+    action_id = mail(tools).json()["action_id"]
+    decide(tools)
+
+    def provider():
+        captured = Snapshot(tools.service.policy, generation[0])
+
+        def current(connection):
+            try:
+                captured.assert_current(connection)
+            except RuntimeError as error:
+                raise GateError(409, Reason.POLICY_CHANGED) from error
+
+        return ToolSnapshot(captured.policy, "static", captured.inspect, current)
+
+    tools.service.tools.snapshot_provider = provider
+    assert resume(tools, action_id).status_code == 409
+    assert rows(tools, "tool_outbox") == []
+    assert tools.store.budget_counters() == []
+
+
+@pytest.mark.parametrize(
+    "field,value", [("body", "\ud800"), ("subject", "\udfff"), ("body", "embedded\x00value")]
+)
+def test_mail_rejects_non_text_before_persistence(tools, field, value):
+    import json
+
+    arguments = {
+        "recipient": "analyst@demo.internal",
+        "subject": "s",
+        "body": "b",
+        "idempotency_key": "unicode",
+    }
+    arguments[field] = value
+    response = tools.client.post(
+        "/v1/actions/execute",
+        headers=tools.headers | {"Content-Type": "application/json"},
+        content=json.dumps(
+            {"operation": "mail.send", "arguments": arguments}, ensure_ascii=True
+        ).encode(),
+    )
+    assert response.status_code == 422
+    assert rows(tools, "tool_actions") == rows(tools, "tool_outbox") == []
+
+
+def test_pending_export_is_unknown_outcome_and_never_reports_execution(tools):
+    from agentgate.audit_export import format_event
+
+    mail(tools)
+    event = tools.store.events()[-1]
+    exported = format_event(event, 1, "ecs")
+    assert exported["event"]["outcome"] == "unknown"
+    assert exported["laya"]["executed"] is False
+
+
+def test_outbox_unique_constraint_is_independent_backstop(tools):
+    action_id = mail(tools).json()["action_id"]
+    decide(tools)
+    assert resume(tools, action_id).status_code == 200
+    with pytest.raises(StorageUnavailable), tools.store.connection() as connection:
+        connection.execute("INSERT INTO tool_outbox SELECT * FROM tool_outbox")
+    assert len(rows(tools, "tool_outbox")) == 1

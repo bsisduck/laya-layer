@@ -30,6 +30,9 @@ CREATE TABLE IF NOT EXISTS budget_counters (
     spent INTEGER NOT NULL DEFAULT 0 CHECK(spent >= 0),
     PRIMARY KEY(scope, scope_key)
 );
+CREATE INDEX IF NOT EXISTS legacy_root_scope ON budget_counters(
+    json_extract(scope_key, '$[0]'), json_extract(scope_key, '$[2]')
+) WHERE scope='root_run' AND json_array_length(scope_key)=3;
 CREATE TABLE IF NOT EXISTS tool_reservations (
     action_id TEXT PRIMARY KEY,
     state TEXT NOT NULL CHECK(state IN ('dispatched', 'uncertain', 'settled')),
@@ -54,6 +57,13 @@ def reserve(
     now: float,
     policy_version: str,
 ) -> None:
+    if connection.execute(
+        "SELECT 1 FROM budget_counters WHERE scope='root_run' AND json_array_length(scope_key)=3 "
+        "AND json_extract(scope_key,'$[0]')=? AND json_extract(scope_key,'$[2]')=? LIMIT 1",
+        (identity.tenant_id, identity.root_run_id),
+    ).fetchone():
+        # Embedders must migrate too: ignoring an old account is a budget reset.
+        raise sqlite3.IntegrityError("Root budget migration required")
     day = datetime.fromtimestamp(now, UTC).date().isoformat()
     scopes = [
         ("tenant_day", [identity.tenant_id, day], limits.tenant_day),
@@ -92,37 +102,41 @@ def migrate_root_counters(connection: sqlite3.Connection) -> None:
     The caller owns the write transaction. Keep reservation foreign keys pointing
     at the summed account so a late settlement charges that same root exactly once.
     """
-    rows = connection.execute(
-        "SELECT scope_key, reserved, spent FROM budget_counters WHERE scope='root_run'"
-    )
-    for row in rows:
-        try:
-            parts = json.loads(row["scope_key"])
-        except (TypeError, ValueError) as error:
-            raise sqlite3.IntegrityError("Invalid root budget key") from error
-        if (
-            not isinstance(parts, list)
-            or len(parts) not in (2, 3)
-            or not all(isinstance(part, str) for part in parts)
-        ):
-            raise sqlite3.IntegrityError("Invalid root budget key")
-        if len(parts) == 2:
-            continue
-        key = json.dumps([parts[0], parts[2]], separators=(",", ":"))
-        connection.execute(
-            "INSERT INTO budget_counters(scope, scope_key, reserved, spent) "
-            "VALUES ('root_run', ?, ?, ?) ON CONFLICT(scope, scope_key) DO UPDATE SET "
-            "reserved=reserved+excluded.reserved, spent=spent+excluded.spent",
-            (key, row["reserved"], row["spent"]),
-        )
-        connection.execute(
-            "UPDATE reservation_scopes SET scope_key=? WHERE scope='root_run' AND scope_key=?",
-            (key, row["scope_key"]),
-        )
-        connection.execute(
-            "DELETE FROM budget_counters WHERE scope='root_run' AND scope_key=?",
-            (row["scope_key"],),
-        )
+    after_key = ""
+    while rows := connection.execute(
+        "SELECT scope_key, reserved, spent FROM budget_counters "
+        "WHERE scope='root_run' AND scope_key>? ORDER BY scope_key LIMIT 256",
+        (after_key,),
+    ).fetchall():
+        after_key = rows[-1]["scope_key"]
+        for row in rows:
+            try:
+                parts = json.loads(row["scope_key"])
+            except (TypeError, ValueError) as error:
+                raise sqlite3.IntegrityError("Invalid root budget key") from error
+            if (
+                not isinstance(parts, list)
+                or len(parts) not in (2, 3)
+                or not all(isinstance(part, str) for part in parts)
+            ):
+                raise sqlite3.IntegrityError("Invalid root budget key")
+            if len(parts) == 2:
+                continue
+            key = json.dumps([parts[0], parts[2]], separators=(",", ":"))
+            connection.execute(
+                "INSERT INTO budget_counters(scope, scope_key, reserved, spent) "
+                "VALUES ('root_run', ?, ?, ?) ON CONFLICT(scope, scope_key) DO UPDATE SET "
+                "reserved=reserved+excluded.reserved, spent=spent+excluded.spent",
+                (key, row["reserved"], row["spent"]),
+            )
+            connection.execute(
+                "UPDATE reservation_scopes SET scope_key=? WHERE scope='root_run' AND scope_key=?",
+                (key, row["scope_key"]),
+            )
+            connection.execute(
+                "DELETE FROM budget_counters WHERE scope='root_run' AND scope_key=?",
+                (row["scope_key"],),
+            )
 
 
 def settle(connection: sqlite3.Connection, action_id: str, *, uncertain: bool) -> None:

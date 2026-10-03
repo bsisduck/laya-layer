@@ -5,6 +5,7 @@ from test_scoped_tools import decide, rows
 from test_scoped_tools import tools as tools
 
 from agentgate.app import create_app
+from agentgate.storage import credential_digest
 
 
 @pytest.fixture
@@ -87,9 +88,7 @@ def test_mcp_scoped_discovery_follows_current_credential(wire):
                 tools.identity.model_copy(
                     update={"operations": ("documents.read",)}
                 ).model_dump_json(),
-                __import__("agentgate.storage", fromlist=["credential_digest"]).credential_digest(
-                    tools.token
-                ),
+                credential_digest(tools.token),
             ),
         )
     assert [t["name"] for t in rpc(wire, "tools/list").json()["result"]["tools"]] == [
@@ -206,3 +205,102 @@ def test_mcp_http_bounds_origins_and_identity_overrides(wire):
         ).status_code
         == 422
     )
+
+
+def test_modern_envelope_cannot_bypass_bound_session(wire):
+    _, headers, tools = wire
+    other = tools.store.issue(tools.identity.model_copy(update={"principal_id": "another"}), 2000.0)
+    assert (
+        rpc(
+            wire,
+            "tools/list",
+            headers=headers
+            | {
+                "Authorization": "Bearer " + other,
+                "MCP-Protocol-Version": "2026-07-28",
+            },
+        ).status_code
+        == 400
+    )
+    assert rows(tools, "tool_outbox") == []
+
+
+def test_official_sdk_client_over_real_loopback_http(tools):
+    import asyncio
+    import socket
+    from threading import Event, Thread
+
+    import httpx2
+    import uvicorn
+    from mcp import ClientSession
+    from mcp.client.streamable_http import streamable_http_client
+
+    started = Event()
+
+    class Server(uvicorn.Server):
+        async def startup(self, sockets=None):
+            await super().startup(sockets)
+            started.set()
+
+    with socket.socket() as listener:
+        listener.bind(("127.0.0.1", 0))
+        listener.listen(16)
+        port = listener.getsockname()[1]
+        server = Server(
+            uvicorn.Config(
+                create_app(tools.service, enable_mcp=True), log_level="critical", access_log=False
+            )
+        )
+        thread = Thread(target=server.run, kwargs={"sockets": [listener]}, daemon=True)
+        thread.start()
+        try:
+            assert started.wait(5)
+
+            async def scenario():
+                async with (
+                    asyncio.timeout(10),
+                    httpx2.AsyncClient(headers=tools.headers, trust_env=False) as http,
+                ):
+                    async with streamable_http_client(
+                        f"http://127.0.0.1:{port}/mcp", http_client=http
+                    ) as (read, write):
+                        async with ClientSession(read, write) as client:
+                            init = await client.initialize()
+                            assert init.protocol_version == "2025-11-25"
+                            listing = await client.list_tools()
+                            assert {t.name for t in listing.tools} == {
+                                "documents.read",
+                                "memory.query",
+                                "mail.send",
+                            }
+                            read_result = await client.call_tool(
+                                "memory.query", {"query": "Quarterly"}
+                            )
+                            assert read_result.structured_content["executed"] is True
+                            arguments = {
+                                "recipient": "a@evil.example",
+                                "subject": "Wire",
+                                "body": "Exact wire content",
+                                "idempotency_key": "sdk-wire",
+                            }
+                            denied = await client.call_tool("mail.send", arguments)
+                            assert denied.is_error and not denied.structured_content["executed"]
+                            assert rows(tools, "tool_outbox") == []
+                            arguments["recipient"] = "a@demo.internal"
+                            pending = await client.call_tool("mail.send", arguments)
+                            assert pending.structured_content["status"] == "pending_approval"
+                            decide(tools)
+                            completed = await client.call_tool("mail.send", arguments)
+                            assert completed.structured_content["executed"] is True
+                            repeated = await client.call_tool("mail.send", arguments)
+                            assert (
+                                repeated.structured_content["action_id"]
+                                == completed.structured_content["action_id"]
+                            )
+                            assert len(rows(tools, "tool_outbox")) == 1
+
+            asyncio.run(scenario())
+        finally:
+            server.should_exit = True
+            thread.join(timeout=5)
+            assert not thread.is_alive()

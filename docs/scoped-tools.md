@@ -114,6 +114,36 @@ Outbox hooks expose bounded metadata (`action_id`, recipient, creation time,
 `delivery_state`), scoped to the explicitly authorized tenant. Operators must not
 expose these methods or their exact-content output to the agent API.
 
+## Frozen operator HTTP and playground integration
+
+These routes belong to PR17; the hooks above supply their real data. PR20 consumes:
+
+- `GET /admin/approvals?tenant_id=tenant-a&limit=100` → `{approvals:[row]}`.
+  Exact details are in each row; no separate detail endpoint is required. Row
+  fields: `action_id`, `tenant_id`, `principal_id`, `root_run_id`, `operation`,
+  `payload` (recipient/subject/body/idempotency_key), `payload_digest`, `fingerprint`,
+  `policy_digest`, `registry_digest`, `policy_version`, `created_at`, `expires_at`,
+  `state`, `reason`, `decided_by` (nullable).
+- `POST /admin/approvals/{action_id}/decision` body
+  `{tenant_id, fingerprint, approve: true|false}` → direct ActionResponse.
+  Approval returns `status: approved`, `action_state: approved`,
+  `decision: require_approval`, `executed: false`. It never implicitly resumes.
+- `GET /admin/outbox?tenant_id=tenant-a&limit=100` → `{messages:[metadata]}`,
+  using the outbox projection above. Both lists accept limits 1–100.
+- `POST /admin/playground`: `{mode:"memory", query, limit?}` or
+  `{mode:"mail", recipient, subject, body, idempotency_key}` → direct
+  ActionResponse. Existing `{mode:"document", document_id}` is retained.
+  Mail retries repeat the **exact** body and key after approval; changed arguments
+  return 409. For an approval-pending playground action, the operator plane must
+  retain a server-private, fixed-principal/root credential across requests, with
+  sufficient lifetime for the approval TTL. Issuing/deleting a credential on every
+  request cannot resume the credential-bound action. Root/PR17 own this plumbing.
+
+The UI must not equate an approved decision with execution. Only a consumed action
+response with `executed: true` and `result.outbox_id`, or an actual outbox row,
+proves the local fixture effect. The response's `policy_version` identifies the
+stored proposal; denial audit uses the current snapshot used to invalidate it.
+
 ## Live policy/feed integration with PR17
 
 The tools automatically capture `context_controls(context)` (or `current_controls()`
@@ -145,7 +175,9 @@ demo and independent security review before release.
 
 `agentgate serve --mcp` enables `/mcp` using the official Python SDK (`mcp` 2.3.0
 in `uv.lock`). The SDK owns initialize, capabilities, RPC correlation and HTTP
-sessions. The adapter supplies authenticated SDK users bound to the exact run
+sessions for the SDK's supported handshake revisions (2024-11-05 through
+2025-11-25); stateless per-request-envelope revisions are explicitly rejected.
+The adapter supplies authenticated SDK users bound to the exact run
 credential; every HTTP request and tool dispatch checks current credentials.
 Session IDs never substitute for bearer authentication. Tool discovery is filtered,
 and calls return protocol-compliant text plus structured ActionResponse results.

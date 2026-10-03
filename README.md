@@ -10,7 +10,7 @@ The first working slice authenticates document reads, enforces tenant/role/agent
 permissions, filters output, and persists minimized audit events. The complete
 target design is in [the architecture](AgentGate_Full_Project_Architecture.md).
 
-**Status: document-enforcement prototype.** Atomic call budgets and authenticated
+**Status: scoped-tool enforcement prototype.** Atomic call budgets and authenticated
 standard Laya / native CoreML workers are implemented. The optional semantic
 profile inspects document results before release; classification is experimental.
 Scoped memory queries, exact mail approvals/local outbox, and official-SDK MCP are

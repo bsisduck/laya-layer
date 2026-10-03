@@ -4,7 +4,7 @@ import hashlib
 import json
 from typing import Annotated, Literal
 
-from pydantic import Field
+from pydantic import Field, field_validator
 
 from agentgate.contracts import Contract, DocumentArguments, Identifier
 
@@ -25,6 +25,17 @@ class MailArguments(Contract):
     subject: Annotated[str, Field(min_length=1, max_length=200, pattern=r"^[^\r\n\x00]*$")]
     body: Annotated[str, Field(min_length=1, max_length=8192)]
     idempotency_key: Identifier
+
+    @field_validator("recipient", "subject", "body")
+    @classmethod
+    def valid_text(cls, value: str) -> str:
+        try:
+            value.encode("utf-8")
+        except UnicodeError as error:
+            raise ValueError("Invalid UTF-8 text") from error
+        if "\x00" in value:
+            raise ValueError("NUL is not mail text")
+        return value
 
 
 class ScopedToolPolicy(Contract):

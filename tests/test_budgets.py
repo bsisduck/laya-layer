@@ -321,3 +321,33 @@ def test_legacy_roots_merge_spend_reservations_and_settle_once(harness: Harness)
     root = [c for c in harness.store.budget_counters() if c["scope"] == "root_run"]
     assert root[0]["reserved"] == 0 and root[0]["spent"] == 4
     assert harness.read().status_code == 429
+
+
+def test_initialized_v2_migrates_legacy_keys_and_blocks_start_until_migrated(harness):
+    enable(harness, root_run=1)
+    assert harness.read().status_code == 200
+    with harness.store.connection() as connection:
+        connection.execute("BEGIN IMMEDIATE")
+        connection.execute(
+            "INSERT INTO budget_counters SELECT scope,?,reserved,spent FROM budget_counters WHERE scope='root_run'",
+            ('["tenant-a","analyst","run-a"]',),
+        )
+        connection.execute(
+            "UPDATE reservation_scopes SET scope_key=? WHERE scope='root_run'",
+            ('["tenant-a","analyst","run-a"]',),
+        )
+        connection.execute(
+            "DELETE FROM budget_counters WHERE scope='root_run' AND scope_key=?",
+            ('["tenant-a","run-a"]',),
+        )
+        connection.execute("COMMIT")
+    assert not harness.store.ready()
+    assert harness.read().status_code == 503
+    harness.store.initialize()
+    harness.store.initialize()
+    assert harness.store.ready()
+    assert harness.read().status_code == 429
+    root = [row for row in harness.store.budget_counters() if row["scope"] == "root_run"]
+    assert root == [
+        {"scope": "root_run", "scope_key": '["tenant-a","run-a"]', "reserved": 0, "spent": 1}
+    ]

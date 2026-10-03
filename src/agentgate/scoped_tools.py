@@ -263,7 +263,7 @@ class ScopedTools:
             raise GateError(403, Reason.OPERATION_NOT_ALLOWED)
         if arguments.recipient.rsplit("@", 1)[1] not in snapshot.policy.scoped_tools.mail_domains:
             raise GateError(403, Reason.RECIPIENT_DOMAIN_NOT_ALLOWED)
-        text = canonical(arguments.model_dump(mode="json"))
+        text = "\n".join((arguments.recipient, arguments.subject, arguments.body))
         snapshot.inspect("tool_action", text)
         self.service.inspect_text(context, text, input_text=True)
 
@@ -502,14 +502,16 @@ class ScopedTools:
         self.check_limit(limit)
         with self.service.store.connection() as connection:
             rows = connection.execute(
-                "SELECT action_id,principal_id,root_run_id,payload,fingerprint,policy_version,"
-                "expires_at,state,reason,decided_by FROM tool_actions WHERE tenant_id=? ORDER BY created_at DESC,action_id LIMIT ?",
+                "SELECT action_id,tenant_id,principal_id,root_run_id,payload,payload_digest,fingerprint,"
+                "policy_digest,registry_digest,policy_version,created_at,expires_at,state,reason,decided_by "
+                "FROM tool_actions WHERE tenant_id=? ORDER BY created_at DESC,action_id LIMIT ?",
                 (tenant_id, limit),
             ).fetchall()
         result = []
         for row in rows:
             entry = dict(row)
             entry["payload"] = json.loads(entry["payload"])
+            entry["operation"] = "mail.send"
             if (
                 entry["state"] in ("pending", "approved")
                 and self.service.clock() >= entry["expires_at"]

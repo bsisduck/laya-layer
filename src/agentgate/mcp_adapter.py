@@ -12,6 +12,7 @@ from mcp.server.context import ServerRequestContext
 from mcp.server.lowlevel import Server
 from mcp.server.streamable_http_manager import StreamableHTTPSessionManager
 from mcp.server.transport_security import TransportSecuritySettings
+from mcp_types.version import HANDSHAKE_PROTOCOL_VERSIONS
 from pydantic import ValidationError
 from starlette.concurrency import run_in_threadpool
 from starlette.requests import Request
@@ -66,6 +67,16 @@ class MCPAdapter:
         try:
             request = Request(scope, receive)
             context = await self.authenticate(request)
+            version = request.headers.get("mcp-protocol-version")
+            if version is not None and version not in HANDSHAKE_PROTOCOL_VERSIONS:
+                # This adapter supports session-based initialization. Do not let
+                # a per-request envelope bypass the SDK's session-owner check.
+                raise GateError(400, Reason.MALFORMED_REQUEST)
+            if any(
+                len(request.headers.getlist(name)) > 1
+                for name in ("mcp-session-id", "mcp-protocol-version", "host", "origin")
+            ):
+                raise GateError(400, Reason.MALFORMED_REQUEST)
             assert context.credential_digest is not None
             assert context.identity is not None
             # The SDK compares authorization_context for every request carrying

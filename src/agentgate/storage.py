@@ -167,9 +167,13 @@ class Store:
                 connection.execute(
                     "SELECT action_id, scope, scope_key FROM reservation_scopes LIMIT 0"
                 )
-                connection.execute(
-                    "SELECT version FROM scoped_tool_schema WHERE version=1"
-                ).fetchone()
+                if (
+                    connection.execute(
+                        "SELECT version FROM scoped_tool_schema WHERE version=1"
+                    ).fetchone()
+                    is None
+                ):
+                    return False
                 connection.execute("SELECT action_id,state FROM tool_actions LIMIT 0")
                 connection.execute("SELECT action_id FROM tool_outbox LIMIT 0")
                 connection.execute("SELECT tenant_id,entry_id FROM memory_entries LIMIT 0")
