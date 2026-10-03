@@ -1,28 +1,29 @@
 # Delivery plan and skill guide
 
-## Ordered product milestones
+## Current product milestones
 
-Each step needs a focused branch, meaningful failure-path tests, review, and a
-working local commit. Keep security claims tied to demonstrated behavior.
+Status after integration of reviewed installer, semantic profiles, artifact intake
+and restricted-agent clients.
+See [the evidence ledger](release-evidence.md) for exact commits and [acceptance](acceptance.md)
+for T01–T48 mappings; test counts are not completion percentages.
 
-| Step | Deliverable | Acceptance evidence | Status |
-|---|---|---|---|
-| 1 | Document enforcement and audit | Auth, tenant, role, no execution on denial, output filtering | Implemented; 57 deterministic tests |
-| 2 | Public repository, docs, CI | Reproducible setup, architecture diagrams, hosted validation | Published; GitHub CI passed |
-| 3 | Atomic tool resource budgets | Tenant/day, principal/day, root-run limits; race tests; uncertain dispatch retains reservation | Implemented; deterministic suite now 84 tests |
-| 4 | Authenticated semantic workers | Both real backends; capacity and coverage validation; timeout/invalid-result denial | Implemented; 135 deterministic tests; both real HTTP profiles pass; label-quality gaps documented |
-| 4a | Security event export foundation | Tenant-scoped bounded JSONL, ECS-oriented records, Splunk HEC envelopes; no raw content; resumable snapshot | Implemented locally; live vendor delivery remains planned |
-| 5 | Model facade and private LiteLLM | Model allowlist, per-attempt reservations, bounded output, buffered SSE | Planned |
-| 6 | MCP and remaining fixture tools | Shared authorization; isolated memory; exact-payload approval and one outbox write under retry | Planned |
-| 7 | Policy/feed activation and dashboard | Privileged access, valid atomic activation, event-derived reporting and export | Planned |
-| 8 | Hermes and offline product demo | Both protected paths; bypass boundaries disclosed; reproducible end-to-end evidence | Planned |
-| 9 | Release evidence and presentation | Independent security review; held-out classifier evaluation; acceptance map and submission assets | Planned |
+| Deliverable | Evidence | Status / remaining gate |
+|---|---|---|
+| Document/memory/mail enforcement and MCP | Scoped identity, actual fixture effects, immutable approval and replay tests | Integrated; local outbox only |
+| Model facade/private LiteLLM | Allowlist, input/output inspection, atomic call/token/money ledger, actual local cycle | Integrated; buffered output, local zero/simulated tariffs |
+| Operator/live controls | Separate sessions/CSRF, policy/feed CAS, explicit renewal, root installed browser checks | Integrated; exact-head gates and independent review in release ledger |
+| Standard/native CoreML | Frozen v1/v2 reports and real CPU gateway smoke | V2 merged, opt-in; v1 poor/failed evidence retained; CoreML experimental |
+| Resource accounting | Shared-root tool/model budgets and persistent worker call quota | Integrated; full cumulative physical-resource governance incomplete |
+| Evidence delivery | Scoped exports, durable sender and installed local collector | Local contract lab only; vendor/bank acceptance unverified |
+| Install/offline restart | Owned gateway/proxy/collector, prepared runtime reuse, preserved authority/ledgers | Integrated; installed browser, offline restart and source-only upgrade verified |
+| Artifact intake | Exact approved metadata tuple and no-download/execution probes | Integrated from reviewed PR28; metadata simulation only |
+| Restricted direct/Hermes clients | Actual REST/MCP/Hermes two-model/one-document cycles; independently reviewed source and 584 checks | Integrated from reviewed PR30; trusted host, restricted profile |
+| Documentation/submission assets | Truthful quickstart, diagrams, requirement map, inventory, nine-slide EN/PL sources/PDFs | Reviewable docs package; user fills team/submission facts |
 
-Steps 3–8 may be split further when a contract or failure mode needs its own
-review. No deadline or organizer confirmation is inferred from this plan.
-The [PDF alignment assessment](challenge-alignment.md) maps the current gaps to
-the judging criteria. [Enterprise integrations](enterprise-integrations.md)
-extend reporting; they do not replace the remaining core AI-control deliverables.
+No organizer confirmation, enterprise deployment, certification or submission
+follows from this development plan. [Challenge alignment](challenge-alignment.md)
+records the supplied requirements and discrepancies; bank adapters extend
+reporting and remain separate acceptance work.
 
 ## Which skills to use
 

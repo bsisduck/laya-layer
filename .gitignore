@@ -26,3 +26,5 @@ reports/generated/
 !.ai/cezar/config.json
 !.ai/cezar/workflows/
 !.ai/cezar/workflows/**
+.ai/qa/test-env.lock/
+.ai/qa/test-env-build-cache.json

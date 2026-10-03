@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, NoReturn
 
 from fastapi import Depends, FastAPI, Request
@@ -12,12 +13,14 @@ from starlette.concurrency import run_in_threadpool
 from starlette.requests import ClientDisconnect
 
 from agentgate.contracts import ActionRequest, ActionResponse, Reason
+from agentgate.metrics import LatencyWindow, ResponseTimings
 from agentgate.service import ActionService, GateError
 from agentgate.storage import StorageUnavailable
 from agentgate.web_routes import attach_web_routes
 
 if TYPE_CHECKING:
     from agentgate.models import ModelService
+    from agentgate.telemetry_contract import TelemetryConfig
 
 
 def unique_object(pairs: list[tuple[str, object]]) -> dict[str, object]:
@@ -93,11 +96,17 @@ def create_app(
     *,
     admin_origin: str | None = None,
     enable_mcp: bool = False,
+    telemetry_config: "TelemetryConfig | None" = None,
+    telemetry_token_file: Path | None = None,
 ) -> FastAPI:
+    if (telemetry_config is None) != (telemetry_token_file is None):
+        raise ValueError("Telemetry configuration and credential file must be supplied together")
     app = FastAPI(
         title="AgentGate", version="0.1.0", docs_url=None, redoc_url=None, openapi_url=None
     )
     attach_web_routes(app)
+    app.state.latency = LatencyWindow()
+    app.state.telemetry_config = telemetry_config
     bearer = HTTPBearer(auto_error=False)
 
     @app.get("/health/live")
@@ -173,6 +182,11 @@ def create_app(
         from agentgate.admin import attach_admin_routes
 
         attach_admin_routes(app, service, origin=admin_origin)
+    if telemetry_config is not None and telemetry_token_file is not None:
+        from agentgate.telemetry_runtime import attach_sender
+
+        attach_sender(app, service.store.path, telemetry_config, telemetry_token_file)
+    app.add_middleware(ResponseTimings, window=app.state.latency)
     return app
 
 

@@ -1,7 +1,9 @@
 # AgentGate development workflow
 
 The current phase is prototype implementation in the public
-`bsisduck/laya-sec-agent` repository. `main` is the base. GitHub Actions runs
+`bsisduck/laya-sec-agent` repository. `main` is the default base; an explicitly
+requested integration target, such as `implement/full-stack-release`, takes
+precedence for that task. GitHub Actions runs
 `make validate`; GitHub is the tracker, labels are disabled, and the QA gate is
 enabled in `.ai/agentic.config.json`. Public source is not a production release.
 
@@ -15,7 +17,7 @@ enabled in `.ai/agentic.config.json`. Public source is not a production release.
 | Implement | Work on one branch; commit successful steps frequently. | Working code and relevant tests. |
 | Review | Read the diff with `om-code-review` and `CODE_REVIEW.md`; fix findings. | Validation results and remaining risks. |
 | QA | Exercise changed paths with side-effect evidence and UI states where relevant. | Results tied to the tested commit. |
-| Publish | Only on explicit instruction: push and open the requested PR. | Reviewable PR against `main`. |
+| Publish | Only on explicit instruction: push and open the requested PR. | Reviewable PR against the explicitly requested base (otherwise `main`). |
 | Merge/release | Only on explicit instruction and after required checks and QA. | Revertable, validated change. |
 
 The author owns implementation and evidence. The reviewer checks correctness,
@@ -30,8 +32,17 @@ The configured command is `make validate`. It checks workflow artifacts and the
 Cezar configuration, verifies `uv.lock`, runs Ruff lint and formatting, strict
 mypy, pytest, and builds a source distribution and wheel. Tests cover implemented document and
 scoped-tool enforcement, approvals/outbox transactions and official-SDK MCP over
-HTTP. Setup and validation install/use the optional locked MCP extra. Real inference
-checks and full-application integration remain separate. Local success does not imply CI success.
+HTTP, model ledgers, live controls, operator sessions, credential renewal,
+installation lifecycle and the local telemetry contract lab. Provider/native
+children in deterministic tests are declared fixtures. Setup and validation install/use the optional locked MCP extra. Real inference
+checks and installed browser/local-generation integration remain separate.
+The T01–T48 acceptance inventory records mappings, measured semantic cases,
+pending refs and gaps; no percentage is inferred from task/test counts. Real
+reports must name source revision, environment, corpus/profile and denominators.
+Frozen v1 failures remain; v2 is opt-in and CoreML experimental. Local outbox,
+simulated tariffs, export envelopes and local collector delivery must not be
+reported as SMTP, commercial invoice guarantees, vendor certification or a bank
+deployment. Local success does not imply CI success.
 
 Any failing required check blocks completion. Report which deterministic,
 real-semantic, and integration suites ran or were skipped, and why.

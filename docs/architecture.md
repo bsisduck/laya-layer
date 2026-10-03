@@ -1,99 +1,122 @@
-# AgentGate visual architecture
+# Laya Sec Layer architecture
 
-These Mermaid diagrams render directly on GitHub. The
-[full design](../AgentGate_Full_Project_Architecture.md#5-system-architecture)
-contains the detailed target architecture and budget state machine.
+Snapshot and publication status: [release evidence](release-evidence.md).
+The [original architecture](../AgentGate_Full_Project_Architecture.md) describes
+the complete target; these diagrams describe the local integration prototype.
+Solid arrows are integrated code paths; dashed arrows are proposed adapters.
+This is a trusted-host boundary, not an OS sandbox.
 
-## Working document path
-
-```mermaid
-flowchart LR
-    Client["Agent or REST client<br/>untrusted request"] --> API["Authenticated action API"]
-    subgraph Gateway["AgentGate — implemented"]
-        API --> Identity["Server-owned identity<br/>tenant, role, agent, root run"]
-        Identity --> Policy["Strict schema and deterministic policy"]
-        Policy --> Intent["Recheck credential<br/>persist dispatch intent"]
-        Intent --> Budget["Atomic tool-attempt reservation<br/>tenant, principal, root"]
-        Budget --> Executor["Registered document executor"]
-        Executor --> Filter["Bounded output<br/>email redaction and synthetic-secret block"]
-        Filter --> Semantic["Optional required semantic inspection<br/>standard Laya or native CoreML"]
-        Semantic --> Outcome["Persist outcome before release"]
-    end
-    Policy -- deny --> Audit[("SQLite audit and credentials")]
-    Intent --> Audit
-    Outcome --> Audit
-    Executor --> Fixtures["Tenant-scoped synthetic documents"]
-    Outcome --> Response["Allowed, redacted, or withheld result"]
-    Response --> Client
-```
-
-No fixture read occurs after a pre-execution denial. A blocked tool result may
-follow an executed read; the response reports that distinction. SQLite and
-fixture access assume trusted host processes. The gateway is not a host sandbox.
-
-## Product target and implementation status
+## Two enforcement paths, one authority
 
 ```mermaid
 flowchart TB
-    Agent["Hermes / compatible agent<br/>integration planned"]
-    subgraph Boundary["AgentGate policy authority"]
-        REST["REST action API<br/>working"]
-        Model["Model facade<br/>planned"]
-        MCP["MCP adapter<br/>planned"]
-        Core["Identity, policy, output filtering, audit<br/>working for documents"]
-        Budget["Atomic document call budgets<br/>working; other resources planned"]
-        Approval["Exact-action approvals<br/>planned"]
-        Sem["Semantic result adapter<br/>working; other stages planned"]
+    Client["Agent / application
+credential-owned identity"] --> Model["Chat Completions facade
+local-demo alias; buffered output"]
+    Client --> REST["REST registered actions"]
+    Client --> MCP["Official-SDK MCP
+explicit operation aliases"]
+    Hermes["Pinned restricted Hermes / direct agent
+REST/MCP tool cycles"] --> Model
+    Hermes --> MCP
+    subgraph Gate["Laya Sec Layer / AgentGate — trusted gateway"]
+        Model --> Rules["Identity + tenant/role/model ACL
+strict parsing, DLP and live feed"]
+        REST --> Rules
+        MCP --> Rules
+        Rules --> Ledger["Atomic recheck + reservation + durable intent
+policy/feed snapshot fixed at dispatch"]
+        Ledger --> Dispatch["Registered executor / private model adapter"]
+        Dispatch --> Inspect["Bounded output inspection
+redact, release or withhold"]
+        Inspect --> Commit["Usage + outcome committed before release"]
     end
-    Agent --> REST
-    Agent -.-> Model
-    Agent -.-> MCP
-    REST --> Core
-    Model -.-> Core
-    MCP -.-> Core
-    Core --> Budget
-    Core -.-> Approval
-    Core --> Sem
-    Sem --> Laya["Standard Laya worker<br/>authenticated and supervised"]
-    Sem --> Apple["Native CoreML worker<br/>authenticated and supervised"]
-    Core --> Docs["Document fixtures<br/>working"]
-    Core -.-> Tools["Memory and test outbox<br/>planned"]
-    Model -.-> Lite["Private LiteLLM<br/>planned"]
-    Lite -.-> Local["Local generation model"]
-    Core --> DB[("SQLite")]
-    Admin["Authenticated dashboard<br/>planned"] -.-> DB
-    Admin -.-> Approval
+    Operator["Local packaged operator UI
+separate session + CSRF"] --> Rules
+    Operator --> Approval["Exact immutable mail approval
+revalidate + single-use consumption"]
+    Approval --> Ledger
+    Dispatch --> Fixtures["Tenant-scoped documents / memory
+SQLite fixture outbox, no SMTP"]
+    Dispatch --> Lite["Private LiteLLM"]
+    Lite --> Ollama["Shared local Ollama
+preloaded pinned generation model"]
+    Inspect --> Semantic["Optional standard Laya / native CoreML
+experimental classification"]
+    Semantic --> Quota[("Shared daily semantic call quota
+conservative debit before native work")]
+    Rules --> DB[("Private SQLite
+audit, credentials, controls, ledgers")]
+    Ledger --> DB
+    Commit --> DB
+    Commit --> Reply["Result only after required inspection/audit"]
 ```
 
-Solid edges describe implemented paths. Dashed edges describe the target.
-The original real loading smoke tests both matched 2 of 4 prewritten labels.
-Both workers now also have real gateway integration evidence, including abstention
-on benign notes. See the [worker runbook](semantic-workers.md); classifier quality
-still needs held-out evaluation.
+Semantic calls also inspect supported model inputs and tool action text; the
+placement above summarizes the output boundary. Worker results never expand
+permissions. Tools generated by a model still require a separate authorized
+execution. Quota exhaustion can withhold a result after a tool read; it prevents
+generation when required input inspection cannot be admitted.
 
-## Output-release boundary
+## Installation and evidence delivery
+
+```mermaid
+flowchart LR
+    Launcher["./laya supervisor"] --> Gateway["Gateway + packaged operator UI :8080"]
+    Launcher --> Proxy["Private LiteLLM :4000"]
+    Launcher --> Collector["Local contract collector :8095"]
+    Launcher --> Worker["Optional one worker :8091
+standard or native Apple CoreML"]
+    Gateway --> Proxy
+    Gateway --> Worker
+    Proxy --> Gen["Shared Ollama :11434
+not owned or stopped by installer"]
+    Gateway --> State[("Private persistent state
+identity, budgets, policy/feed, audit")]
+    State --> Sender["Durable async sender
+one bounded retained batch"]
+    Sender -->|"POST /v1/events; exact ack"| Collector
+    State --> Files["Scoped local downloads
+JSONL / ECS-oriented / HEC envelope"]
+    Files -. "future authenticated adapter" .-> SIEM["Splunk / Elastic / OpenSearch / SOC
+vendor and bank acceptance unverified"]
+    Intake["Metadata intake simulator
+exact approved manifest
+no download or artifact execution"] --> Rules["Approved registry + typed feed"]
+```
+
+The real collector wire protocol is **Laya local HTTP contract collector v1**,
+not HEC or Bulk API. Its exact durable acknowledgment follows transaction commit.
+A lost response replays the same IDs: at-least-once delivery with deduplication.
+A file envelope is a serializer result, not an indexed event or vendor receipt.
+The sender reports lag/backpressure; it does not impose source audit retention or
+automatically throttle gateway producers. See [telemetry](telemetry-delivery.md).
+
+## Permission, effect and output are different events
 
 ```mermaid
 sequenceDiagram
-    actor Agent
-    participant API as AgentGate
-    participant DB as SQLite
-    participant Tool as Document executor
-    Agent->>API: Bearer credential + canonical action
-    API->>DB: Resolve server-owned identity
-    API->>API: Validate input, role, scope, tenant, classification
-    alt Deterministic denial
-        API->>DB: Persist denied outcome
-        API-->>Agent: Deny; executed=false
-    else Authorized document read
-        API->>DB: Recheck credential + reserve budget + durable intent
-        API->>Tool: Read registered tenant document
-        Tool-->>API: Untrusted result
-        API->>API: Bound, inspect, redact or withhold
-        API->>DB: Settle call + persist outcome atomically
-        API-->>Agent: Decision; executed=true; result only if releasable
+    actor Client
+    participant G as AgentGate
+    participant DB as SQLite authority
+    participant X as Registered executor / private provider
+    Client->>G: Scoped credential + canonical request
+    G->>DB: Resolve identity; capture active controls
+    G->>G: Validate ACL, model/destination, schema, text
+    alt Hard denial
+        G->>DB: Minimized denied outcome
+        G-->>Client: Denied; executed=false; zero protected dispatch
+    else Permitted operation (approval consumed if required)
+        G->>DB: Recheck + atomic reservation + durable intent
+        G->>X: Authorized dispatch with captured controls
+        X-->>G: Untrusted complete result
+        G->>G: Inspect/redact/withhold; optional required semantics
+        G->>DB: Settle known usage + durable outcome
+        G-->>Client: Actual execution flag; result only if releasable
     end
 ```
 
-Audit failure before dispatch prevents execution. Audit failure after dispatch
-withholds the output. Neither outcome makes an uncertain action safe to retry.
+Pre-dispatch audit failure prevents execution; post-dispatch audit failure
+withholds output and retains uncertain accounting. Approval alone does not send
+mail. An output denial can follow billable/executed work. Buffered SSE delays the
+first token until inspection completes; it is not incremental token enforcement.

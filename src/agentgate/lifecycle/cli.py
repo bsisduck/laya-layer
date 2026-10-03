@@ -32,7 +32,9 @@ def main() -> None:
     parser.add_argument("--port", type=int)
     parser.add_argument("--proxy-port", type=int)
     parser.add_argument("--worker-port", type=int)
+    parser.add_argument("--collector-port", type=int)
     parser.add_argument("--semantic", choices=["off", "standard", "coreml"])
+    parser.add_argument("--question-set", choices=["content-role-v1", "content-role-v2"])
     parser.add_argument(
         "--offline", action="store_true", help="Install using only cached packages/assets"
     )
@@ -56,14 +58,22 @@ def main() -> None:
             args.worker_port = (
                 args.worker_port if args.worker_port is not None else saved.get("worker_port", 8091)
             )
+            args.collector_port = (
+                args.collector_port
+                if args.collector_port is not None
+                else saved.get("collector_port", 8095)
+            )
             args.semantic = args.semantic or saved.get("semantic", "off")
+            args.question_set = args.question_set or saved.get("question_set", "content-role-v1")
             install(
                 root,
                 state,
                 port=args.port,
                 proxy_port=args.proxy_port,
                 worker_port=args.worker_port,
+                collector_port=args.collector_port,
                 semantic=args.semantic,
+                question_set=args.question_set,
                 offline=args.offline,
             )
             if args.no_start:
@@ -85,7 +95,7 @@ def main() -> None:
             except (FileNotFoundError, ConnectionRefusedError):
                 with ownership(state):
                     result = {"status": "stopped", "services": {}}
-                    for key in ("port", "proxy_port", "worker_port"):
+                    for key in ("port", "proxy_port", "worker_port", "collector_port"):
                         available_port(settings[key])
             if result["status"] == "running":
                 try:
@@ -120,7 +130,7 @@ def main() -> None:
         elif args.command in ("renew-agent", "renew-playground"):
             settings = configuration(state)
             with ownership(state):
-                for key in ("port", "proxy_port", "worker_port"):
+                for key in ("port", "proxy_port", "worker_port", "collector_port"):
                     available_port(settings[key])
                 scope = "agent" if args.command == "renew-agent" else args.scope
                 result_code = subprocess.run(

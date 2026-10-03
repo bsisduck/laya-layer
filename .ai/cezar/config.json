@@ -6,9 +6,12 @@
     }
   ],
   "defaultRunner": "codex",
-  "modelsLocked": true,
+  "modelsLocked": false,
   "baseBranch": "main",
   "maxParallel": 1,
   "worktreeRetention": 5,
-  "systemPrompt": "Read AGENTS.md and follow the user's publication boundary: commit locally as work progresses; push, PRs, tags, remote changes, and messages require an explicit user instruction. Read AgentGate_Full_Project_Architecture.md for project scope. Do not represent setup validation or classifier fixtures as working AgentGate enforcement or real-model evaluation."
+  "systemPrompt": "Read AGENTS.md and follow the user's publication boundary: commit locally as work progresses; push, PRs, tags, remote changes, and messages require an explicit user instruction. Read AgentGate_Full_Project_Architecture.md for project scope. Do not represent setup validation or classifier fixtures as working AgentGate enforcement or real-model evaluation.",
+  "defaultModels": {
+    "codex": "gpt-6.1-sol"
+  }
 }

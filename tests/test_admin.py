@@ -302,7 +302,8 @@ def test_metadata_is_minimized_and_export_schema_is_unchanged(admin):
         )
     result = admin.client.get("/admin/overview").json()
     assert result["counts"] == {"allow": 1, "redact": 1, "deny": 1, "pending": 0}
-    assert result["latency"]["status"] == "unknown"
+    assert result["latency"]["status"] == "measured"
+    assert result["latency"]["count"] == 3
     assert result["count_window"]["audit_rows"] == 6
     timeline = admin.client.get("/admin/events?limit=2").json()
     assert len(timeline["events"]) == 2

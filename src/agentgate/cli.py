@@ -80,6 +80,12 @@ def main() -> None:
     serve.add_argument("--model-url", help="Private loopback LiteLLM base URL, including /v1")
     serve.add_argument("--model-token-file", type=Path, help="Private upstream credential file")
     serve.add_argument(
+        "--telemetry-config", type=Path, help="Trusted local collector configuration"
+    )
+    serve.add_argument(
+        "--telemetry-token-file", type=Path, help="Private collector credential file"
+    )
+    serve.add_argument(
         "--semantic-backend", choices=["laya_standard", "laya_coreml"], default="laya_standard"
     )
     worker = commands.add_parser("semantic-worker", help="Serve a supervised local Laya backend")
@@ -161,12 +167,19 @@ def main() -> None:
                     service,
                     PrivateProvider(args.model_url, args.model_token_file.read_text().strip()),
                 )
+            telemetry_config = None
+            if args.telemetry_config:
+                from agentgate.telemetry_contract import read_config
+
+                telemetry_config = read_config(args.telemetry_config)
             uvicorn.run(
                 create_app(
                     service,
                     models=models,
                     enable_mcp=args.mcp,
                     admin_origin=args.admin_origin or f"http://127.0.0.1:{args.port}",
+                    telemetry_config=telemetry_config,
+                    telemetry_token_file=args.telemetry_token_file,
                 ),
                 host="127.0.0.1",
                 port=args.port,

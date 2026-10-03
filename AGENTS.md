@@ -2,10 +2,13 @@
 
 AgentGate is the policy-enforcement gateway specified in
 `AgentGate_Full_Project_Architecture.md`. This repository currently contains the
-specification, development harness, document/scoped-tool REST enforcement, exact
-mail approvals with a local fixture outbox, and optional official-SDK MCP.
-Atomic tool budgets and authenticated standard/CoreML result inspection are
-implemented. Model routing, operator UI integration, and Hermes remain separate work.
+specification and a working local full-stack prototype: document/scoped-tool REST
+and official-SDK MCP enforcement, exact approvals/local fixture outbox, model
+routing through private LiteLLM, packaged operator UI, live controls, persistent
+budgets and a local telemetry contract lab. Optional standard/CoreML semantic
+inspection is experimental; keep frozen poor/failed results visible. Consult
+`docs/release-evidence.md` for exact commits and final release review evidence.
+Metadata intake and restricted direct/MCP/Hermes clients are integrated.
 Cezar orchestrates development; it is not the
 AgentGate gateway or a security sandbox.
 
@@ -16,7 +19,9 @@ AgentGate gateway or a security sandbox.
   changes, and messages require the user's explicit instruction, even when an
   installed skill normally publishes automatically.
 - One task per branch. With an origin, start from fresh `origin/main`; until then,
-  use local `main`. Use a separate Git worktree for concurrent activity. Do not
+  use local `main`. An explicitly requested integration base overrides that default
+  (for release documentation: `origin/implement/full-stack-release`). Use a separate
+  Git worktree for concurrent activity. Do not
   spawn agents unless requested or explicitly required by an applicable skill.
 - Keep shared history intact. Never force-push shared branches. Review the diff,
   run the applicable validation, and leave a clean working tree at handoff.
@@ -45,6 +50,8 @@ Run `make setup` once, then `make validate`: workflow/config checks, lockfile
 consistency, Ruff lint/format, strict mypy, pytest, and source/wheel packaging.
 `make doctor` audits local tools and skills. Python 3.12 and gateway dependencies
 are locked in `uv.lock`. Keep model environments separate from the gateway.
+Use `scripts/acceptance_matrix.py --check` / `--run` for T01–T48 mapping and
+control evidence. Inventory/pytest success is not 48 semantic successes.
 Real inference smoke runs are separate from the deterministic gate; never report
 the gateway suite as real-model evaluation. Do not add empty or no-op test targets.
 

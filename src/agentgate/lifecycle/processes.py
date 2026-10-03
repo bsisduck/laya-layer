@@ -115,6 +115,8 @@ def healthy(service: Service) -> bool:
         result = http_json(f"http://127.0.0.1:{service.port}{service.health_path}", token)
         if service.name == "gateway":
             return result.get("status") == "ready"
+        if service.name == "collector":
+            return result.get("status") == "live" and result.get("kind") == "local-contract-lab-v1"
         if service.name == "litellm":
             return any(row.get("id") == "local-demo" for row in result.get("data", []))
         return result.get("backend") in ("laya_standard", "laya_coreml")

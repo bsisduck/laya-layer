@@ -33,10 +33,6 @@ export function createClient(onUnauthorized = () => {}, transport = globalThis.f
         body: body === undefined ? undefined : JSON.stringify(body), signal: controller.signal,
       });
       if (generation !== epoch) throw new ApiError(0, 'Session changed.');
-      if (response.status === 401) {
-        clear(); onUnauthorized();
-        throw new ApiError(401, 'Session expired or credential denied. Unlock to continue.');
-      }
       if (response.ok && download) {
         const blob = await response.blob();
         if (generation !== epoch) throw new ApiError(0, 'Session changed.');
@@ -46,6 +42,14 @@ export function createClient(onUnauthorized = () => {}, transport = globalThis.f
       try { data = await response.json(); }
       catch { throw new ApiError(response.status, 'The service returned an unreadable response.'); }
       if (generation !== epoch) throw new ApiError(0, 'Session changed.');
+      if (response.status === 401) {
+        // An expired scoped playground credential is an action denial. The
+        // operator session remains valid and can explicitly renew that scope.
+        if (decision && data?.decision === 'deny' && data?.executed === false &&
+            Array.isArray(data.reason_codes) && typeof data.action_id === 'string') return data;
+        clear(); onUnauthorized();
+        throw new ApiError(401, 'Session expired or credential denied. Unlock to continue.');
+      }
       if (!response.ok) {
         // Enforcement denial is evidence, not a transport success or an executed action.
         if (decision && response.status !== 503 && typeof data?.decision === 'string' && typeof data?.executed === 'boolean') return data;

@@ -71,10 +71,23 @@ def configuration(state: Path) -> dict[str, Any]:
         )
     if value.get("semantic") not in ("off", "standard", "coreml"):
         raise LifecycleError("Invalid semantic profile")
-    for key in ("port", "proxy_port", "worker_port"):
+    value.setdefault("question_set", "content-role-v1")
+    if value["question_set"] not in ("content-role-v1", "content-role-v2"):
+        raise LifecycleError("Invalid semantic question set")
+    # Older configurations had three ports; choose a non-colliding default for
+    # this additive field. The installer still refuses an occupied OS port.
+    value.setdefault(
+        "collector_port",
+        next(
+            port
+            for port in range(8095, 8099)
+            if port not in (value.get("port"), value.get("proxy_port"), value.get("worker_port"))
+        ),
+    )
+    for key in ("port", "proxy_port", "worker_port", "collector_port"):
         if type(value.get(key)) is not int or not 1024 <= value[key] <= 65535:
             raise LifecycleError("Invalid configured service port")
-    if len({value[k] for k in ("port", "proxy_port", "worker_port")}) != 3:
+    if len({value[k] for k in ("port", "proxy_port", "worker_port", "collector_port")}) != 4:
         raise LifecycleError("Service ports must differ")
     check_file(state / "control.key")
     if (state / "data").exists():
@@ -112,12 +125,16 @@ def install(
     worker_port: int,
     semantic: str,
     offline: bool,
+    collector_port: int = 8095,
+    question_set: str = "content-role-v1",
 ) -> None:
     os.umask(0o077)
-    if len({port, proxy_port, worker_port}) != 3 or any(
-        not 1024 <= value <= 65535 for value in (port, proxy_port, worker_port)
+    if question_set not in ("content-role-v1", "content-role-v2"):
+        raise LifecycleError("Invalid semantic question set")
+    if len({port, proxy_port, worker_port, collector_port}) != 4 or any(
+        not 1024 <= value <= 65535 for value in (port, proxy_port, worker_port, collector_port)
     ):
-        raise LifecycleError("Choose three distinct service ports between 1024 and 65535")
+        raise LifecycleError("Choose four distinct service ports between 1024 and 65535")
     if platform.system() not in ("Darwin", "Linux"):
         raise LifecycleError("Supported hosts are macOS and Linux")
     if semantic == "coreml" and (platform.system() != "Darwin" or platform.machine() != "arm64"):
@@ -126,12 +143,22 @@ def install(
     check_path(state)
     if state.exists():
         settings = configuration(state)
-        wanted = (port, proxy_port, worker_port, semantic)
-        existing = tuple(settings[key] for key in ("port", "proxy_port", "worker_port", "semantic"))
+        wanted = (port, proxy_port, worker_port, collector_port, semantic, question_set)
+        existing = tuple(
+            settings[key]
+            for key in (
+                "port",
+                "proxy_port",
+                "worker_port",
+                "collector_port",
+                "semantic",
+                "question_set",
+            )
+        )
         changed = wanted != existing
     else:
         changed = False
-        for value in (port, proxy_port, worker_port):
+        for value in (port, proxy_port, worker_port, collector_port):
             available_port(value)
         private_dir(state, create=True)
         write_new(state / "control.key", secrets.token_urlsafe(32).encode())
@@ -144,7 +171,9 @@ def install(
                 "port": port,
                 "proxy_port": proxy_port,
                 "worker_port": worker_port,
+                "collector_port": collector_port,
                 "semantic": semantic,
+                "question_set": question_set,
                 "prepared": False,
             },
         )
@@ -168,6 +197,8 @@ def install(
             port,
             proxy_port,
             worker_port,
+            collector_port,
+            settings["collector_port"],
             settings["port"],
             settings["proxy_port"],
             settings["worker_port"],
@@ -256,9 +287,21 @@ def install(
             ):
                 source.backup(target)
             run([gateway, "--state-dir", str(data), "migrate"])
+        run(
+            [
+                str(runtime(state, "gateway") / "python"),
+                "-m",
+                "agentgate.lifecycle.provision",
+                "--configure-telemetry",
+                str(data),
+                str(settings["collector_port"]),
+                str(collector_port),
+            ]
+        )
         if semantic != "off":
             prepare_assets(root, state, semantic, offline=offline)
-        if settings["semantic"] != semantic:
+        profile_changed = settings["question_set"] != question_set
+        if settings["semantic"] != semantic or profile_changed:
             run(
                 [
                     str(runtime(state, "gateway") / "python"),
@@ -267,13 +310,16 @@ def install(
                     "--configure-semantic",
                     str(data),
                     semantic,
+                    "changed" if profile_changed else "unchanged",
                 ]
             )
         settings.update(
             port=port,
             proxy_port=proxy_port,
             worker_port=worker_port,
+            collector_port=collector_port,
             semantic=semantic,
+            question_set=question_set,
             prepared=True,
             root=str(root),
             installed_at=time.time(),
@@ -392,6 +438,8 @@ def services(state: Path) -> list[Service]:
                     "semantic-worker",
                     "--backend",
                     backend,
+                    "--question-set",
+                    settings["question_set"],
                     "--runtime-python",
                     str(runtime(state, f"laya-{semantic}") / "python"),
                     "--root",
@@ -405,8 +453,43 @@ def services(state: Path) -> list[Service]:
             )
         )
         command.extend(
-            ["--semantic-url", f"http://127.0.0.1:{worker_port}", "--semantic-backend", backend]
+            [
+                "--semantic-url",
+                f"http://127.0.0.1:{worker_port}",
+                "--semantic-backend",
+                backend,
+                "--semantic-question-set",
+                settings["question_set"],
+            ]
         )
+    collector_port = settings["collector_port"]
+    result.append(
+        Service(
+            "collector",
+            [
+                str(runtime(state, "gateway") / "agentgate-telemetry"),
+                "collector",
+                "--database",
+                str(data / "collector.sqlite3"),
+                "--token-file",
+                str(data / "collector.token"),
+                "--tenant",
+                "tenant-a",
+                "--port",
+                str(collector_port),
+            ],
+            collector_port,
+            "/health/live",
+        )
+    )
+    command.extend(
+        [
+            "--telemetry-config",
+            str(data / "telemetry.json"),
+            "--telemetry-token-file",
+            str(data / "collector.token"),
+        ]
+    )
     result.append(Service("gateway", command, port, "/health/ready"))
     return result
 

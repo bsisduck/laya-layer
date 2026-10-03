@@ -1,102 +1,65 @@
-# Development readiness — 3 October 2026
+# Release readiness and evidence — 3 October 2026
 
-This record covers development preparation and the first document-only slice on
-the inspected Apple Silicon Mac. It does not certify the full proposed MVP.
+The local full-stack application has integrated implementation and validation. See the
+[claim ledger](release-evidence.md) for exact commits, merged versus open PRs,
+frozen semantic measurements and root-reported installed QA. This record does
+not certify production readiness or challenge completion.
 
-## Current implementation
+## Repeatable gates
 
-The REST document path now enforces scoped credentials, tenant/role/agent
-permissions, bounded requests, filtered output, and a durable minimized audit.
-`make validate` runs lockfile, lint/format, typing, deterministic tests, and package builds.
-Scoped tools, exact approvals/outbox transactions and official-SDK MCP HTTP checks
-are now included; see [their implemented contract](scoped-tools.md).
-Atomic tenant/day, principal/day, and root-run tool budgets are also implemented;
-see [tool budgets](budgets.md) for accounting semantics and schema migration.
-Live HTTP checks verified allowed, denied, redacted, blocked-output, and missing-
-credential cases. See [the implemented contract](document-slice.md).
+```sh
+make setup
+make validate
+uv run --locked python scripts/acceptance_matrix.py --check
+uv run --locked python scripts/acceptance_matrix.py --run \
+  --output reports/generated/acceptance-controls-readiness.json
+```
 
-Actual standard Laya and native CoreML loading also succeeded on pinned assets.
-Both matched 2/4 expected smoke labels, agreeing on all four. These standalone
-runs remain historical loading evidence. Authenticated HTTP workers are now also
-connected to document-result enforcement; both passed the real HTTP integration
-smoke and still matched 2/4 unchanged loading labels under the new field-based
-question. Benign notes abstained and were withheld by the strict profile.
-See [workers](semantic-workers.md) and [the inference spike](inference-spike.md).
+`make validate` checks workflow/config, lock consistency, Ruff, strict mypy,
+pytest and source/wheel packaging. Its deterministic tests include fixture
+providers/native child protocols and real SQLite/loopback transport. It does not
+load Laya, certify semantic accuracy or substitute for installed browser/local
+model QA. No empty proposed `make test-e2e`/`eval-*` target is claimed.
 
-## Harness and skills
+Integrated head `074cace` passed **614 tests with zero skips**, six JavaScript
+contracts and 139 mapped control observations; both CI checks passed. The installed
+browser suite at `b740c35` passed full tool/control/session flows with actual
+local generation and collector delivery. Component and final integration review
+references remain in [release evidence](release-evidence.md) and PR31.
 
-- [Cezar](https://github.com/open-mercato/cezar) 0.14.0 is installed as a pinned
-  development dependency; transitive versions are recorded in `package-lock.json`.
-  An existing separate Cezar 0.10.1 cockpit was found on port 4321 and left running.
-  `make harness` uses port 4322 and its own ignored `.ai/cezar/home/` workspace.
-- `.ai/cezar/config.json` selects Codex with its native model configuration and
-  the [Open Mercato skills](https://github.com/open-mercato/skills) source at
-  `2b5647fd35048ee391c7a3dea0e944bd2cdadf07`.
-- 41 Open Mercato skills were already installed globally. The missing
-  `om-qa-buddy` was installed from that commit, with Codex and Claude Code links.
-  The global collection now has 42 skills; existing global skills were not upgraded
-  and may differ from the pinned Cezar catalog. The newly installed skill is
-  available to Codex on the next turn.
-- GitHub and browser provider descriptors were copied from the installed
-  `om-setup-agent-pipeline` skill. The public repository is
-  [bsisduck/laya-sec-agent](https://github.com/bsisduck/laya-sec-agent); labels remain
-  disabled. Hosted CI passed for the first published baseline.
-- `agentgate-local` implements one task, reviews it, and validates locally.
-  Launch with `make harness`. The launcher disables automatic skill updates,
-  background automations, and child-task dispatch.
+## Runtime preparation
 
-## Verified host inventory
+Use `./laya install`, then `./laya status` and the exact printed operator origin.
+`./laya start` reuses prepared runtimes without package resolution; Ollama must be
+running with the pinned local generation digest. Installer/source changes must
+reprepare the installed wheel (`--reinstall-package agentgate`); record the
+runtime source head. A healthy old wheel cannot validate new source.
+`./laya doctor` and `make doctor` audit preparation/tooling only.
 
-| Capability | Observed status |
-|---|---|
-| Host | macOS 27, arm64 |
-| Git | 2.49.0 |
-| Codex | 0.160.0, logged in through ChatGPT |
-| Claude Code | 2.1.288 installed; authentication not tested |
-| Node / npm | 22.23.1 / 10.9.8 |
-| Python | 3.12.13 available explicitly; default `python3` is 3.14.6 |
-| uv | 0.12.8 |
-| Docker | Engine 29.7.2 reachable |
-| Ollama | Service reachable; local model inventory returned |
-| Swift | 6.3.3, Apple Silicon target |
-| Browser QA | agent-browser 0.35.2 checksum verified; Chrome installed; doctor passed |
-| GitHub CLI | Upgraded from 2.74.0 to 2.101.0; existing authentication retained |
+Default semantic mode is off. Optional standard Laya and native CoreML use
+separate environments/assets. Choose one and run actual evaluation only in an
+exclusive, explicitly scheduled slot. Actual installed standard-v2 and local-generation observations are recorded in
+the release ledger; deterministic validation does not repeat that inference. Keep
+v1 frozen evidence and the CoreML warm failure. V2's opt-in real standard gateway
+smoke does not turn 15/28 standard or 16/28 CoreML holdout into an approved
+security detector. CoreML remains experimental.
 
-`make doctor` repeats the read-only tool and skill checks. It does not install
-dependencies, start application services, send model requests, or print tokens.
-The browser doctor launches a temporary headless browser to verify it works.
+## Remaining release and deployment gates
 
-## Validation evidence
+1. Reviewed artifact intake, restricted agents and semantic profiles are integrated.
+   Keep the exact independent review and validation references with each release.
+2. Reprepare the installed wheel after source changes; retain source/runtime and
+   browser/effect/collector evidence, and require green CI before publication.
+3. Preserve permission, root budgets, live controls and all private state on
+   upgrade/restart/renewal; independent security review remains required for
+   consequential changes. No privileged same-user host isolation is provided.
+4. Vendor delivery, bank endpoints, SSO/RBAC, signed external feed refresh,
+   generalized DLP, ANE, production scale/retention and full physical resource
+   accounting remain separate engineering/acceptance work.
+5. User fills team/submission fields and confirms organizer ambiguities. PDF
+   deck assets are reviewable; no HackTribe submission or eligibility decision
+   follows from test success.
 
-- Preparation checks passed, including Cezar's actual config and workflow loaders;
-  the gate has since been extended to Python implementation checks above.
-- Cezar 0.14.0 HTTP startup/health verified the project, Codex runner, disabled
-  automation/dispatch, and loaded local workflow. No coding agent task was launched.
-- The pinned upstream catalog resolved to all 42 Open Mercato skills. Global
-  skill coverage and cross-skill file references also passed.
-- Browser QA doctor completed a real headless launch with no failures.
-- npm reported no known vulnerabilities in the 17-package development-tooling tree
-  at installation time; this is not a security audit of AgentGate.
-
-## Remaining prerequisites
-
-1. Public source and deterministic CI are configured. Production release still
-   needs independent security review and the remaining integration evidence.
-2. Confirm the competition start-time ambiguity documented in architecture §2
-   before competition implementation. Judging weights and cross-category eligibility
-   also remain organizer questions.
-3. Evaluate classifier quality on held-out examples before enabling a production
-   semantic policy. Workers now enforce capacity, coverage, authentication, and
-   process deadlines; `unclear` withholds output in the strict profile. CoreML is native.
-4. Extend call budgets to inference/provider resources; add approvals, policy
-   reload, feeds, and the other architecture controls.
-5. Select and test a local tool-capable generation model. Existing Ollama models
-   have not been validated for this workflow; generation is separate from Laya.
-6. Implement and verify LiteLLM, MCP, and Hermes integration. Available development
-   tools do not establish application integration compatibility.
-
-The initial task and next slices are recorded in
-[implementation-start.md](../.ai/specs/implementation-start.md). Follow the
-architecture's separate deterministic, real-semantic, and end-to-end suites.
-The pytest cases include parametrizations of a subset of the architecture's
-48 planned scenarios; they are not a claim that all 48 scenarios are implemented.
+Cezar is optional development tooling. Task counts, skills installed, login
+status and harness health are not evidence of AgentGate enforcement. Cezar's
+runtime state and local tooling inventory do not ship with the product.

@@ -48,21 +48,46 @@ function playground(api, drafts) {
     choices.addEventListener('change', () => {editor.value = pretty(presets[mode][Number(choices.value)][1]); key.value = crypto.randomUUID(); draft.payload = editor.value; draft.key = key.value; draft.preset = choices.value;});
     const output = status(); const result = el('div');
     const submit = el('button', {type: 'submit', class: 'primary'}, 'Run governed action ↗');
+    const scope = mode === 'model' ? 'model' : 'tools';
+    const authority = el('div', {class: 'confirmation', 'aria-label': 'Playground credential'});
+    async function refreshAuthority() {
+      submit.disabled = true;
+      authority.replaceChildren(el('p', {role: 'status'}, 'Checking scoped credential…'));
+      try {
+        const credential = await api.request(`/admin/playground/credential?scope=${scope}`);
+        if (credential.scope !== scope || !Number.isInteger(credential.epoch) ||
+            !['unissued', 'active', 'expired', 'revoked'].includes(credential.state)) throw new Error('Credential status unavailable.');
+        authority.replaceChildren(el('div', {class: 'section-head'}, el('h3', {}, `${scope === 'model' ? 'Model' : 'Tool'} credential`), tag(credential.state)),
+          el('p', {class: 'hint'}, credential.expires_at ? `Expires ${timestamp(credential.expires_at)} · epoch ${credential.epoch}` : 'Issued on the first governed action.'));
+        submit.disabled = !['unissued', 'active'].includes(credential.state);
+        if (credential.state === 'expired') {
+          const renewalStatus = status();
+          const renew = button('Renew expired credential', () => busy(renew, renewalStatus, async () => {
+            await api.request('/admin/playground/credential/renew', {method: 'POST', body: {scope, expected_epoch: credential.epoch}});
+            await refreshAuthority();
+            output.textContent = 'Credential renewed. Budget usage is preserved. Prior approvals need a new action and review.';
+          }), 'secondary');
+          authority.append(el('p', {class: 'hint'}, 'Renewal preserves identity and spent budget. It does not revive earlier approvals.'), renew, renewalStatus);
+        } else if (credential.state === 'revoked') authority.append(el('p', {class: 'hint'}, 'This authority was revoked and cannot be renewed. Contact the installation owner.'));
+      } catch (error) {authority.replaceChildren(el('p', {role: 'status', class: 'error'}, error.message));}
+    }
     const form = el('form', {}, field('Example preset', choices), field('Action payload · JSON', editor, 'Examples are inputs, not expected results. Active policy determines the outcome.'),
       mode === 'mail' ? field('Idempotency key', key, 'Keep this key when retrying the exact action. Use a new key for a new message.') : null,
       submit, output);
-    form.addEventListener('submit', event => {event.preventDefault(); busy(submit, output, async () => {
+    form.addEventListener('submit', async event => {event.preventDefault(); if (submit.disabled) return; await busy(submit, output, async () => {
       const body = playgroundBody(mode, parseEditor(editor.value), key.value);
       result.replaceChildren();
       const data = await api.request('/admin/playground', {method: 'POST', body, decision: true});
       result.replaceChildren(resultView(data));
       if (data.action_state === 'pending' || data.action_state === 'approved') result.append(el('a', {href: '#approvals'}, 'Review approvals →'), el('p', {class: 'hint'}, 'After approval, return here and run this exact saved action and key.'));
       output.textContent = 'Gateway response received. Review the decision and execution evidence below.';
-    });});
+    }); await refreshAuthority();});
     content.replaceChildren(el('div', {class: 'grid'}, panel('Compose an action', form), panel('Execution boundary',
       el('p', {}, 'Actions run as a server-owned, scoped demo principal.'),
       el('p', {class: 'hint'}, 'Mail targets a local test outbox. Model and tool modes require their installed backend integrations. Unavailable services do not produce simulated results.'),
+      authority,
       el('p', {class: 'eyebrow'}, 'RESPONSE / EVIDENCE'), result)));
+    refreshAuthority();
   }
   root.append(tabs, content); render(); return root;
 }
