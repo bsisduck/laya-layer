@@ -62,8 +62,8 @@ PR: #30
 
 ### Phase 1: Direct client
 
-- [x] 1.1 Implement direct discovery and bounded correlated cycles — de35df3
-- [ ] 1.2 Test HTTP enforcement and pending resume
+- [x] 1.1 Implement direct discovery and bounded correlated cycles — 4f39c77
+- [x] 1.2 Test HTTP enforcement and pending resume — f9ad094
 
 ### Phase 2: Genuine restricted Hermes
 
