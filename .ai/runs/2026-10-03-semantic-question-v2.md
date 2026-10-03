@@ -71,10 +71,10 @@ PR: #32
 ### Phase 2: Frozen evaluation
 
 - [x] 2.1 Version the existing runner and freeze a new 26+ case EN/PL corpus and protocol. — b466537
-- [ ] 2.2 Run standard CPU then native CoreML once under the frozen protocol; preserve all failures.
+- [x] 2.2 Run standard CPU then native CoreML once under the frozen protocol; preserve all failures. — 43ea6e6
 
 ### Phase 3: Application and delivery evidence
 
-- [ ] 3.1 Exercise real HTTP gateway ordinary allow, malicious block and hard-control denials.
-- [ ] 3.2 Record metrics, raw-report hashes, resource limits and CoreML failure investigation.
+- [x] 3.1 Exercise real HTTP gateway ordinary allow, malicious block and hard-control denials. — f503b0f
+- [x] 3.2 Record metrics, raw-report hashes, resource limits and CoreML failure investigation. — f503b0f
 - [ ] 3.3 Run full validation and OM review, publish evidence and ready PR without merging.
