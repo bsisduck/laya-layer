@@ -214,7 +214,9 @@ def test_agent_scope_and_principal_roles_are_both_required(harness: Harness, upd
     assert harness.executor.calls == []
 
 
-@pytest.mark.parametrize("operation", ["mail.send", "documents_read", "sk-client-secret-value"])
+@pytest.mark.parametrize(
+    "operation", ["mail.delete", "documents_read_extra", "sk-client-secret-value"]
+)
 def test_T07_unknown_operations_are_not_executed_or_copied_to_audit(harness: Harness, operation):
     result = harness.client.post(
         "/v1/actions/execute",

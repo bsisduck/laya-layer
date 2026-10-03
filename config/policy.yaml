@@ -1,4 +1,4 @@
-# Partial v1 schema for the implemented document-only slice, not the full proposal.
+# Partial v1 schema for implemented scoped tools, not the full architecture proposal.
 schema_version: 1
 policy_id: document-demo
 revision: 2

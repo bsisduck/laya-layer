@@ -7,7 +7,9 @@ the inspected Apple Silicon Mac. It does not certify the full proposed MVP.
 
 The REST document path now enforces scoped credentials, tenant/role/agent
 permissions, bounded requests, filtered output, and a durable minimized audit.
-`make validate` runs lockfile, lint/format, typing, 135 tests, and package builds.
+`make validate` runs lockfile, lint/format, typing, deterministic tests, and package builds.
+Scoped tools, exact approvals/outbox transactions and official-SDK MCP HTTP checks
+are now included; see [their implemented contract](scoped-tools.md).
 Atomic tenant/day, principal/day, and root-run tool budgets are also implemented;
 see [tool budgets](budgets.md) for accounting semantics and schema migration.
 Live HTTP checks verified allowed, denied, redacted, blocked-output, and missing-
