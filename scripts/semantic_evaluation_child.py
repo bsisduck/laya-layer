@@ -15,7 +15,7 @@ import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
-from agentgate.inference_engine import evaluate  # noqa: E402
+from agentgate.inference_engine import PROFILES, QUESTION_SET, evaluate  # noqa: E402
 
 
 def digest(path):
@@ -75,6 +75,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--backend", choices=["laya_standard", "laya_coreml"], required=True)
     parser.add_argument("--assets-root", type=Path, required=True)
+    parser.add_argument("--question-set", choices=list(PROFILES), default=QUESTION_SET)
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[1]
     stdout = sys.stdout
@@ -132,6 +133,7 @@ def main():
             raise ValueError("Unexpected capacity")
         ready = {
             "status": "ready",
+            "question_set_id": args.question_set,
             "backend": args.backend,
             "checkpoint_revision": metadata["revision"],
             "assets_verified": len(metadata["files"]),
@@ -156,6 +158,8 @@ def main():
             if len(line) > 65536:
                 raise ValueError("Oversized frame")
             request = json.loads(line)
+            if request.get("question_set_id", QUESTION_SET) != args.question_set:
+                raise ValueError("Mismatched question profile")
             measured_model.predict_ms = 0.0
             result = evaluate(
                 measured_model, measured_common, request, args.backend, metadata["revision"]

@@ -118,3 +118,14 @@ Terminal audit events now prioritize the failing semantic stage. If output
 classification fails after successful input classification, the terminal event
 reports unavailable/invalid output and no stale semantic result; the input result
 remains on dispatch_intent. Enforcement and settled usage are unchanged.
+
+`content-role-v2` is an explicit optional two-choice question profile. All existing
+production constructor/CLI and omitted request/capability versions default to v1.
+New flags: `semantic-worker --question-set` and `serve --semantic-question-set`;
+both sides must select the same version. V2 results have exactly two actual mapped
+scores, `task_data` and `behavior_instruction`; v1 retains its three scores and
+`unclear` abstention. Consumers must use the version to interpret score shape and
+label meaning. Worker/client handshake and result mismatches fail closed, with no
+new permissions, threshold, fallback or storage migration. See
+`docs/semantic-question-v2.md`. Evaluation CLI adds `--version v1|v2`; historical
+v1 reproduction requires the pinned PR23 checkout below, not a rewritten freeze.
