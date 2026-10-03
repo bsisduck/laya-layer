@@ -82,7 +82,7 @@ def table(inventory: dict) -> str:
         if case.get("evaluation_v2_cases"):
             refs.append("Frozen v2: " + ", ".join(case["evaluation_v2_cases"]))
         if pending := case.get("pending"):
-            refs.append(f"Pending PR{pending['pr']} at `{pending['head'][:7]}`")
+            refs.append(f"PR{pending['pr']} at `{pending['head'][:7]}`: {pending['state']}")
         lines.append(
             f"| {case['id']} | {case['case']}; {case['expected']} | "
             f"**{case['kind']}**: {'; '.join(refs) or 'No execution evidence'} | "

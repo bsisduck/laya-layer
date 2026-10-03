@@ -35,3 +35,8 @@ th { background: #dce7d2; color: #14342f; }
 th, td { padding: 12px 18px; border-color: #cbd5c5; }
 code { color: #14342f; background: #e3ead8; font-size: 24px; }
 section.lead code { color: #d5efae; background: #21443a; }
+
+section.lead .note { color: #c8d4c4; }
+section.lead .kicker { color: #e6a27b; }
+section.lead .node { color: #14342f; }
+section.lead .node strong { color: #116751; }
