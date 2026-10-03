@@ -88,9 +88,11 @@ compute. Parent wall time includes serialization/IPC/validation. Child high-wate
 RSS and cumulative user/system CPU exclude external CoreML services and are not
 a whole-system memory/energy measurement. There is no imposed RAM cap.
 
-Persistent semantic-call/token/time accounting (architecture **T28**) remains
-missing in the base document path. This harness's sequential admission/deadlines
-are not that ledger; root integration must implement and test it separately.
+At this historical measurement, persistent semantic-call/token/time accounting
+(architecture **T28**) was missing in the base document path. PR26 later added
+the [production installation-wide call quota](semantic-call-quota.md); cumulative
+semantic token/time scopes remain incomplete. This harness's sequential admission/
+deadlines are not that runtime ledger.
 Default semantic inspection stays optional; required failures still fail closed.
 No endpoint, policy gate, credential, question version or production threshold is
 changed. Any later runtime/question-contract update needs separate root integration
