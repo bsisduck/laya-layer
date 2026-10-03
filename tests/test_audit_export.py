@@ -1,5 +1,7 @@
 import json
+import os
 import sqlite3
+import subprocess
 import sys
 
 import pytest
@@ -9,6 +11,39 @@ from test_gateway import harness as harness
 from agentgate.audit_export import MAX_EVENT_BYTES, export_page
 from agentgate.cli import main
 from agentgate.storage import StorageUnavailable
+
+
+def test_closed_output_pipe_exits_cleanly_without_checkpoint(harness: Harness, tmp_path):
+    harness.read()
+    with (
+        sqlite3.connect(harness.store.path) as source,
+        sqlite3.connect(tmp_path / "agentgate.sqlite3") as dest,
+    ):
+        source.backup(dest)
+    reader, writer = os.pipe()
+    os.close(reader)
+    try:
+        result = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "agentgate.cli",
+                "--state-dir",
+                str(tmp_path),
+                "audit-export",
+                "--tenant",
+                "tenant-a",
+            ],
+            stdout=writer,
+            stderr=subprocess.PIPE,
+            timeout=10,
+        )
+    finally:
+        os.close(writer)
+    assert result.returncode == 1
+    assert b"output pipe closed" in result.stderr
+    assert b"next_after_sequence" not in result.stderr
+    assert b"Exception ignored" not in result.stderr
 
 
 def records(page):

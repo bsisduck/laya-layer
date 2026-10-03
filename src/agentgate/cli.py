@@ -169,6 +169,12 @@ def main() -> None:
                 raise StorageUnavailable
             Store(path).initialize()
             print("State upgraded to schema 2; credentials and audit retained.")
+    except BrokenPipeError:
+        # Avoid a second failing flush during interpreter shutdown. No export
+        # checkpoint has been emitted when the data stream fails.
+        with open(os.devnull, "w") as sink:
+            os.dup2(sink.fileno(), sys.stdout.fileno())
+        parser.exit(1, "AgentGate output pipe closed before completion.\n")
     except (OSError, ValueError, StorageUnavailable, httpx.HTTPError):
         parser.exit(
             1,
