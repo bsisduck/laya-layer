@@ -39,6 +39,18 @@ class SemanticUnavailable(Exception):
     pass
 
 
+class SemanticBudgetExceeded(SemanticUnavailable):
+    pass
+
+
+class SemanticBudgetStatus(Contract):
+    scope: Literal["installation_utc_day"]
+    day: Annotated[str, Field(pattern=r"^\d{4}-\d{2}-\d{2}$")]
+    calls: Annotated[int, Field(ge=0)]
+    limit: Annotated[int, Field(ge=1, le=1_000_000)]
+    remaining: Annotated[int, Field(ge=0)]
+
+
 class SemanticInvalid(Exception):
     pass
 
@@ -119,6 +131,8 @@ class SemanticClient:
                     },
                     content=body,
                 ) as response:
+                    if response.status_code == 429:
+                        raise SemanticBudgetExceeded
                     if response.status_code != 200:
                         raise SemanticUnavailable
                     if response.headers.get("content-encoding", "identity") != "identity":
@@ -155,3 +169,14 @@ class SemanticClient:
             return result
         except ValueError as error:
             raise SemanticInvalid from error
+
+    def budget(self) -> dict[str, str | int]:
+        try:
+            budget = SemanticBudgetStatus.model_validate_json(
+                self._request("GET", "/internal/v1/semantic/budget")
+            )
+            if budget.remaining != max(0, budget.limit - budget.calls):
+                raise ValueError("Inconsistent semantic quota")
+            return budget.model_dump() | {"status": "measured"}
+        except (ValueError, SemanticUnavailable, SemanticInvalid):
+            return {"status": "unavailable"}

@@ -13,7 +13,7 @@ from agentgate.contracts import ActionResponse, Contract, Identifier, Reason
 from agentgate.control_plane import ControlsChanged, ThreatBlocked
 from agentgate.model_budgets import ModelLedger
 from agentgate.policy import Policy
-from agentgate.semantics import SemanticInvalid, SemanticUnavailable
+from agentgate.semantics import SemanticBudgetExceeded, SemanticInvalid, SemanticUnavailable
 from agentgate.service import EMAIL, SYNTHETIC_SECRET, ActionService, Context, GateError
 from agentgate.storage import CredentialInvalid, StorageUnavailable
 
@@ -283,6 +283,9 @@ class ModelService:
             try:
                 result = service.semantic.evaluate(context.action_id, inspected_text)
                 context.semantic = result
+            except SemanticBudgetExceeded as error:
+                context.semantic_failure = "unavailable"
+                raise GateError(429, Reason.SEMANTIC_BUDGET_EXCEEDED) from error
             except SemanticUnavailable as error:
                 context.semantic_failure = "unavailable"
                 raise GateError(503, Reason.REQUIRED_SEMANTIC_UNAVAILABLE) from error

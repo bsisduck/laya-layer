@@ -16,6 +16,7 @@ from agentgate.audit_export import export_page
 from agentgate.contracts import Identity
 from agentgate.documents import DocumentRegistry, FixtureExecutor, demo_documents
 from agentgate.policy import load_policy
+from agentgate.semantic_quota import QuotaUnavailable
 from agentgate.semantics import SemanticClient
 from agentgate.service import ActionService
 from agentgate.storage import StorageUnavailable, Store
@@ -90,6 +91,12 @@ def main() -> None:
     worker.add_argument("--runtime-python", type=Path, required=True)
     worker.add_argument("--root", type=Path, default=Path.cwd())
     worker.add_argument("--port", type=int, default=8091)
+    worker.add_argument(
+        "--daily-calls",
+        type=int,
+        default=1000,
+        help="Installation-wide UTC-day semantic call cap; lowering is immediate",
+    )
     read = commands.add_parser(
         "demo-read", help="Call the gateway with the local scoped credential"
     )
@@ -175,6 +182,7 @@ def main() -> None:
                 access_log=False,
             )
         elif args.command == "semantic-worker":
+            from agentgate.semantic_quota import SemanticQuota
             from agentgate.semantic_worker import Supervisor, create_worker
 
             command = [
@@ -185,7 +193,14 @@ def main() -> None:
                 "--root",
                 str(args.root.absolute()),
             ]
-            supervisor = Supervisor(command, args.backend)
+            supervisor = Supervisor(
+                command,
+                args.backend,
+                quota=SemanticQuota(
+                    args.state_dir / "semantic-quota.sqlite3",
+                    args.daily_calls,
+                ),
+            )
             app = create_worker(supervisor, (args.state_dir / "worker.token").read_text().strip())
             uvicorn.run(app, host="127.0.0.1", port=args.port, access_log=False)
         elif args.command == "demo-read":
@@ -235,7 +250,7 @@ def main() -> None:
         with open(os.devnull, "w") as sink:
             os.dup2(sink.fileno(), sys.stdout.fileno())
         parser.exit(1, "AgentGate output pipe closed before completion.\n")
-    except (OSError, ValueError, StorageUnavailable, httpx.HTTPError):
+    except (OSError, ValueError, StorageUnavailable, QuotaUnavailable, httpx.HTTPError):
         parser.exit(
             1,
             "AgentGate command failed. Check local initialization, policy, service, and state permissions.\n",

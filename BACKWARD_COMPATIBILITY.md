@@ -80,6 +80,15 @@ schema 1 remains unchanged and does not include the new feed field. Admin timeli
 adds feed evidence separately. No remote delivery, model inference, or new tools
 are implied by these contracts.
 
+Production semantic workers now require a private, persistent per-installation
+call ledger (`semantic-quota.sqlite3`). The default is 1000 admissions per UTC day,
+configurable with `semantic-worker --daily-calls`; retain the ledger during restart.
+Worker exhaustion adds HTTP429 and gateway reason `SEMANTIC_BUDGET_EXCEEDED`.
+The optional internal Supervisor quota parameter preserves fixture/evaluation
+construction; the shipped production command always configures it. Operator
+overview adds measured `budgets.semantic` or an explicit unavailable status.
+See `docs/semantic-call-quota.md` for conservative accounting and cap changes.
+
 Explicit operator credential renewal adds `operator_credential_epochs` and
 `credential_renewals` without changing schema-2 credentials, budgets, approvals or
 audit/export. Epoch zero retains the original tool/model playground HMAC tokens.
@@ -96,3 +105,8 @@ version-1 frozen corpus/protocol/minimized report described in
 No production endpoint, question, policy, auth or storage contract changes.
 New evaluation versions must preserve earlier labels/provenance; generated
 reports are ignored and output files are never overwritten.
+
+Terminal audit events now prioritize the failing semantic stage. If output
+classification fails after successful input classification, the terminal event
+reports unavailable/invalid output and no stale semantic result; the input result
+remains on dispatch_intent. Enforcement and settled usage are unchanged.
