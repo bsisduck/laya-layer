@@ -52,8 +52,8 @@ PR: #22
 - [x] 2.2 Prepare and test a clean local install, authenticated HTTP/UI and offline restart.
 
 ### Phase 3: Delivery
-- [ ] 3.1 Document getting started, migration, model manifests and limits; review and validate.
-- [ ] 3.2 Publish evidence and ready PR after gates pass; never merge.
+- [x] 3.1 Document getting started, migration, model manifests and limits; review and validate.
+- [x] 3.2 Publish evidence and ready PR after gates pass; never merge.
 
 2026-10-03: 15 lifecycle tests, Ruff and strict mypy pass. Fresh provisioning uses
 24-hour all-four-operation credentials; existing state is never reprovisioned.
@@ -77,3 +77,13 @@ package version. Added an actual offline uv/wheel regression: failed against old
 installer by observing stale installed JS, then passed with --reinstall-package
 agentgate on the changed-install path. Unchanged fingerprint still skips all
 preparation. Root owns PR31 collector/telemetry/lifespan/CLI/QA integration.
+
+2026-10-03 delivery: e38758a fixes the independently reproduced source-only
+upgrade defect. Final make validate:449passed, Ruff/format, strictmypy34modules,
+lock/config/Cezar and source/wheel builds passed. The real prepared application
+also upgraded offline from c5b918e to this source at the same package version;
+installed lifecycle source changed, credentials/audit/budgets/outbox stayed exact,
+a private pre-migration backup remained, and start/status/stop all passed.
+Author review completed against the current main-relative installer diff; no
+remaining blocker/major found after the upgrade fix. PR22 is published ready for
+root's independent re-review; no merge or competing PR31 integration performed.
