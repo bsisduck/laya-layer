@@ -14,6 +14,7 @@ from starlette.requests import ClientDisconnect
 from agentgate.contracts import ActionRequest, ActionResponse, Reason
 from agentgate.service import ActionService, GateError
 from agentgate.storage import StorageUnavailable
+from agentgate.web_routes import attach_web_routes
 
 
 def unique_object(pairs: list[tuple[str, object]]) -> dict[str, object]:
@@ -80,6 +81,7 @@ def create_app(service: ActionService, *, admin_origin: str | None = None) -> Fa
     app = FastAPI(
         title="AgentGate", version="0.1.0", docs_url=None, redoc_url=None, openapi_url=None
     )
+    attach_web_routes(app)
     bearer = HTTPBearer(auto_error=False)
 
     @app.get("/health/live")
