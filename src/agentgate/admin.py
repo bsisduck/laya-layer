@@ -43,6 +43,7 @@ from agentgate.contracts import (
 from agentgate.control_plane import ControlConflict, ControlPlane, ThreatFeed
 from agentgate.models import ChatRequest, ModelService
 from agentgate.policy import Policy
+from agentgate.semantics import SemanticClient
 from agentgate.service import ActionService, GateError
 from agentgate.storage import StorageUnavailable, Store, credential_digest
 
@@ -525,6 +526,9 @@ def attach_admin_routes(
             "budgets": {
                 "status": "measured",
                 "tool_counters": service.store.budget_counters(1000),
+                "semantic": service.semantic.budget()
+                if isinstance(service.semantic, SemanticClient)
+                else {"status": "not_configured"},
                 "limit": 1000,
                 "model": models.ledger.counters()
                 if model_enabled and isinstance(models, ModelService)

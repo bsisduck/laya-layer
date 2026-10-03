@@ -32,7 +32,12 @@ from agentgate.control_plane import (
 )
 from agentgate.documents import DocumentExecutor, DocumentRegistry
 from agentgate.policy import Policy
-from agentgate.semantics import SemanticEvaluator, SemanticInvalid, SemanticUnavailable
+from agentgate.semantics import (
+    SemanticBudgetExceeded,
+    SemanticEvaluator,
+    SemanticInvalid,
+    SemanticUnavailable,
+)
 from agentgate.storage import CredentialInvalid, StorageUnavailable, Store, credential_digest
 
 EMAIL = re.compile(r"\b[A-Za-z0-9._%+-]{1,64}@[A-Za-z0-9.-]{1,253}\.[A-Za-z]{2,63}\b")
@@ -168,17 +173,19 @@ class ActionService:
             payload_digest=context.payload_digest,
             executed=context.executed,
             semantic_status=(
-                context.semantic.status
-                if context.semantic is not None
-                else context.semantic_failure
+                context.semantic_failure
                 if context.semantic_failure is not None
+                else context.semantic.status
+                if context.semantic is not None
                 else "unavailable"
                 if reason == Reason.REQUIRED_SEMANTIC_UNAVAILABLE
                 else "not_run_hard_denial"
                 if decision == "deny"
                 else "not_configured"
             ),
-            semantic=context.semantic,
+            # A successful input result is retained on dispatch_intent; it must
+            # not masquerade as a result for a failed output classification.
+            semantic=context.semantic if context.semantic_failure is None else None,
             feed_version=self.context_controls(context).feed.version,
         )
 
@@ -312,6 +319,9 @@ class ActionService:
                 raise GateError(503, Reason.REQUIRED_SEMANTIC_UNAVAILABLE)
             try:
                 context.semantic = self.semantic.evaluate(context.action_id, content)
+            except SemanticBudgetExceeded as error:
+                context.semantic_failure = "unavailable"
+                raise GateError(429, Reason.SEMANTIC_BUDGET_EXCEEDED) from error
             except SemanticUnavailable as error:
                 context.semantic_failure = "unavailable"
                 raise GateError(503, Reason.REQUIRED_SEMANTIC_UNAVAILABLE) from error
