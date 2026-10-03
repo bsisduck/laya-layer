@@ -1,6 +1,6 @@
 # Explicit credential renewal contract
 
-Status: frozen interface; implementation/testing in progress on
+Status: implemented and fixture-tested on PR24 /
 `feat/operator-credential-renewal`. Installer PR22 consumes the trusted helper.
 Model PR6 retains `agentgate.admin.playground_credential(service, model=True)`;
 the tools/default call is unchanged. No model execution is added by this change.
@@ -45,3 +45,20 @@ playground retries continue using that epoch. A failed/replayed renewal cannot
 extend expiry. Ledger keys retain the same tenant/principal/root, so accrued
 spend and unresolved reservations remain binding. The operator identity itself
 and operator session TTL are unchanged.
+
+## Evidence and integration limits
+
+`tests/test_credential_renewal.py` exercises epoch-zero compatibility, separate
+chat/tool scope, session/origin/CSRF controls, expiry and revocation, simultaneous
+CAS/agent renewals, replay, rollback on renewal-history failure, restart, private
+persistence, actual document denial after exhausted root spend, and model denial
+after spent/uncertain reservations. `make validate`: 334 deterministic tests pass.
+
+Additional isolated cross-branch QA used PR19 `4d08fe666c8b61615b9105fcce2e939555382ea1`
+plus this helper, with no edits to either author's branch: four pending/approved
+mail × agent/playground replacement cases pass. New tokens cannot resume the old
+action or repeat its old idempotency key (403, zero outbox rows). A fresh key creates
+a new proposal; only its new explicit approval permits one fixture outbox effect.
+This is deterministic executor/ledger evidence, not SMTP delivery or model inference.
+The installer remains responsible for securely publishing/recovering agent token
+files; this hook's atomicity covers the credential database transaction only.

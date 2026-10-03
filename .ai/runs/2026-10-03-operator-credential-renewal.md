@@ -1,7 +1,7 @@
 # Explicit operator credential renewal
 
 Source doc: .ai/specs/full-stack-delivery.md
-Status: in-progress
+Status: complete
 
 ## Goal and scope
 
@@ -36,8 +36,25 @@ PR: #24
 ### Phase 2: Implementation
 
 - [x] 2.1 Implement atomic credential replacement and operator routes
-- [ ] 2.2 Exercise authorization, concurrency, restart and accounting boundaries
+- [x] 2.2 Exercise authorization, concurrency, restart and accounting boundaries
 
 ### Phase 3: Evidence
 
-- [ ] 3.1 Validate, review and publish ready PR
+- [x] 3.1 Validate, review and publish ready PR
+
+## Validation and author review
+
+`make validate` PASS: 334 tests, Ruff lint/format, strict mypy (21 files), source
+and wheel. 133 focused renewal/admin/model tests passed before commit. Four
+additional isolated approval/executor cases passed against exact PR19 4d08fe6
+plus this helper; zero old-authority outbox effects and one newly approved effect.
+Model PR6 additions retained; no tools/model implementation edits. The published
+plan branch integrated newer main normally to retain shared history, not force-push.
+
+Author review (`om-code-review`): no unresolved blocker/major. Additive schema and
+re-exported playground helper preserve epoch-zero and public contracts; explicit
+replacement locks/validates/retires/issues/audits together, never mutates budgets.
+Installer private-file publication/recovery is outside the database helper's
+transaction. Independent review is still required before release under SDLC.md;
+author review is not an independent or human/GitHub approval. No UI, heavy
+inference, labels, other agents, PR merge or model branch edits by this task.
