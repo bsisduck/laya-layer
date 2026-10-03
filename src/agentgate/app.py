@@ -117,7 +117,7 @@ def create_app(service: ActionService) -> FastAPI:
                 )
             ):
                 raise GateError(422, Reason.IDENTITY_OVERRIDE)
-            limits = service.policy.ingress
+            limits = service.context_controls(context).policy.ingress
             body = await read_body(request, limits.max_body_bytes, limits.body_timeout_seconds)
             service.digest_payload(context, body)
             action = parse_action(body, limits.max_json_depth)

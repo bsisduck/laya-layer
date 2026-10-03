@@ -196,3 +196,145 @@ def test_unsafe_serialization_never_executes_or_loads(tmp_path):
     assert list(tmp_path.iterdir()) == []
     with pytest.raises(ValueError):
         snapshot.inspect("model_output", "x" * 262145)
+
+
+# These are HTTP/document integration tests, not model evaluation.
+from test_gateway import Harness  # noqa: E402
+from test_gateway import harness as harness  # noqa: E402
+
+
+def attach_controls(harness: Harness):
+    plane = ControlPlane(harness.store, harness.service.clock)
+    plane.initialize(harness.service.policy)
+    harness.service.controls = plane
+    return plane
+
+
+def test_feed_blocks_document_before_executor_and_budget(harness):
+    plane = attach_controls(harness)
+    plane.activate_feed(
+        ThreatFeed(
+            revision=2,
+            indicators=(
+                Indicator(
+                    id="blocked-document",
+                    kind="literal_text",
+                    value="tenant-a-notes",
+                    stages=("tool_action",),
+                ),
+            ),
+        ),
+        "local:1",
+    )
+    result = harness.read()
+    assert result.status_code == 403
+    assert result.json()["reason_codes"] == ["THREAT_FEED_BLOCKED"]
+    assert harness.executor.calls == []
+    assert harness.store.budget_counters() == []
+    assert [e.event_type for e in harness.store.events()] == ["action_denied"]
+    assert harness.store.events()[0].feed_version == "local:2"
+
+
+def test_feed_withholds_document_output_after_execution(harness):
+    plane = attach_controls(harness)
+    plane.activate_feed(
+        ThreatFeed(
+            revision=2,
+            indicators=(
+                Indicator(
+                    id="blocked-output",
+                    kind="literal_text",
+                    value="quarterly",
+                    stages=("tool_result",),
+                ),
+            ),
+        ),
+        "local:1",
+    )
+    result = harness.read()
+    assert result.status_code == 403
+    assert result.json()["executed"] is True
+    assert "result" not in result.json()
+    assert harness.executor.calls == [("tenant-a-notes", "tenant-a")]
+    assert [e.event_type for e in harness.store.events()] == ["dispatch_intent", "output_blocked"]
+
+
+def test_policy_reload_between_decision_and_intent_reauthorizes(harness, monkeypatch):
+    plane = attach_controls(harness)
+    original = harness.store.dispatch_intent
+    calls = []
+
+    def activate_before_lock(*args):
+        if not calls:
+            current = plane.snapshot().policy
+            plane.activate_policy(
+                current.model_copy(
+                    update={
+                        "revision": 2,
+                        "documents_read": current.documents_read.model_copy(update={"roles": ()}),
+                    }
+                ),
+                "test:1",
+            )
+        calls.append(True)
+        return original(*args)
+
+    monkeypatch.setattr(harness.store, "dispatch_intent", activate_before_lock)
+    result = harness.read()
+    assert result.status_code == 403
+    assert result.json()["policy_version"] == "test:2"
+    assert harness.executor.calls == []
+    assert harness.store.budget_counters() == []
+    assert [e.event_type for e in harness.store.events()] == ["action_denied"]
+
+
+def test_feed_reload_between_decision_and_intent_rechecks(harness, monkeypatch):
+    plane = attach_controls(harness)
+    original = harness.store.dispatch_intent
+
+    def activate_before_lock(*args):
+        plane.activate_feed(
+            ThreatFeed(
+                revision=2,
+                indicators=(Indicator(id="block", kind="literal_text", value="tenant-a-notes"),),
+            ),
+            "local:1",
+        )
+        return original(*args)
+
+    monkeypatch.setattr(harness.store, "dispatch_intent", activate_before_lock)
+    assert harness.read().status_code == 403
+    assert harness.executor.calls == []
+
+
+def test_inflight_uses_dispatched_snapshot_then_next_action_uses_reload(harness, monkeypatch):
+    plane = attach_controls(harness)
+    original = harness.executor.read
+
+    def read_with_activation(document_id, tenant_id):
+        current = plane.snapshot().policy
+        plane.activate_policy(
+            current.model_copy(
+                update={
+                    "revision": 2,
+                    "output": current.output.model_copy(update={"redact_emails": False}),
+                }
+            ),
+            "test:1",
+        )
+        return original(document_id, tenant_id)
+
+    monkeypatch.setattr(harness.executor, "read", read_with_activation)
+    first = harness.read("tenant-a-contact").json()
+    assert first["decision"] == "redact"
+    assert first["policy_version"] == "test:1"
+    monkeypatch.setattr(harness.executor, "read", original)
+    second = harness.read("tenant-a-contact").json()
+    assert second["decision"] == "allow"
+    assert second["policy_version"] == "test:2"
+    assert [e.policy_version for e in harness.store.events()] == [
+        "test:1",
+        "test:1",
+        "test:2",
+        "test:2",
+    ]

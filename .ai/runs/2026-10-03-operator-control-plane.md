@@ -57,7 +57,7 @@ push ready PR with exact deterministic/API evidence and inference exclusions.
 ### Phase 1: Durable controls
 
 - [x] 1.1 Publish stable snapshot/inspection contract and durable validated controls
-- [ ] 1.2 Enforce feed and snapshot safety in document actions
+- [x] 1.2 Enforce feed and snapshot safety in document actions
 
 ### Phase 2: Operator APIs
 
