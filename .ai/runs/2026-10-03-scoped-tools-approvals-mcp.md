@@ -37,11 +37,27 @@ reservations retained. High-risk independent review remains required before rele
 > Convention: `- [ ]` pending, `- [x]` done. Append ` — <commit sha>` when a step lands. Do not rename step titles.
 
 ### Phase 1: Durable authority
-- [x] 1.1 Preserve legacy root spend while sharing tenant/root counters across principals.
-- [x] 1.2 Implement strict tools, immutable approvals, idempotency and atomic local outbox.
+- [x] 1.1 Preserve legacy root spend while sharing tenant/root counters across principals. — 56bf401
+- [x] 1.2 Implement strict tools, immutable approvals, idempotency and atomic local outbox. — 8abfebd
 
 ### Phase 2: Adapters and verification
-- [x] 2.1 Add REST retrieve/resume and operator callable hooks with contract docs.
-- [x] 2.2 Add authenticated official-SDK MCP with filtered discovery and bound sessions.
-- [x] 2.3 Exercise denied side effects, races, restarts, mutation, expiry and MCP wire flows.
-- [ ] 2.4 Run make validate, author om-code-review, publish evidence and ready PR.
+- [x] 2.1 Add REST retrieve/resume and operator callable hooks with contract docs. — 8abfebd
+- [x] 2.2 Add authenticated official-SDK MCP with filtered discovery and bound sessions. — 8abfebd
+- [x] 2.3 Exercise denied side effects, races, restarts, mutation, expiry and MCP wire flows. — 1b40879
+- [x] 2.4 Run make validate, author om-code-review, publish evidence and ready PR. — 1b40879
+
+## Validation and review evidence
+
+`make validate` passed: workflow/Cezar checks, lock consistency, Ruff lint/format,
+strict mypy (17 modules), 221 pytest tests, source/wheel builds. Twelve tests cover
+MCP wire behavior; one uses the official SDK client against a real loopback HTTP
+server. This proves fixture document/memory/mail enforcement and actual local
+outbox effects, not real-model quality. No Laya/Ollama inference was run.
+
+Author `om-code-review`: approve for review, no remaining blocker/major findings.
+Review fixed Unicode inspection of actual mail text, explicit rejection of
+unsupported stateless MCP protocol routing, and legacy-budget refusal when an
+embedder skips migration. Independent high-risk review before release remains
+with root/maintainer. Labels disabled. Root integrates PR17/PR6/PR20; no merge here.
+Frozen operator/playground contract and stable playground credential requirement
+were sent to both Cezar owners; see docs/scoped-tools.md.
