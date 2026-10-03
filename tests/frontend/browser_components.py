@@ -19,7 +19,14 @@ def main() -> None:
         page.on("pageerror", lambda error: errors.append(str(error)))
         calls = []
         held = []
-        state = {"overview": 200, "delay": True, "approved": False, "empty": False}
+        state = {
+            "overview": 200,
+            "delay": True,
+            "approved": False,
+            "empty": False,
+            "credential": "active",
+            "epoch": 0,
+        }
         hostile = '<img src=x onerror="window.injected=true">'
         row = {
             "action_id": "action-fixture",
@@ -83,6 +90,23 @@ def main() -> None:
                     "executed": False,
                     "reason_codes": ["APPROVAL_APPROVED"],
                     "trace_id": "component-trace",
+                }
+            elif url.path == "/admin/playground/credential":
+                data = {
+                    "scope": parse_qs(url.query)["scope"][0],
+                    "state": state["credential"],
+                    "epoch": state["epoch"],
+                    "expires_at": time.time() + 600,
+                }
+            elif url.path == "/admin/playground/credential/renew":
+                assert body == {"scope": "tools", "expected_epoch": 0}
+                state["credential"] = "active"
+                state["epoch"] = 1
+                data = {
+                    "scope": "tools",
+                    "state": "active",
+                    "epoch": 1,
+                    "expires_at": time.time() + 600,
                 }
             elif url.path == "/admin/playground":
                 if body["mode"] == "model":
@@ -159,6 +183,20 @@ def main() -> None:
         page.get_by_role("button", name="Run governed action").click()
         expect(page.get_by_text("Service unavailable.", exact=False)).to_be_visible()
         assert page.locator(".result").count() == 0
+        state["credential"] = "expired"
+        page.get_by_role("button", name="Document", exact=True).click()
+        expect(page.get_by_role("button", name="Run governed action")).to_be_disabled()
+        expect(page.get_by_role("button", name="Renew expired credential")).to_be_visible()
+        page.get_by_role("button", name="Renew expired credential").click()
+        expect(page.get_by_role("button", name="Run governed action")).to_be_enabled()
+        expect(page.get_by_text("Credential renewed.", exact=False)).to_be_visible()
+        renewal = next(call for call in calls if call[0].endswith("/renew"))
+        assert renewal[3]["x-csrf-token"] == "component-nonce"
+        state["credential"] = "revoked"
+        page.get_by_role("button", name="Memory", exact=True).click()
+        expect(page.get_by_role("button", name="Run governed action")).to_be_disabled()
+        expect(page.get_by_text("This authority was revoked", exact=False)).to_be_visible()
+        assert page.get_by_role("button", name="Renew expired credential").count() == 0
         navigate("Test outbox")
         expect(page.get_by_text("No messages recorded", exact=False)).to_be_visible()
         navigate("Security timeline")

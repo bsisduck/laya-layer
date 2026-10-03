@@ -31,3 +31,19 @@ private keys, runtime state, model weights or generated logs are committed.
 ## Evidence
 
 Pending integrated implementation and final gates. This plan is not completion.
+
+## Operator expiry integration
+
+The playground displays server-returned scope, expiry and epoch. Expired authority
+has an explicit CAS renewal action; revoked authority remains disabled. A governed
+401 action denial no longer discards the separate valid operator session. Both
+model and tool credentials use the existing protected server contract; no secret
+is sent to the browser. Budget spend and prior approval identity remain unchanged.
+
+Validation: make validate 419 tests PASS plus six native JS contract tests.
+Chromium mocked consumer suite PASS, including expiry/renewal/revocation, exact
+approval/draft retries, loading/errors and mobile layout. Its first attempt failed
+because the temporary static test server omitted /static mapping; corrected test
+serving matched the packaged route. This was a test environment error, not an
+application failure, and these mocks are not enforcement proof. Installed real
+browser QA remains pending.

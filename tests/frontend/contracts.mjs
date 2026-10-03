@@ -39,6 +39,24 @@ test('stale requests cannot resurrect a locked session', async () => {
   await assert.rejects(restore, /Session changed/);
   await assert.rejects(api.request('/admin/feed', {method: 'POST'}), /Unlock/);
 });
+test('expired playground authority retains the separate operator session for explicit renewal', async () => {
+  let mode = 'session'; let locked = 0;
+  const calls = [];
+  const denied = {decision: 'deny', executed: false, action_id: 'act-expired', reason_codes: ['INVALID_CREDENTIAL']};
+  const api = createClient(() => {locked++;}, async (url, options) => {
+    calls.push({url, ...options});
+    return mode === 'denied' ? response(denied, 401) : response(session);
+  });
+  await api.restore(); mode = 'denied';
+  assert.deepEqual(await api.request('/admin/playground', {method: 'POST', body: {}, decision: true}), denied);
+  assert.equal(locked, 0);
+  mode = 'session';
+  await api.request('/admin/playground/credential/renew', {method: 'POST', body: {scope: 'tools', expected_epoch: 0}});
+  assert.equal(calls.at(-1).headers['X-CSRF-Token'], 'test-csrf');
+  mode = 'denied';
+  await assert.rejects(api.request('/admin/overview'), /Session expired/);
+  assert.equal(locked, 1);
+});
 test('conflicts/missing routes/network writes never become successes', async () => {
   for (const [status, message] of [[409, /Version conflict/], [404, /unavailable/], [501, /unavailable/]]) {
     const api = createClient(() => {}, async () => response({detail: 'safe detail'}, status));
