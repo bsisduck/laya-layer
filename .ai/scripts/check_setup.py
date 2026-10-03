@@ -1,4 +1,4 @@
-"""Validate preparation artifacts, without claiming application test coverage."""
+"""Validate repository workflow artifacts; application checks run through Make."""
 
 import json
 import subprocess
@@ -13,6 +13,7 @@ def main():
         "README.md", "AGENTS.md", "SDLC.md", "CODE_REVIEW.md",
         "BACKWARD_COMPATIBILITY.md", "AgentGate_Full_Project_Architecture.md",
         "docs/readiness.md", ".ai/specs/implementation-start.md",
+        "pyproject.toml", "uv.lock",
         f".ai/trackers/{config['tracker']}.md",
         f".ai/browsers/{config['browser']['provider']}.md",
     ]:
@@ -26,13 +27,7 @@ def main():
     subprocess.run(
         ["git", "diff", "--check"], cwd=ROOT, check=True,
     )
-    # Deliberately prevent bootstrap success from becoming product-test evidence.
-    if any((ROOT / name).exists() for name in ["src", "workers", "pyproject.toml"]):
-        raise SystemExit(
-            "Application work detected: replace the setup-only gate with real "
-            "lint, typing, tests, and build validation before reporting success."
-        )
-    print("PASS: preparation artifacts; application tests are not implemented")
+    print("PASS: repository workflow artifacts; Python validation follows")
 
 
 if __name__ == "__main__":

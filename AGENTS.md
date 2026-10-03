@@ -2,8 +2,9 @@
 
 AgentGate is the policy-enforcement gateway specified in
 `AgentGate_Full_Project_Architecture.md`. This repository currently contains the
-specification and development harness. Runtime code, model workers, and product
-tests have not been implemented. Cezar orchestrates development; it is not the
+specification, development harness, and a document-only REST enforcement slice.
+Model routing, deployed semantic workers, budgets, approvals, MCP, and Hermes
+integration remain unimplemented. Cezar orchestrates development; it is not the
 AgentGate gateway or a security sandbox.
 
 ## Working rules
@@ -27,6 +28,7 @@ AgentGate gateway or a security sandbox.
 | When the task involves… | Read first | Key rules |
 |---|---|---|
 | Development workflow | `SDLC.md`, `.ai/agentic.config.json`, `.ai/cezar/config.json` | Local publication boundary wins over skill defaults. |
+| Implemented document path | `src/agentgate/`, `tests/test_gateway.py`, `config/policy.yaml` | Credential-owned identity; durable intent before reads; audit before output release. |
 | Initial implementation | Architecture §§4–7, 22–23; `.ai/specs/implementation-start.md` | Python 3.12; build contracts and one vertical slice first. |
 | Identity, tools, approvals | Architecture §§7–9, 14–16, 19 | Authenticate identity; explicit operation aliases; approve exact payloads; assert actual side effects. |
 | Models and Laya | Architecture §§10, 13–14, 21 | Standard and native macOS CoreML are separate workers; semantic signals cannot grant permissions. |
@@ -37,14 +39,12 @@ AgentGate gateway or a security sandbox.
 
 ## Validation
 
-Run `make setup` once, then `make validate`. `make doctor` audits local tools and
-skills. At this preparation stage, validation checks configuration and workflow
-loading only; it is not evidence of working security controls.
-
-The first application-code task must extend `make validate` with real lint,
-typecheck, tests, and packaging checks. Do not add empty suites or no-op targets
-to make a gate green. The product stack and dependency versions remain to be
-resolved and locked during the first integration spike.
+Run `make setup` once, then `make validate`: workflow/config checks, lockfile
+consistency, Ruff lint/format, strict mypy, pytest, and source/wheel packaging.
+`make doctor` audits local tools and skills. Python 3.12 and gateway dependencies
+are locked in `uv.lock`. Keep model environments separate from the gateway.
+Real inference smoke runs are separate from the deterministic gate; never report
+the gateway suite as real-model evaluation. Do not add empty or no-op test targets.
 
 Use `om-code-review` for review, `om-root-cause` for diagnosis, and
 `om-prepare-test-env` / `om-integration-tests` for integration QA when those tasks

@@ -1,6 +1,6 @@
 # AgentGate development workflow
 
-The current phase is local preparation. `main` is the local base; no project
+The current phase is local implementation. `main` is the local base; no project
 remote or CI is configured. GitHub is the selected future tracker, labels are
 disabled, and the QA gate is enabled in `.ai/agentic.config.json`.
 
@@ -25,10 +25,11 @@ independent review before release, or an explicit maintainer exception.
 
 ## Validation gate
 
-The configured command is `make validate`. Today it checks preparation artifacts
-and loads the Cezar configuration/workflow with the installed Cezar library.
-No application build, enforcement tests, inference evaluation, or CI success is
-implied. The first implementation task must extend the gate to cover actual code.
+The configured command is `make validate`. It checks workflow artifacts and the
+Cezar configuration, verifies `uv.lock`, runs Ruff lint and formatting, strict
+mypy, pytest, and builds a source distribution and wheel. Tests cover only the
+implemented document path; real inference checks and future integration suites
+remain separate. Local success does not imply CI success.
 
 Any failing required check blocks completion. Report which deterministic,
 real-semantic, and integration suites ran or were skipped, and why.

@@ -1,19 +1,51 @@
 # laya-sec-agent — AgentGate
 
-AgentGate is a planned policy-enforcement gateway for agentic applications,
-combining deterministic controls with local Laya decisions. The complete design
-is in [the architecture](AgentGate_Full_Project_Architecture.md).
+AgentGate is a policy-enforcement gateway being built for agentic applications.
+The first working slice authenticates document reads, enforces tenant/role/agent
+permissions, filters output, and persists minimized audit events. The complete
+target design is in [the architecture](AgentGate_Full_Project_Architecture.md).
 
-**Status: development setup prepared; gateway and inference not implemented.**
+**Status: document-only local demo.** Laya is not connected to enforcement yet.
+Model routing, budgets, approvals, MCP, Hermes, and the dashboard remain to build.
+
+## Run the document demo
+
+```sh
+make setup
+make demo-init   # once: private .agentgate/ state; one-hour tenant-A credential
+make serve      # http://127.0.0.1:8000
+```
+
+In a second terminal:
+
+```sh
+uv run agentgate demo-read                     # allowed; records intent and outcome
+uv run agentgate demo-read tenant-b-notes      # denied before execution
+uv run agentgate demo-read tenant-a-contact    # email redacted before release
+uv run agentgate demo-read tenant-a-leak       # synthetic secret withheld after read
+uv run agentgate audit                         # minimized local event records
+```
+
+Denied reads exit with code 1. Credentials are written with mode 0600 and never
+printed by initialization. The SQLite credential table stores only their digest
+and server-owned identity. `init-demo` refuses to overwrite existing state. For a
+fresh session, use `--state-dir .agentgate/session-2` before each subcommand.
+
+The partial policy lives in `config/policy.yaml`; restart to apply changes.
+`semantic_required: true` fails readiness and dispatch until a semantic worker
+is implemented. The output scanner covers the explicit synthetic marker
+`AGENTGATE_SECRET[...]` and a bounded email pattern; it is not general DLP.
+The loopback demo assumes trusted host processes and registered fixture executors.
+See [the implemented contract](docs/document-slice.md) for precise boundaries.
 
 ## Development
 
-Node 20+ runs the Cezar development harness; Python 3.12 is the planned application
+Node 20+ runs the Cezar development harness; Python 3.12 is the application
 runtime. From this directory:
 
 ```sh
-make setup       # install locked development tooling
-make validate    # check setup and load the Cezar workflow
+make setup       # install locked Python and development tooling
+make validate    # config, lock, lint, format, typing, tests, and package build
 make doctor      # inspect host tools and installed Open Mercato skills
 make harness     # start Cezar; select the agentgate-local workflow
 ```
@@ -24,9 +56,9 @@ the ignored `.ai/cezar/home/`. If that port is in use, run
 native model configuration. The launcher disables background automations and
 child-task dispatch. No coding task starts merely by opening the cockpit.
 
-The private `package.json` and lockfile belong to development tooling, not the
-future Python gateway. `make validate` currently verifies setup only. The first
-implementation must add meaningful application lint, typing, tests, and build checks.
+The private `package.json` and npm lockfile belong to development tooling.
+`pyproject.toml` and `uv.lock` define the gateway. Real Laya loading checks use
+separate environments; see [the inference spike](docs/inference-spike.md).
 
 Read [AGENTS.md](AGENTS.md) and [SDLC.md](SDLC.md) for workflow rules. Local commits
 are automatic; publishing requires an explicit user instruction. There is no

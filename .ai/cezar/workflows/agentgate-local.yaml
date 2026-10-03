@@ -10,8 +10,8 @@ steps:
       Complete only this task: {{task}}
       Keep changes local and make working commits. Review the diff against
       CODE_REVIEW.md and fix findings. Run make validate and the tests appropriate
-      to the changed behavior. If introducing application code, replace the
-      setup-only gate with real lint, type, test, and build checks in the same task.
+      to the changed behavior. Extend the existing lint, type, test, and build
+      checks whenever introducing a new application boundary.
       Report evidence and remaining limitations. Publish only on explicit user instruction.
   - id: verify
     name: Validate the repository

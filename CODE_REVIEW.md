@@ -1,7 +1,8 @@
 # AgentGate review rules
 
-Current scope: specification and development tooling only. The checks below also
-define review expectations for the proposed Python gateway once implemented.
+Current runtime scope: document-only REST enforcement, hashed scoped credentials,
+SQLite audit, and local fixture execution. The architecture's other surfaces
+remain proposals. Review the implemented boundary without implying broader coverage.
 
 - Confirm the change matches the architecture and the task's acceptance criteria.
 - Keep deterministic authorization separate from model confidence. A semantic

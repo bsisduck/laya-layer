@@ -1,0 +1,93 @@
+{
+  "schema_version": 1,
+  "models": {
+    "laya_standard": {
+      "repository": "convaiinnovations/laya-multilingual",
+      "revision": "e4e9ddf21a7b1903b7acffd8814ad4307bf63a67",
+      "directory": "models/laya-standard",
+      "license": "apache-2.0",
+      "files": {
+        "README.md": {
+          "sha256": "e85d16c3fe35fe7094ef51a7cfa81144a5cc07558e5faddcff753a8153e38a0b",
+          "bytes": 9346
+        },
+        "encoder/config.json": {
+          "sha256": "83f6916d13ef0f556ac461f28308dc2bffa7ebeadee8ec9e2db5812020ea5bb4",
+          "bytes": 1938
+        },
+        "model.safetensors": {
+          "sha256": "9d628fd971b700382ac6f65920a86f149777b2e748e0c955fb3b19695aa8f204",
+          "bytes": 643835514
+        },
+        "rl_agent_config.json": {
+          "sha256": "25061739243b617ad88d1219ba6f8a9c86c5881ca28df024fa2d9b3b2fcc30c6",
+          "bytes": 472
+        },
+        "tokenizer/tokenizer.json": {
+          "sha256": "609d8f4c067cd3950f88594c5a802616cea245823836ef5848ee4fc40aab5b6f",
+          "bytes": 34363188
+        },
+        "tokenizer/tokenizer_config.json": {
+          "sha256": "424b69444bf7b5809dc2cd2e36d0bd71b8055124dd24274d6db3c655d38205e7",
+          "bytes": 502
+        }
+      }
+    },
+    "laya_coreml": {
+      "repository": "aac6fef/laya-multilingual-coreml",
+      "revision": "8139e9089273319512c730218903784074133187",
+      "directory": "models/laya-coreml",
+      "license": "apache-2.0",
+      "files": {
+        "LICENSE": {
+          "sha256": "a6cba85bc92e0cff7a450b1d873c0eaa2e9fc96bf472df0247a26bec77bf3ff9",
+          "bytes": 10173
+        },
+        "NOTICE": {
+          "sha256": "60928ba6b42ad90c048a88791c34c60826e565d279909095ade614c08c5b8ca8",
+          "bytes": 1209
+        },
+        "README.md": {
+          "sha256": "571a9a339aed7d19549c68b006747cd94ff6ea225494e6699fb5c9a499d3ab85",
+          "bytes": 3914
+        },
+        "coreml_config.json": {
+          "sha256": "8131967fdb403243f2817d7eeb09721d1e822bd7301c244d25afb44bcc258352",
+          "bytes": 2121
+        },
+        "encoder/config.json": {
+          "sha256": "83f6916d13ef0f556ac461f28308dc2bffa7ebeadee8ec9e2db5812020ea5bb4",
+          "bytes": 1938
+        },
+        "model.mlpackage/Data/com.apple.CoreML/model.mlmodel": {
+          "sha256": "d6ea5688f45c6afa3c041698d33337ac9c62de7b3f1077c9cb39be7c965fe0de",
+          "bytes": 1536512
+        },
+        "model.mlpackage/Data/com.apple.CoreML/weights/weight.bin": {
+          "sha256": "6b906ab7b6b8bbc0f11608425f6091b508bbe968788f27d8e81df25399c281ba",
+          "bytes": 643966208
+        },
+        "model.mlpackage/Manifest.json": {
+          "sha256": "9f5ae62247c9be221c7ced17157b1b5ec25ef70bdd3cb809d45ba698da579418",
+          "bytes": 617
+        },
+        "rl_agent_config.json": {
+          "sha256": "25061739243b617ad88d1219ba6f8a9c86c5881ca28df024fa2d9b3b2fcc30c6",
+          "bytes": 472
+        },
+        "tokenizer/tokenizer.json": {
+          "sha256": "609d8f4c067cd3950f88594c5a802616cea245823836ef5848ee4fc40aab5b6f",
+          "bytes": 34363188
+        },
+        "tokenizer/tokenizer_config.json": {
+          "sha256": "6c6b2d8e3c84ce0e671c129cd6b374b235d6f9863042a5836358d00a89bbb5a1",
+          "bytes": 524
+        },
+        "validation.json": {
+          "sha256": "add1160fe5efe7f4192a1504aea123ffffbc37b70dcab9d67556c2266818c9eb",
+          "bytes": 4770
+        }
+      }
+    }
+  }
+}
