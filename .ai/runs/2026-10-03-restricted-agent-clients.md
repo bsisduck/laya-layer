@@ -2,7 +2,7 @@
 
 Source doc: .ai/specs/full-stack-delivery.md
 Issue: #14
-Status: in-progress
+Status: complete
 
 ## Goal
 
@@ -62,15 +62,31 @@ PR: #30
 
 ### Phase 1: Direct client
 
-- [x] 1.1 Implement direct discovery and bounded correlated cycles — 4f39c77
-- [x] 1.2 Test HTTP enforcement and pending resume — f9ad094
+- [x] 1.1 Implement direct discovery and bounded correlated cycles — 016f159
+- [x] 1.2 Test HTTP enforcement and pending resume — 06f8753
 
 ### Phase 2: Genuine restricted Hermes
 
-- [x] 2.1 Pin upstream and implement restricted launcher — 3cb8790
-- [x] 2.2 Test actual Hermes profile and registry — 3cb8790
+- [x] 2.1 Pin upstream and implement restricted launcher — 724bc5b
+- [x] 2.2 Test actual Hermes profile and registry — 724bc5b
 
 ### Phase 3: Evidence and delivery
 
-- [ ] 3.1 Run real local cycles and document evidence
-- [ ] 3.2 Full validation, author review and ready PR
+- [x] 3.1 Run real local cycles and document evidence — f07add0
+- [x] 3.2 Full validation, author review and ready PR — final evidence/review commit
+
+## Final evidence
+
+Integrated main4a1fe3d (including tools, renewal, telemetry, installer and explicit
+semantic v2). No root lifecycle/UI/QA scripts changed. Real final code f07add0:
+direct REST/MCP and genuine pinned Hermes each completed two model calls and one
+scoped document read, exact call IDs and one server-owned root; semantic inspection
+disabled. Five failed Hermes development proposals retained with zero effect.
+Source/report hashes, cumulative17calls/5699tokens/6reads and commands are in
+docs/restricted-agents.md. No renewal/reset or raw upstream credential in clients.
+
+Final make validate:574 passed,10 explicit optional Hermes skips; Ruff,strict mypy
+and source/wheel builds pass. Prepared upstream client suite:55 passed,including
+all10 genuine Hermes fixture scenarios. Author review and fixed findings:
+.ai/analysis/restricted-agent-clients-review.md. No blocking/major author finding;
+independent release review remains maintainer-owned. Labels disabled; no merge.

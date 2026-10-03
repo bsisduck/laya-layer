@@ -69,6 +69,7 @@ def test_actual_pinned_hermes_cycle_with_fixture_provider(live_agent_gateway):
     "scenario",
     [
         "invalid_operation",
+        "malformed_arguments",
         "cross_tenant",
         "budget",
         "secret",
@@ -87,6 +88,8 @@ def test_actual_hermes_failures_stop_without_bypass_or_retry(live_agent_gateway,
     expected_dispatches = 1
     if scenario == "invalid_operation":
         provider.operation = "terminal"
+    elif scenario == "malformed_arguments":
+        provider.arguments = {"type": "object", "properties": {}, "required": ["document_id"]}
     elif scenario == "cross_tenant":
         provider.arguments = {"document_id": "tenant-b-notes"}
     elif scenario == "budget":
@@ -123,6 +126,17 @@ def test_actual_hermes_failures_stop_without_bypass_or_retry(live_agent_gateway,
     assert len(provider.calls) == expected_dispatches
     assert rows(tools, "tool_outbox") == []
     assert len(tools.executor.calls) == (1 if scenario == "budget" else 0)
+    expected_reason = {
+        "invalid_operation": "EXECUTION_FAILED",
+        "malformed_arguments": "MALFORMED_REQUEST",
+        "cross_tenant": "RESOURCE_NOT_ALLOWED",
+        "budget": "BUDGET_EXCEEDED",
+        "secret": "SECRET_IN_INPUT",
+        "output_blocked": "SECRET_IN_OUTPUT",
+        "forbidden_destination": "RECIPIENT_DOMAIN_NOT_ALLOWED",
+        "pending": "REQUIRES_APPROVAL",
+    }[scenario]
+    assert any(expected_reason in e.reason_codes for e in tools.store.events())
 
 
 def test_profile_rejects_host_process_and_non_gateway_network(tmp_path):

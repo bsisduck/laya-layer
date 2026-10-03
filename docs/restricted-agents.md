@@ -179,3 +179,65 @@ protection. Standard/CoreML semantic quality and enforcement have their own
 Minimized generated reports stay ignored under `reports/generated/`. Report files
 are never overwritten; select a fresh `--report` path for another explicit run.
 `--clients hermes-mcp` can measure only Hermes without repeating the direct runs.
+
+## Measured generation evidence — 3 October 2026
+
+Final CLI runs used committed client profile `f07add0d28768bffd8b89801f26f76d2449e2b39`
+on main `4a1fe3d`, real authenticated HTTP gateway, existing private LiteLLM
+1.103.2 and user-owned Ollama 0.35.1. The generator was `llama3.2:1b`, 1.2B Q8_0,
+manifest digest `baf6a787fdffd633537aa2eb51cfd54cb93ff08e28040095462bb63daf552878`.
+Hermes source/runtime is pinned above; its actual upstream loop and MCP handlers
+ran in the isolated runtime. No weights, generated reports or runtime logs ship.
+
+| CLI | Model calls / document reads | Exact proposal → result call ID | Elapsed |
+|---|---:|---|---:|
+| Direct REST | 2 / 1 | `call_9k25z3oi` | 4458.2 ms |
+| Direct MCP | 2 / 1 | `call_mwdhfmew` | 3322.7 ms |
+| Genuine Hermes MCP | 2 / 1 | `call_spx2ryxv` | 6456.7 ms |
+
+Each final response released inspected text. Every dispatch has persisted intent
+and completion events. All three used tenant-a / run-demo from the same existing
+credential. Hermes exposed exactly documents_read, mail_send and memory_query.
+Its document trace was `trace-385fa10d976f4d37ad93f3ace38e5d7b`, between model
+traces `trace-63703afb88214e4781bbe58a4504068b` and
+`trace-17214e86290c424c89e436c2a47f376f`. The final report asserts exact call-ID
+correlation, dispatch counts and one root, and records minimized trace/audit IDs,
+policy/client source hashes and cumulative budget counters.
+
+**Development failures remain part of the evidence.** Five earlier explicit
+Hermes invocations generated malformed arguments and stopped with zero tool
+dispatch and no model retry. A diagnostic confirmed that the small generator
+emitted JSON Schema fields instead of a document_id instance. Changing schema
+serialization order or short system instructions did not resolve it. Suppressing
+the system prompt produced a successful two-call Hermes cycle (7900.4 ms), then
+the final run above reproduced it. No malformed proposal was repaired, replayed
+automatically or executed outside the gateway. This is prompt-sensitive local
+integration evidence, not a generator reliability or answer-quality benchmark.
+
+Across development and final runs the same root retained **17 model calls, 5699
+tokens and six document reads**; no reservations remained and the outbox stayed
+empty. No spend reset, token renewal or replacement root was used. All owned
+gateway/agent children were reaped before releasing the shared inference slot;
+the user's Ollama service was left running.
+
+The runtime policy was `config/policy-models.yaml`: **semantic inspection disabled**.
+Hard gateway controls and fixtures were exercised; these agent cycles do not
+prove real Laya protection. The separate versioned semantic evaluation records
+actual standard/CoreML classifier behavior and its substantial quality limits.
+
+Minimized local report SHA-256 identifiers (failed attempts retained):
+
+| Report | SHA-256 |
+|---|---|
+| agent-clients.json | `34cef56ebd259bb35112c8a88a4ca1ad80dbfa1b54a0b906349503a25c88f0d3` |
+| agent-clients-hermes-temperature0.json | `918ea9a12b657651a1ecf37e92c999e1fce389682cbac05064066803e9ad16c5` |
+| agent-clients-hermes-diagnostic.json | `80e2d29bad787a3d8623b3f1b82614b40a76cd816d5a76fecc4c6fe5bf452696` |
+| agent-clients-hermes-stable-schema.json | `51a398e1e02b42f1e8f152946636fe915f6c9991b772cc035a9b7d9bad85e25d` |
+| agent-clients-hermes-minimal-prompt.json | `d695d99c1b808492931472d8116e5792f7b693238397cd4998ef8d1e6b858f81` |
+| agent-clients-hermes-no-system.json | `7c46065bfbe154b6de9db5ecbbb549b944bacf8c27718ee8016ab1b01698e6a9` |
+| agent-clients-final.json | `a2761469f02b9029dd591f4d3b472b0bb94862caec114a2951907ec8fbd68a85` |
+
+The complete deterministic gate and final author review are recorded on PR #30.
+A separate 55-test client run includes all ten genuine Hermes subprocess cases
+with a deterministic provider; these exercise denied paths, exact response/call
+correlation and one approved outbox effect. They are not real-model evaluation.

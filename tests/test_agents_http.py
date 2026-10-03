@@ -144,6 +144,7 @@ def test_real_http_pending_then_explicit_resume_one_outbox_effect(live_agent_gat
     "scenario",
     [
         "invalid_operation",
+        "malformed_arguments",
         "cross_tenant",
         "budget",
         "secret",
@@ -158,6 +159,8 @@ def test_real_http_denials_have_no_effect_or_retry(live_agent_gateway, scenario,
     expected_dispatches = 1
     if scenario == "invalid_operation":
         provider.operation = "terminal"
+    elif scenario == "malformed_arguments":
+        provider.arguments = {"type": "object", "properties": {}, "required": ["document_id"]}
     elif scenario == "cross_tenant":
         provider.arguments = {"document_id": "tenant-b-notes"}
     elif scenario == "budget":
@@ -172,6 +175,11 @@ def test_real_http_denials_have_no_effect_or_retry(live_agent_gateway, scenario,
     elif scenario == "output_blocked":
         provider.arguments = {"document_id": "AGENTGATE_SECRET[synthetic]"}
     else:
+        tools.service.policy = tools.service.policy.model_copy(
+            update={
+                "output": tools.service.policy.output.model_copy(update={"redact_emails": False})
+            }
+        )
         provider.operation = "mail_send"
         provider.arguments = {
             "recipient": "a@evil.example",
@@ -184,10 +192,16 @@ def test_real_http_denials_have_no_effect_or_retry(live_agent_gateway, scenario,
     assert len(provider.calls) == expected_dispatches
     assert rows(tools, "tool_outbox") == []
     assert len(tools.executor.calls) == (1 if scenario == "budget" else 0)
-    assert any(
-        e.event_type in ("action_denied", "output_blocked") or e.reason_codes
-        for e in tools.store.events()
-    )
+    expected_reason = {
+        "invalid_operation": "EXECUTION_FAILED",
+        "malformed_arguments": "MALFORMED_REQUEST",
+        "cross_tenant": "RESOURCE_NOT_ALLOWED",
+        "budget": "BUDGET_EXCEEDED",
+        "secret": "SECRET_IN_INPUT",
+        "output_blocked": "SECRET_IN_OUTPUT",
+        "forbidden_destination": "RECIPIENT_DOMAIN_NOT_ALLOWED",
+    }[scenario]
+    assert any(expected_reason in e.reason_codes for e in tools.store.events())
 
 
 def test_real_http_revocation_does_not_renew_or_reset_authority(live_agent_gateway):
