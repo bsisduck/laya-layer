@@ -9,7 +9,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import ValidationError
 from starlette.concurrency import run_in_threadpool
 
-from agentgate.contracts import ActionResponse, Reason
+from agentgate.contracts import Reason
 from agentgate.models import ChatRequest, ModelService
 from agentgate.service import Context, GateError
 from agentgate.storage import StorageUnavailable
@@ -66,21 +66,7 @@ def attach_model_routes(app: FastAPI, models: ModelService) -> None:
             raise GateError(422, Reason.IDENTITY_OVERRIDE)
 
     async def rejection(context: Context, error: GateError | StorageUnavailable) -> JSONResponse:
-        denied = error if isinstance(error, GateError) else GateError(503, Reason.AUDIT_UNAVAILABLE)
-        if not context.executed:
-            code, body = await run_in_threadpool(actions.reject, context, denied)
-        else:
-            # ModelService atomically records the terminal event with settlement.
-            code = denied.status_code
-            body = ActionResponse(
-                status="error" if code >= 500 else "denied",
-                action_id=context.action_id,
-                trace_id=context.trace_id,
-                decision="deny",
-                reason_codes=(denied.reason,),
-                policy_version=actions.policy.version,
-                executed=True,
-            )
+        code, body = await run_in_threadpool(models.reject, context, error)
         headers = {"Cache-Control": "no-store", "X-Request-ID": context.trace_id}
         if code == 401:
             headers["WWW-Authenticate"] = "Bearer"

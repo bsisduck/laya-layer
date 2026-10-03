@@ -61,6 +61,8 @@ class Reason(StrEnum):
     OUTPUT_TOO_LARGE = "OUTPUT_TOO_LARGE"
     SECRET_IN_OUTPUT = "SECRET_IN_OUTPUT"
     EMAIL_REDACTED = "EMAIL_REDACTED"
+    THREAT_FEED_BLOCKED = "THREAT_FEED_BLOCKED"
+    CONTROLS_CHANGED = "CONTROLS_CHANGED"
     ALLOWED = "ALLOWED"
     MODEL_NOT_ALLOWED = "MODEL_NOT_ALLOWED"
     SECRET_IN_INPUT = "SECRET_IN_INPUT"
@@ -105,6 +107,7 @@ class AuditEvent(Contract):
         "invalid_output",
     ]
     semantic: SemanticResult | None = None
+    feed_version: str | None = None
 
 
 class SemanticCoverage(Contract):

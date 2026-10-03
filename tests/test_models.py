@@ -9,12 +9,13 @@ from fastapi.testclient import TestClient
 
 from agentgate.app import create_app
 from agentgate.contracts import Identity
+from agentgate.control_plane import ControlPlane, Indicator, ThreatFeed
 from agentgate.documents import DocumentRegistry, FixtureExecutor, demo_documents
 from agentgate.model_config import ModelPolicy, ResourceLimits
 from agentgate.models import ModelService, PrivateProvider
 from agentgate.policy import Policy
 from agentgate.service import ActionService
-from agentgate.storage import Store
+from agentgate.storage import Store, credential_digest
 
 
 class ObservedProvider:
@@ -426,3 +427,171 @@ def test_parallel_calls_are_rejected_even_if_provider_ignores_control(model):
 def test_policy_cannot_approve_an_unregistered_model_alias():
     with pytest.raises(ValueError):
         ModelPolicy(aliases=("unregistered",))
+
+
+def live_controls(model):
+    controls = ControlPlane(model.store, model.actions.clock)
+    controls.initialize(model.actions.policy)
+    model.actions.controls = controls
+    return controls
+
+
+def test_T32_model_rechecks_policy_inside_reservation_transaction(model, monkeypatch):
+    controls = live_controls(model)
+    reserve = model.models.ledger.reserve
+    calls = []
+
+    def changed(*args, **kwargs):
+        if not calls:
+            calls.append(True)
+            current = controls.snapshot().policy
+            controls.activate_policy(
+                current.model_copy(update={"revision": 2, "models": None}), current.version
+            )
+        return reserve(*args, **kwargs)
+
+    monkeypatch.setattr(model.models.ledger, "reserve", changed)
+    response = model.call()
+    assert response.status_code == 403
+    assert response.json()["policy_version"] == "model-test:2"
+    assert model.provider.calls == []
+    assert model.models.ledger.counters() == []
+
+
+def test_T33_model_rechecks_feed_when_policy_version_is_unchanged(model, monkeypatch):
+    controls = live_controls(model)
+    reserve = model.models.ledger.reserve
+
+    def changed(*args, **kwargs):
+        controls.activate_feed(
+            ThreatFeed(
+                revision=2,
+                indicators=(
+                    Indicator(
+                        id="deny-hello", kind="literal_text", value="Hello", stages=("model_input",)
+                    ),
+                ),
+            ),
+            "local:1",
+        )
+        return reserve(*args, **kwargs)
+
+    monkeypatch.setattr(model.models.ledger, "reserve", changed)
+    response = model.call()
+    assert response.status_code == 403
+    assert response.json()["reason_codes"] == ["THREAT_FEED_BLOCKED"]
+    assert model.provider.calls == []
+    assert model.store.events()[-1].feed_version == "local:2"
+    assert model.models.ledger.counters() == []
+
+
+def test_inflight_model_uses_dispatch_snapshot_after_policy_activation(model, monkeypatch):
+    controls = live_controls(model)
+    complete = model.provider.complete
+    model.provider.content = "Contact someone@example.org"
+
+    def changed(payload):
+        old = controls.snapshot().policy
+        controls.activate_policy(
+            old.model_copy(
+                update={
+                    "revision": 2,
+                    "output": old.output.model_copy(update={"redact_emails": False}),
+                }
+            ),
+            old.version,
+        )
+        return complete(payload)
+
+    monkeypatch.setattr(model.provider, "complete", changed)
+    response = model.call()
+    assert response.status_code == 200
+    assert "someone@example.org" not in response.text
+    assert response.json()["agentgate"]["policy_version"] == "model-test:1"
+    assert model.store.events()[-1].policy_version == "model-test:1"
+    assert controls.snapshot().policy.version == "model-test:2"
+
+
+def test_model_output_feed_blocks_after_spend(model):
+    controls = live_controls(model)
+    controls.activate_feed(
+        ThreatFeed(
+            revision=2,
+            indicators=(
+                Indicator(
+                    id="output",
+                    kind="literal_text",
+                    value="Local response",
+                    stages=("model_output",),
+                ),
+            ),
+        ),
+        "local:1",
+    )
+    response = model.call(stream=True)
+    assert response.status_code == 403
+    assert "Local response" not in response.text
+    assert len(model.provider.calls) == 1
+    assert all(row["reserved"] == 0 for row in model.models.ledger.counters())
+
+
+def test_admin_model_playground_uses_real_authority_feed_and_ledger(model):
+    origin = "http://127.0.0.1:8769"
+    live_controls(model)
+    operator = "o" * 43
+    with model.store.connection() as db:
+        db.execute("INSERT INTO operator_credentials VALUES(1,?)", (credential_digest(operator),))
+    with TestClient(
+        create_app(model.actions, model.models, admin_origin=origin), base_url=origin
+    ) as client:
+        assert client.post("/admin/playground", json={"mode": "model"}).status_code in (401, 403)
+        assert (
+            client.post(
+                "/admin/session", headers={"Origin": origin}, json={"token": model.token}
+            ).status_code
+            == 401
+        )
+        login = client.post("/admin/session", headers={"Origin": origin}, json={"token": operator})
+        assert login.status_code == 200
+        headers = {"Origin": origin, "X-CSRF-Token": login.json()["csrf_token"]}
+        body = {
+            "mode": "model",
+            "model": "local-demo",
+            "messages": [{"role": "user", "content": "Hello"}],
+            "max_tokens": 64,
+        }
+        response = client.post("/admin/playground", headers=headers, json=body)
+        assert response.status_code == 200
+        assert response.json()["choices"][0]["message"]["content"] == "Local response"
+        event = model.store.events()[-1]
+        assert event.principal_id == "operator-playground"
+        assert event.root_run_id == "operator-playground"
+        for override in ("tenant_id", "principal_id", "root_run_id", "api_base"):
+            assert (
+                client.post(
+                    "/admin/playground", headers=headers, json=body | {override: "other"}
+                ).status_code
+                == 422
+            )
+        feed = {
+            "feed": {
+                "feed_id": "local",
+                "revision": 2,
+                "indicators": [
+                    {
+                        "id": "deny-hello",
+                        "kind": "literal_text",
+                        "value": "Hello",
+                        "stages": ["model_input"],
+                    }
+                ],
+            },
+            "expected_version": "local:1",
+        }
+        assert client.post("/admin/feed", headers=headers, json=feed).status_code == 200
+        assert client.post("/admin/playground", headers=headers, json=body).status_code == 403
+        assert len(model.provider.calls) == 1
+        overview = client.get("/admin/overview").json()
+        assert overview["budgets"]["model"]
+        assert "chat.completions" in overview["coverage"]["enforced"]
+        assert overview["services"]["model"] == "configured"

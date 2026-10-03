@@ -1,6 +1,5 @@
 """Bounded Chat Completions over a private provider; nothing streams before inspection."""
 
-import copy
 import json
 from typing import Annotated, Literal, Protocol, Self
 from urllib.parse import urlsplit
@@ -9,12 +8,13 @@ import httpx
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator
 
 from agentgate.budgets import BudgetExceeded
-from agentgate.contracts import Contract, Identifier, Reason
+from agentgate.contracts import ActionResponse, Contract, Identifier, Reason
+from agentgate.control_plane import ControlsChanged, ThreatBlocked
 from agentgate.model_budgets import ModelLedger
 from agentgate.policy import Policy
 from agentgate.semantics import SemanticInvalid, SemanticUnavailable
 from agentgate.service import EMAIL, SYNTHETIC_SECRET, ActionService, Context, GateError
-from agentgate.storage import CredentialInvalid
+from agentgate.storage import CredentialInvalid, StorageUnavailable
 
 ToolName = Literal["documents_read", "memory_query", "mail_send"]
 
@@ -159,13 +159,38 @@ class ModelService:
         self.provider = provider
         self.ledger = ModelLedger(actions.store)
 
+    def reject(
+        self, context: Context, error: GateError | StorageUnavailable
+    ) -> tuple[int, ActionResponse]:
+        denied = error if isinstance(error, GateError) else GateError(503, Reason.AUDIT_UNAVAILABLE)
+        if not context.executed:
+            return self.actions.reject(context, denied)
+        # The terminal model event and usage have already been written together.
+        # On audit failure, unresolved reservation remains and output stays withheld.
+        return denied.status_code, ActionResponse(
+            status="error" if denied.status_code >= 500 else "denied",
+            action_id=context.action_id,
+            trace_id=context.trace_id,
+            decision="deny",
+            reason_codes=(denied.reason,),
+            policy_version=context.controls.policy.version if context.controls else "unavailable",
+            executed=True,
+        )
+
     @staticmethod
     def inspect(service: ActionService, context: Context, content: str, *, incoming: bool) -> str:
-        policy = service.policy
+        snapshot = service.context_controls(context)
+        policy = snapshot.policy
+        try:
+            snapshot.inspect("model_input" if incoming else "model_output", content)
+        except ThreatBlocked as error:
+            raise GateError(403, Reason.THREAT_FEED_BLOCKED) from error
+        except ValueError as error:
+            raise GateError(422 if incoming else 503, Reason.MALFORMED_REQUEST) from error
         if SYNTHETIC_SECRET.search(content):
             raise GateError(403, Reason.SECRET_IN_INPUT if incoming else Reason.SECRET_IN_OUTPUT)
         if policy.semantic_required:
-            if not service.semantic_ready() or service.semantic is None:
+            if not service.semantic_ready(policy) or service.semantic is None:
                 raise GateError(503, Reason.REQUIRED_SEMANTIC_UNAVAILABLE)
             try:
                 result = service.semantic.evaluate(context.action_id, content)
@@ -187,55 +212,62 @@ class ModelService:
 
     def complete(self, context: Context, request: ChatRequest) -> dict[str, JsonValue]:
         # Keep one immutable policy snapshot through reservation/inspection/evidence.
-        service = copy.copy(self.actions)
-        policy: Policy = service.policy
-        limits = policy.models
+        service = self.actions
         context.operation = "chat.completions"
         identity, digest = context.identity, context.credential_digest
         if identity is None or digest is None:
             raise GateError(401, Reason.AUTHENTICATION_REQUIRED)
         if "chat.completions" not in identity.operations:
             raise GateError(403, Reason.OPERATION_NOT_ALLOWED)
-        if limits is None or request.model not in limits.aliases:
-            raise GateError(403, Reason.MODEL_NOT_ALLOWED)
-        if request.max_tokens > limits.max_output_tokens:
-            raise GateError(422, Reason.MALFORMED_REQUEST)
-        payload = request.model_dump(mode="json", exclude_none=True)
-        payload["stream"] = False
-        payload.pop("stream_options", None)
-        # Ollama does not accept parallel_tool_calls; enforce the single-call
-        # contract on the returned message instead of silently dropping controls.
-        payload.pop("parallel_tool_calls", None)
-        if request.tools is None:
-            payload.pop("tool_choice", None)
+        for attempt in range(3):
+            snapshot = service.current_controls()
+            context.controls = snapshot
+            policy: Policy = snapshot.policy
+            limits = policy.models
+            if limits is None or request.model not in limits.aliases:
+                raise GateError(403, Reason.MODEL_NOT_ALLOWED)
+            if request.max_tokens > limits.max_output_tokens:
+                raise GateError(422, Reason.MALFORMED_REQUEST)
+            payload = request.model_dump(mode="json", exclude_none=True)
+            payload["stream"] = False
+            payload.pop("stream_options", None)
+            # Ollama does not accept parallel_tool_calls; enforce the single-call
+            # contract on the returned message instead of silently dropping controls.
             payload.pop("parallel_tool_calls", None)
-        serialized = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
-        try:
-            size = len(serialized.encode())
-        except UnicodeError as error:
-            raise GateError(422, Reason.MALFORMED_REQUEST) from error
-        if size > limits.max_input_bytes:
-            raise GateError(413, Reason.BODY_TOO_LARGE)
-        inspected = self.inspect(service, context, serialized, incoming=True)
-        payload = json.loads(inspected)
-        redacted = serialized != inspected
-        input_bound = len(inspected.encode()) + limits.template_token_allowance
-        if self.actions.policy.version != policy.version:
-            raise GateError(409, Reason.RESOURCE_NOT_ALLOWED)
-        try:
-            self.ledger.reserve(
-                digest,
-                identity,
-                service.event(context, "dispatch_intent", Reason.ALLOWED, "allow"),
-                limits,
-                input_bound,
-                request.max_tokens,
-                service.clock,
-            )
-        except CredentialInvalid as error:
-            raise GateError(401, Reason.INVALID_CREDENTIAL) from error
-        except BudgetExceeded as error:
-            raise GateError(429, Reason.BUDGET_EXCEEDED) from error
+            if request.tools is None:
+                payload.pop("tool_choice", None)
+                payload.pop("parallel_tool_calls", None)
+            serialized = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
+            try:
+                size = len(serialized.encode())
+            except UnicodeError as error:
+                raise GateError(422, Reason.MALFORMED_REQUEST) from error
+            if size > limits.max_input_bytes:
+                raise GateError(413, Reason.BODY_TOO_LARGE)
+            inspected = self.inspect(service, context, serialized, incoming=True)
+            payload = json.loads(inspected)
+            redacted = serialized != inspected
+            input_bound = len(inspected.encode()) + limits.template_token_allowance
+            try:
+                self.ledger.reserve(
+                    digest,
+                    identity,
+                    service.event(context, "dispatch_intent", Reason.ALLOWED, "allow"),
+                    limits,
+                    input_bound,
+                    request.max_tokens,
+                    service.clock,
+                    snapshot.assert_current,
+                )
+            except ControlsChanged as error:
+                if attempt == 2:
+                    raise GateError(409, Reason.CONTROLS_CHANGED) from error
+                continue
+            except CredentialInvalid as error:
+                raise GateError(401, Reason.INVALID_CREDENTIAL) from error
+            except BudgetExceeded as error:
+                raise GateError(429, Reason.BUDGET_EXCEEDED) from error
+            break
         context.executed = True
         usage: tuple[int, int] | None = None
         try:

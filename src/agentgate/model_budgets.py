@@ -50,6 +50,7 @@ class ModelLedger:
         input_bound: int,
         output_bound: int,
         clock: Callable[[], float],
+        before_dispatch: Callable[[sqlite3.Connection], None] | None = None,
     ) -> None:
         amounts = {
             "calls": 1,
@@ -62,6 +63,8 @@ class ModelLedger:
             now = clock()
             if self.store._resolve(db, digest, now) != identity:
                 raise CredentialInvalid
+            if before_dispatch is not None:
+                before_dispatch(db)
             # Uncertain requests may still be computing and retain an admission slot.
             active = db.execute(
                 "SELECT COUNT(*) FROM model_attempts WHERE state!='settled'"
