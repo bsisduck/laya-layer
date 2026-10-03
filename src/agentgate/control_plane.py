@@ -130,6 +130,9 @@ class ControlSnapshot:
     feed: ThreatFeed
     generation: int = 0
 
+    def assert_current(self, connection: sqlite3.Connection) -> None:
+        ControlPlane.assert_current(connection, self)
+
     def inspect(
         self, stage: Stage, text: str, *, artifacts: tuple[ArtifactMetadata, ...] = ()
     ) -> None:
