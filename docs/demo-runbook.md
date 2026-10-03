@@ -49,12 +49,13 @@ must not be used to pretend a reservation was safely released.
 Use the frozen [v1 evaluation](semantic-evaluation.md) and [v2 summary](release-evidence.md#real-semantic-evidence-remains-imperfect)
 for presentation. Record actual label, coverage and timing; never promise that
 spontaneous adversarial content will be classified correctly. V2 standard real
-HTTP ordinary-allow/attack-output-deny was observed in the semantic task, while
+HTTP ordinary-allow/attack-output-deny was observed in the semantic task and
+root's installed CLI/browser run at `f6bccde` (quota 0→2/1000), while
 ACL/DLP/quota remained authoritative. V2 is opt-in and still misses paraphrases.
 Do not claim the v1 CoreML warm failure is cured by one successful v2 run.
 
-PR28's exact registry artifact simulation and PR30's genuine restricted Hermes
-client are pending integration at this snapshot. Show their pinned evidence as
+PR28's exact registry artifact simulation is merged on main but pending release
+integration; PR30's genuine restricted Hermes client remains open at this snapshot. Show their pinned evidence as
 pending rather than running absent commands. After root reports merged refs,
 refresh this runbook with those exact CLI commands and actual audit/effect reports.
 Artifact policy accepts metadata only; it neither verifies bytes nor exploits a

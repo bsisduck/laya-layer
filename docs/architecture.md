@@ -3,7 +3,7 @@
 Snapshot and publication status: [release evidence](release-evidence.md).
 The [original architecture](../AgentGate_Full_Project_Architecture.md) describes
 the complete target; these diagrams describe the local integration prototype.
-Solid arrows are code paths in release `09a7c73`; dashed arrows are pending or
+Solid arrows are code paths in release `032bb77`; dashed arrows are pending or
 proposed. This is a trusted-host boundary, not an OS sandbox.
 
 ## Two enforcement paths, one authority
@@ -81,6 +81,7 @@ JSONL / ECS-oriented / HEC envelope"]
     Files -. "future authenticated adapter" .-> SIEM["Splunk / Elastic / OpenSearch / SOC
 vendor and bank acceptance unverified"]
     Intake["PR28 metadata intake simulator
+merged main, release integration pending
 no download or artifact execution"] -.-> Rules["Approved registry + typed feed"]
 ```
 

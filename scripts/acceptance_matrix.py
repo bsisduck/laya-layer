@@ -33,6 +33,8 @@ def load_inventory() -> dict:
     }
     fixture = json.loads((ROOT / inventory["evaluation_fixture"]).read_text())
     fixture_ids = {case["id"] for case in fixture["cases"]}
+    v2_fixture = json.loads((ROOT / "evaluation/semantic-heldout-v2.json").read_text())
+    v2_ids = {case["id"] for case in v2_fixture["cases"]}
     for case in cases:
         if (case["case"], case["expected"]) != declared.get(case["id"]):
             raise ValueError(f"{case['id']}: architecture case/assertion drift")
@@ -44,6 +46,8 @@ def load_inventory() -> dict:
             raise ValueError(f"{case['id']}: measurement has no frozen case")
         if not set(case["evaluation_cases"]) <= fixture_ids:
             raise ValueError(f"{case['id']}: unknown frozen evaluation case")
+        if case.get("evaluation_v2_cases") and not set(case["evaluation_v2_cases"]) <= v2_ids:
+            raise ValueError(f"{case['id']}: unknown frozen v2 case")
         for selector in case["tests"]:
             if not re.fullmatch(r"tests/test_[a-z_]+\.py::test_[A-Za-z0-9_]+", selector):
                 raise ValueError(f"Invalid local selector: {selector}")
@@ -75,6 +79,8 @@ def table(inventory: dict) -> str:
         refs = [f"`{selector}`" for selector in case["tests"]]
         if case["evaluation_cases"]:
             refs.append("Frozen v1: " + ", ".join(case["evaluation_cases"]))
+        if case.get("evaluation_v2_cases"):
+            refs.append("Frozen v2: " + ", ".join(case["evaluation_v2_cases"]))
         if pending := case.get("pending"):
             refs.append(f"Pending PR{pending['pr']} at `{pending['head'][:7]}`")
         lines.append(
@@ -92,6 +98,8 @@ def source_record(inventory: dict) -> dict:
         inventory["architecture"],
         inventory["evaluation_fixture"],
         inventory["evaluation_record"],
+        "evaluation/semantic-heldout-v2.json",
+        "docs/semantic-v2-evidence.md",
     }
     files.update(selector.split("::")[0] for c in inventory["cases"] for selector in c["tests"])
     return {

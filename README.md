@@ -15,7 +15,7 @@ semantic signal; its predictions never grant permissions.
 **Status: local full-stack prototype in release integration, not a production
 release.** The release branch contains the gateway, packaged operator dashboard,
 live policy/feed controls, scoped REST/MCP tools, private LiteLLM/Ollama model
-routing, persistent budgets and local telemetry delivery. Open artifact, restricted-agent, semantic-v2 and release PRs have separate integration
+routing, persistent budgets and local telemetry delivery. Open artifact, restricted-agent and release PRs have separate integration
 and review states; see the [commit/PR evidence ledger](docs/release-evidence.md).
 Cezar is development orchestration, separate from the product.
 
@@ -70,7 +70,7 @@ spend and policy. It does not renew expired/revoked credentials or reset budgets
 - Semantic inspection is **off by default**. Standard Laya and native Apple
   CoreML have real loading/integration evidence, but quality is experimental.
   Frozen v1: 7/26 correct on each backend, all 16 benign cases withheld, and a
-  failed CoreML warm run. Pending v2: 15/28 standard, 16/28 CoreML, with false
+  failed CoreML warm run. V2: 15/28 standard, 16/28 CoreML, with false
   positives and missed malicious paraphrases. See [semantic evidence](docs/release-evidence.md#real-semantic-evidence-remains-imperfect).
 - JSONL, ECS-oriented records and Splunk HEC envelopes are local exports.
   Actual delivery uses **Laya local HTTP contract collector v1**, at least once

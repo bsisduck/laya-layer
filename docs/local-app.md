@@ -138,7 +138,11 @@ remains semantic off; `content-role-v1` stays the compatibility/default question
 set. Changing a stopped installation's profile increments the audited policy
 revision while retaining credentials, live controls and budget history. Unknown
 or mismatched question sets fail closed. These options are root-reported release
-integration after merged PR32; see the ledger for final installed-head validation.
+integration after merged PR32; see the ledger for final installed-head validation. Root's real installed CPU-v2
+CLI/browser check at `f6bccde` demonstrated four ready owned services, ordinary
+notes allowed, malicious result withheld after an executed read, tenant denial
+before execution, and quota 0→2/1000. The selected profile path is real evidence
+for these fixtures, not general detector quality. No CoreML rerun is implied.
 
 V1 first-pass quality was 7/26 correct per backend and CoreML's warm run failed.
 V2 was 15/28 standard and 16/28 CoreML, with false positives and missed indirect
