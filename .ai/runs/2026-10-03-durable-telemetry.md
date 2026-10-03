@@ -43,11 +43,13 @@ are trusted. Independent high-risk review remains a release requirement.
 
 ## Progress
 
+PR: #21
+
 > Convention: `- [ ]` pending, `- [x]` done. Append ` — <commit sha>` when a step lands. Do not rename step titles.
 
 ### Phase 1: Sender
 
-- [ ] 1.1 Implement durable bounded sender and contract tests
+- [x] 1.1 Implement durable bounded sender and contract tests
 
 ### Phase 2: Collector and operator commands
 

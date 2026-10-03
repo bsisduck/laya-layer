@@ -105,6 +105,7 @@ def export_page(
     after_sequence: int = 0,
     through_sequence: int | None = None,
     limit: int = 100,
+    require_contiguous: bool = False,
 ) -> ExportPage:
     if (
         type(limit) is not int
@@ -140,6 +141,11 @@ def export_page(
             "WHERE sequence > ? AND sequence <= ? ORDER BY sequence LIMIT ?",
             (MAX_EVENT_BYTES, after_sequence, through, limit),
         ).fetchall()
+        if require_contiguous and (
+            any(row[0] != after_sequence + index + 1 for index, row in enumerate(rows))
+            or (len(rows) < limit and after_sequence + len(rows) != through)
+        ):
+            raise StorageUnavailable
         lines = []
         for sequence, event_id, body in rows:
             if body is None:
