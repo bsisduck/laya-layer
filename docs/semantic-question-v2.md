@@ -56,5 +56,9 @@ It verifies committed inputs, protocol, engine and evaluator before loading the
 existing pinned assets. Sequential standard then native CoreML uses the existing
 shared evaluation lock and process inventory plus operator coordination.
 
-Real results and activation recommendation: pending measurement. Do not treat
-protocol tests or setup validation as real inference or AgentGate enforcement.
+Measured results: [semantic-v2-evidence.md](semantic-v2-evidence.md). Standard
+CPU completed the bounded real gateway allow/block demonstration, but fresh
+held-out quality is limited (15/28 correct, seven false positives, four false
+negatives). Keep v2 opt-in; standard is the preferred opt-in runtime and CoreML
+remains experimental. Neither this result nor protocol fixtures validate a
+general detector. No automatic default activation is made here.
