@@ -11,7 +11,7 @@ mandatory document enforcement and reusable inspection hooks for model/tool owne
 and bounded operator reporting/playground APIs. Preserve document and export contracts.
 Use this Cezar worktree on fresh origin/main. User authorizes commits, push, draft
 and ready PR; no merge, labels, subagents, frontend, model routes or new tools.
-No E01-S01 issue existed at initial tracker lookup; reference #2 without duplicating it.
+Issue #8 appeared after initial lookup; PR #17 implements it and references #2.
 
 ## Implementation Plan
 
@@ -56,7 +56,7 @@ push ready PR with exact deterministic/API evidence and inference exclusions.
 
 ### Phase 1: Durable controls
 
-- [ ] 1.1 Publish stable snapshot/inspection contract and durable validated controls
+- [x] 1.1 Publish stable snapshot/inspection contract and durable validated controls
 - [ ] 1.2 Enforce feed and snapshot safety in document actions
 
 ### Phase 2: Operator APIs
