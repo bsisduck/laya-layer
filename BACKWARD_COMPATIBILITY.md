@@ -58,3 +58,12 @@ responses retain their shape and add denial reasons `THREAT_FEED_BLOCKED` and
 schema 1 remains unchanged and does not include the new feed field. Admin timeline
 adds feed evidence separately. No remote delivery, model inference, or new tools
 are implied by these contracts.
+
+Production semantic workers now require a private, persistent per-installation
+call ledger (`semantic-quota.sqlite3`). The default is 1000 admissions per UTC day,
+configurable with `semantic-worker --daily-calls`; retain the ledger during restart.
+Worker exhaustion adds HTTP429 and gateway reason `SEMANTIC_BUDGET_EXCEEDED`.
+The optional internal Supervisor quota parameter preserves fixture/evaluation
+construction; the shipped production command always configures it. Operator
+overview adds measured `budgets.semantic` or an explicit unavailable status.
+See `docs/semantic-call-quota.md` for conservative accounting and cap changes.

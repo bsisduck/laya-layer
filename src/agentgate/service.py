@@ -32,7 +32,12 @@ from agentgate.control_plane import (
 )
 from agentgate.documents import DocumentExecutor, DocumentRegistry
 from agentgate.policy import Policy
-from agentgate.semantics import SemanticEvaluator, SemanticInvalid, SemanticUnavailable
+from agentgate.semantics import (
+    SemanticBudgetExceeded,
+    SemanticEvaluator,
+    SemanticInvalid,
+    SemanticUnavailable,
+)
 from agentgate.storage import CredentialInvalid, StorageUnavailable, Store, credential_digest
 
 EMAIL = re.compile(r"\b[A-Za-z0-9._%+-]{1,64}@[A-Za-z0-9.-]{1,253}\.[A-Za-z]{2,63}\b")
@@ -274,6 +279,9 @@ class ActionService:
             assert self.semantic is not None
             try:
                 context.semantic = self.semantic.evaluate(context.action_id, content)
+            except SemanticBudgetExceeded as error:
+                context.semantic_failure = "unavailable"
+                raise GateError(429, Reason.SEMANTIC_BUDGET_EXCEEDED) from error
             except SemanticUnavailable as error:
                 context.semantic_failure = "unavailable"
                 raise GateError(503, Reason.REQUIRED_SEMANTIC_UNAVAILABLE) from error
