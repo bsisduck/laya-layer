@@ -8,7 +8,7 @@ import time
 from pathlib import Path
 
 from agentgate.lifecycle.install import configuration, install, services, verify_ollama
-from agentgate.lifecycle.processes import control, launch
+from agentgate.lifecycle.processes import available_port, control, launch
 from agentgate.lifecycle.state import LifecycleError, check_file, ownership
 
 
@@ -16,10 +16,10 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Laya Sec Layer local application lifecycle")
     parser.add_argument("command", choices=["install", "start", "status", "stop", "logs", "doctor"])
     parser.add_argument("--state-dir", type=Path, default=Path.home() / ".local/share/laya")
-    parser.add_argument("--port", type=int, default=8080)
-    parser.add_argument("--proxy-port", type=int, default=4000)
-    parser.add_argument("--worker-port", type=int, default=8091)
-    parser.add_argument("--semantic", choices=["off", "standard", "coreml"], default="off")
+    parser.add_argument("--port", type=int)
+    parser.add_argument("--proxy-port", type=int)
+    parser.add_argument("--worker-port", type=int)
+    parser.add_argument("--semantic", choices=["off", "standard", "coreml"])
     parser.add_argument(
         "--offline", action="store_true", help="Install using only cached packages/assets"
     )
@@ -32,6 +32,15 @@ def main() -> None:
     os.umask(0o077)
     try:
         if args.command == "install":
+            saved = configuration(state) if state.exists() else {}
+            args.port = args.port if args.port is not None else saved.get("port", 8080)
+            args.proxy_port = (
+                args.proxy_port if args.proxy_port is not None else saved.get("proxy_port", 4000)
+            )
+            args.worker_port = (
+                args.worker_port if args.worker_port is not None else saved.get("worker_port", 8091)
+            )
+            args.semantic = args.semantic or saved.get("semantic", "off")
             install(
                 root,
                 state,
@@ -54,12 +63,20 @@ def main() -> None:
             print(f"Operator credential file: {state / 'data/operator.token'}")
             print(f"Agent credential file: {state / 'data/client.token'}")
         elif args.command == "status":
-            configuration(state)
+            settings = configuration(state)
             try:
                 result = control(state, "status")
             except (FileNotFoundError, ConnectionRefusedError):
                 with ownership(state):
                     result = {"status": "stopped", "services": {}}
+                    for key in ("port", "proxy_port", "worker_port"):
+                        available_port(settings[key])
+            if result["status"] == "running":
+                try:
+                    verify_ollama()
+                    result["services"]["ollama_shared"] = "ready"
+                except LifecycleError:
+                    result["services"]["ollama_shared"] = "unavailable"
             print(json.dumps(result))
             if result["status"] != "running" or any(
                 v != "ready" for v in result["services"].values()
@@ -94,6 +111,10 @@ def main() -> None:
                 f"Host: {platform.system()} {platform.machine()}; Python {platform.python_version()}"
             )
             print("CoreML: native Apple Silicon only; real semantic evaluation is separate")
+            if args.semantic == "coreml" and (
+                platform.system() != "Darwin" or platform.machine() != "arm64"
+            ):
+                raise LifecycleError("CoreML unsupported: requires native Apple Silicon macOS")
             configuration(state)
             configured = services(state)
             for service in configured:

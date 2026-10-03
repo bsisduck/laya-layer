@@ -113,6 +113,10 @@ def install(
     offline: bool,
 ) -> None:
     os.umask(0o077)
+    if len({port, proxy_port, worker_port}) != 3 or any(
+        not 1024 <= value <= 65535 for value in (port, proxy_port, worker_port)
+    ):
+        raise LifecycleError("Choose three distinct service ports between 1024 and 65535")
     if platform.system() not in ("Darwin", "Linux"):
         raise LifecycleError("Supported hosts are macOS and Linux")
     if semantic == "coreml" and (platform.system() != "Darwin" or platform.machine() != "arm64"):
@@ -164,6 +168,7 @@ def install(
         validate_environment(state / "runtime/gateway")
         env["UV_PROJECT_ENVIRONMENT"] = str(state / "runtime/gateway")
         flags = ["--offline"] if offline else []
+        print("Preparing locked Python 3.12 gateway environment…", flush=True)
         run(
             [
                 "uv",
@@ -183,6 +188,7 @@ def install(
         )
         profiles = ["litellm"] + ([f"laya-{semantic}"] if semantic != "off" else [])
         for profile in profiles:
+            print(f"Preparing isolated {profile} environment…", flush=True)
             directory = state / "runtime" / profile
             validate_environment(directory)
             if not directory.exists():
@@ -327,6 +333,7 @@ def services(state: Path) -> list[Service]:
     ]
     semantic = settings["semantic"]
     if semantic != "off":
+        verify_assets(state, semantic)
         worker_port = settings["worker_port"]
         backend = f"laya_{semantic}"
         result.append(
@@ -371,3 +378,17 @@ def source_fingerprint(root: Path) -> str:
         digest.update(str(path.relative_to(root)).encode())
         digest.update(path.read_bytes())
     return digest.hexdigest()
+
+
+def verify_assets(state: Path, semantic: str) -> None:
+    root = state / "assets"
+    metadata = read_json(root / "manifests/model-assets.json")["models"][f"laya_{semantic}"]
+    for name, expected in metadata["files"].items():
+        path = root / metadata["directory"] / name
+        check_file(path)
+        with path.open("rb") as stream:
+            digest = hashlib.file_digest(stream, "sha256").hexdigest()
+        if path.stat().st_size != expected["bytes"] or digest != expected["sha256"]:
+            raise LifecycleError(
+                "Requested model asset unavailable or differs from pinned manifest"
+            )

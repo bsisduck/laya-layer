@@ -7,7 +7,11 @@ if ! command -v uv >/dev/null 2>&1; then
     exit 1
 fi
 if [ "${1:-}" = install ]; then
-    uv python install 3.12
+    LAYA_OFFLINE=
+    for arg in "$@"; do
+        [ "$arg" != --offline ] || LAYA_OFFLINE=--offline
+    done
+    uv python install $LAYA_OFFLINE 3.12
 fi
 LAYA_PYTHON=$(uv python find --offline 3.12) || {
     echo 'Python 3.12 is unavailable locally. Run ./laya install first.' >&2

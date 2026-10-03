@@ -324,7 +324,12 @@ def installation_fixture(tmp_path, monkeypatch):
 
     def dependency_fixture(command, *, env=None):
         if command[0] != "uv":
-            return real_run([sys.executable, *command[1:]], env=env)
+            prefix = (
+                [sys.executable, "-m", "agentgate.cli"]
+                if Path(command[0]).name == "agentgate"
+                else [sys.executable]
+            )
+            return real_run([*prefix, *command[1:]], env=env)
         if command[1] == "sync":
             directory = Path(env["UV_PROJECT_ENVIRONMENT"])
         elif command[1] == "venv":
@@ -333,6 +338,8 @@ def installation_fixture(tmp_path, monkeypatch):
             return
         private_dir(directory, create=True)
         private_dir(directory / "bin", create=True)
+        if (directory / "bin/python").exists():
+            return
         (directory / "bin/python").symlink_to(sys.executable)
         cli = directory / "bin/agentgate"
         write_new(cli, f"#!{sys.executable}\nfrom agentgate.cli import main\nmain()\n".encode())
@@ -409,3 +416,36 @@ def test_slow_health_headers_have_an_absolute_deadline(tmp_path):
         http_json(f"http://127.0.0.1:{port}/", timeout=0.2)
     assert time.monotonic() - started < 0.8
     thread.join(timeout=2)
+
+
+def test_upgrade_retains_keys_ledger_and_semantic_quota(installation_fixture):
+    import sqlite3
+
+    installer, root, state, options = installation_fixture
+    installer.install(root, state, **options)
+    data = state / "data"
+    keys = {p.name: p.read_bytes() for p in data.glob("*.token")}
+    with sqlite3.connect(data / "semantic-quota.sqlite3") as quota:
+        quota.execute("CREATE TABLE fixture_quota (spent INTEGER)")
+        quota.execute("INSERT INTO fixture_quota VALUES (47)")
+    # Immutable spent data independent of the launcher's own implementation.
+    with sqlite3.connect(data / "agentgate.sqlite3") as ledger:
+        credentials = ledger.execute("SELECT * FROM credentials").fetchall()
+    (root / "uv.lock").write_text("fixture updated runtime")
+    installer.install(root, state, **options)
+    assert {p.name: p.read_bytes() for p in data.glob("*.token")} == keys
+    with sqlite3.connect(data / "agentgate.sqlite3") as ledger:
+        assert ledger.execute("SELECT * FROM credentials").fetchall() == credentials
+    with sqlite3.connect(data / "semantic-quota.sqlite3") as quota:
+        assert quota.execute("SELECT spent FROM fixture_quota").fetchone() == (47,)
+    backups = list(data.glob("before-migrate-*.sqlite3"))
+    assert len(backups) == 1
+    with sqlite3.connect(backups[0]) as backup:
+        assert backup.execute("SELECT * FROM credentials").fetchall() == credentials
+
+
+def test_invalid_ports_do_not_create_partial_installation(installation_fixture):
+    installer, root, state, options = installation_fixture
+    with pytest.raises(LifecycleError, match="distinct"):
+        installer.install(root, state, **(options | {"port": 80}))
+    assert not state.exists()

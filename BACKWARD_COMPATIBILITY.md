@@ -58,3 +58,11 @@ responses retain their shape and add denial reasons `THREAT_FEED_BLOCKED` and
 schema 1 remains unchanged and does not include the new feed field. Admin timeline
 adds feed evidence separately. No remote delivery, model inference, or new tools
 are implied by these contracts.
+
+The additive root `./laya` CLI manages a separately owned installation. Its
+version-1 `installation.json` lives outside the checkout; unknown versions,
+unsafe paths and unowned legacy state are refused. Existing `agentgate` and Make
+commands are retained. Reinstallation preserves credentials/audit/budgets and
+backs up the gateway database before running its additive migration; optional
+worker quota state is retained. See [local lifecycle](docs/local-app.md) for
+ports, exit status, expiry, update and rollback contracts.

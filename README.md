@@ -20,6 +20,19 @@ The product is also referred to as **Laya Sec Layer**. See the
 PDF requirements and proposed bank-stack connections. Local event export is
 implemented; live vendor and bank integrations are not yet verified.
 
+## Install the local application
+
+```sh
+./laya install  # locked Python runtimes, private state, then http://127.0.0.1:8080/
+./laya status
+./laya stop
+```
+
+Requires uv and the verified local Ollama model. The installed application needs
+no Node or Cezar. Read [getting started and lifecycle](docs/local-app.md) for
+prerequisites, credential file locations, optional Laya/CoreML, offline restart,
+upgrades and known limits. Use a complete integrated application checkout.
+
 ## Run the document demo
 
 ```sh
