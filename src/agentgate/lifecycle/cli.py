@@ -34,6 +34,7 @@ def main() -> None:
     parser.add_argument("--worker-port", type=int)
     parser.add_argument("--collector-port", type=int)
     parser.add_argument("--semantic", choices=["off", "standard", "coreml"])
+    parser.add_argument("--question-set", choices=["content-role-v1", "content-role-v2"])
     parser.add_argument(
         "--offline", action="store_true", help="Install using only cached packages/assets"
     )
@@ -63,6 +64,7 @@ def main() -> None:
                 else saved.get("collector_port", 8095)
             )
             args.semantic = args.semantic or saved.get("semantic", "off")
+            args.question_set = args.question_set or saved.get("question_set", "content-role-v1")
             install(
                 root,
                 state,
@@ -71,6 +73,7 @@ def main() -> None:
                 worker_port=args.worker_port,
                 collector_port=args.collector_port,
                 semantic=args.semantic,
+                question_set=args.question_set,
                 offline=args.offline,
             )
             if args.no_start:

@@ -671,3 +671,49 @@ def test_local_lab_configuration_never_overwrites_a_custom_target(tmp_path):
         configure_telemetry(data, 8095, 8096)
     assert (data / "telemetry.json").read_text() == custom
     assert (data / "collector.token").read_bytes() == original_token
+
+
+def test_installed_question_profile_binds_both_workers_and_versions_policy(
+    installation_fixture, monkeypatch
+):
+    from agentgate.control_plane import ControlPlane
+    from agentgate.storage import Store
+
+    installer, root, state, options = installation_fixture
+    installer.install(root, state, **options)
+    controls = ControlPlane(Store(state / "data/agentgate.sqlite3"))
+    before = controls.snapshot()
+    keys = {p.name: p.read_bytes() for p in (state / "data").glob("*.token")}
+    # This test verifies provisioning/wiring, not model download or inference.
+    monkeypatch.setattr(installer, "prepare_assets", lambda *args, **kwargs: None)
+    monkeypatch.setattr(installer, "verify_assets", lambda *args: None)
+    selected = options | {"semantic": "standard", "question_set": "content-role-v2"}
+    installer.install(root, state, **selected)
+    after = controls.snapshot()
+    assert after.policy.semantic_required
+    assert after.policy.revision == before.policy.revision + 1
+    configured = {service.name: service.command for service in installer.services(state)}
+    for service, flag in [("gateway", "--semantic-question-set"), ("semantic", "--question-set")]:
+        assert configured[service][configured[service].index(flag) + 1] == "content-role-v2"
+    installer.install(root, state, **selected)
+    assert controls.snapshot().policy.version == after.policy.version
+    installer.install(root, state, **(selected | {"question_set": "content-role-v1"}))
+    assert controls.snapshot().policy.revision == after.policy.revision + 1
+    assert configuration(state)["question_set"] == "content-role-v1"
+    assert {p.name: p.read_bytes() for p in (state / "data").glob("*.token")} == keys
+    assert controls.snapshot().policy.tool_budgets == before.policy.tool_budgets
+
+
+def test_unknown_installed_question_profile_never_prepares_authority(installation_fixture):
+    installer, root, state, options = installation_fixture
+    with pytest.raises(LifecycleError, match="question set"):
+        installer.install(root, state, **options, question_set="invented-v3")
+    assert not state.exists()
+    installer.install(root, state, **options)
+    settings = configuration(state)
+    settings.pop("question_set")
+    save_json(state / "installation.json", settings)
+    assert configuration(state)["question_set"] == "content-role-v1"
+    save_json(state / "installation.json", settings | {"question_set": "invented-v3"})
+    with pytest.raises(LifecycleError, match="question set"):
+        installer.services(state)

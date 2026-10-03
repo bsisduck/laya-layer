@@ -71,6 +71,9 @@ def configuration(state: Path) -> dict[str, Any]:
         )
     if value.get("semantic") not in ("off", "standard", "coreml"):
         raise LifecycleError("Invalid semantic profile")
+    value.setdefault("question_set", "content-role-v1")
+    if value["question_set"] not in ("content-role-v1", "content-role-v2"):
+        raise LifecycleError("Invalid semantic question set")
     # Older configurations had three ports; choose a non-colliding default for
     # this additive field. The installer still refuses an occupied OS port.
     value.setdefault(
@@ -123,8 +126,11 @@ def install(
     semantic: str,
     offline: bool,
     collector_port: int = 8095,
+    question_set: str = "content-role-v1",
 ) -> None:
     os.umask(0o077)
+    if question_set not in ("content-role-v1", "content-role-v2"):
+        raise LifecycleError("Invalid semantic question set")
     if len({port, proxy_port, worker_port, collector_port}) != 4 or any(
         not 1024 <= value <= 65535 for value in (port, proxy_port, worker_port, collector_port)
     ):
@@ -137,10 +143,17 @@ def install(
     check_path(state)
     if state.exists():
         settings = configuration(state)
-        wanted = (port, proxy_port, worker_port, collector_port, semantic)
+        wanted = (port, proxy_port, worker_port, collector_port, semantic, question_set)
         existing = tuple(
             settings[key]
-            for key in ("port", "proxy_port", "worker_port", "collector_port", "semantic")
+            for key in (
+                "port",
+                "proxy_port",
+                "worker_port",
+                "collector_port",
+                "semantic",
+                "question_set",
+            )
         )
         changed = wanted != existing
     else:
@@ -160,6 +173,7 @@ def install(
                 "worker_port": worker_port,
                 "collector_port": collector_port,
                 "semantic": semantic,
+                "question_set": question_set,
                 "prepared": False,
             },
         )
@@ -286,7 +300,8 @@ def install(
         )
         if semantic != "off":
             prepare_assets(root, state, semantic, offline=offline)
-        if settings["semantic"] != semantic:
+        profile_changed = settings["question_set"] != question_set
+        if settings["semantic"] != semantic or profile_changed:
             run(
                 [
                     str(runtime(state, "gateway") / "python"),
@@ -295,6 +310,7 @@ def install(
                     "--configure-semantic",
                     str(data),
                     semantic,
+                    "changed" if profile_changed else "unchanged",
                 ]
             )
         settings.update(
@@ -303,6 +319,7 @@ def install(
             worker_port=worker_port,
             collector_port=collector_port,
             semantic=semantic,
+            question_set=question_set,
             prepared=True,
             root=str(root),
             installed_at=time.time(),
@@ -421,6 +438,8 @@ def services(state: Path) -> list[Service]:
                     "semantic-worker",
                     "--backend",
                     backend,
+                    "--question-set",
+                    settings["question_set"],
                     "--runtime-python",
                     str(runtime(state, f"laya-{semantic}") / "python"),
                     "--root",
@@ -434,7 +453,14 @@ def services(state: Path) -> list[Service]:
             )
         )
         command.extend(
-            ["--semantic-url", f"http://127.0.0.1:{worker_port}", "--semantic-backend", backend]
+            [
+                "--semantic-url",
+                f"http://127.0.0.1:{worker_port}",
+                "--semantic-backend",
+                backend,
+                "--semantic-question-set",
+                settings["question_set"],
+            ]
         )
     collector_port = settings["collector_port"]
     result.append(

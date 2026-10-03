@@ -205,3 +205,41 @@ def observe_delivery(page, state, action, artifacts):
         )
         + "\n"
     )
+
+
+def model_generation(page, state, artifacts):
+    """Optional real installed-provider check; never replaced by a mocked response."""
+
+    def attempts():
+        with sqlite3.connect(state / "agentgate.sqlite3") as db:
+            return db.execute("SELECT COUNT(*) FROM model_attempts").fetchone()[0]
+
+    page.get_by_role("button", name="Model", exact=True).click()
+    page.get_by_label("Example preset").select_option(label="Input secret control")
+    count = attempts()
+    denied = execute(page)
+    assert denied["decision"] == "deny" and not denied["executed"] and attempts() == count
+    page.get_by_label("Example preset").select_option(label="Local summary")
+    started = time.monotonic()
+    result = execute(page)
+    elapsed = (time.monotonic() - started) * 1000
+    assert result["agentgate"]["executed"] and result["choices"][0]["message"]["content"].strip()
+    assert attempts() == count + 1
+    page.screenshot(path=str(artifacts / "model-generation.png"), full_page=True)
+    (artifacts / "model-generation.json").write_text(
+        json.dumps(
+            {
+                "input_secret_blocked_without_provider_attempt": True,
+                "real_model_reply": True,
+                "model": result["model"],
+                "usage": result["usage"],
+                "agentgate": result["agentgate"],
+                "elapsed_ms": round(elapsed, 3),
+                "reply_characters": len(result["choices"][0]["message"]["content"]),
+                "provider_attempt_delta": attempts() - count,
+            },
+            indent=2,
+        )
+        + "\n"
+    )
+    page.get_by_role("button", name="Document", exact=True).click()

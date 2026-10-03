@@ -10,7 +10,7 @@ import json
 import sqlite3
 from pathlib import Path
 
-from fullstack_flows import observe_delivery, restore_controls, tools_and_renewal
+from fullstack_flows import model_generation, observe_delivery, restore_controls, tools_and_renewal
 from playwright.sync_api import expect, sync_playwright
 
 
@@ -19,6 +19,9 @@ def main() -> None:
     parser.add_argument("--url", required=True)
     parser.add_argument("--state-dir", type=Path, required=True)
     parser.add_argument("--artifacts", type=Path, required=True)
+    parser.add_argument(
+        "--model", action="store_true", help="Also run the actual configured local model"
+    )
     args = parser.parse_args()
     args.artifacts.mkdir(parents=True, exist_ok=True)
     with sync_playwright() as playwright:
@@ -77,6 +80,8 @@ def main() -> None:
                     expect(page.locator(".result")).to_contain_text("Execution is not confirmed")
             page.screenshot(path=str(args.artifacts / "playground-denied.png"), full_page=True)
             action = tools_and_renewal(page, navigate, args.state_dir, args.artifacts)
+            if args.model:
+                model_generation(page, args.state_dir, args.artifacts)
             navigate("Security timeline")
             expect(page.get_by_label("Decision", exact=True)).to_be_visible()
             page.get_by_label("Decision", exact=True).select_option("deny")
@@ -188,7 +193,8 @@ def main() -> None:
         assert any(event["decision"] == "redact" and event["executed"] for event in events)
         assert any(event["decision"] == "deny" and not event["executed"] for event in events)
     print(
-        "PASS: real document/memory/approval/outbox/renewal/control-plane browser flows, CAS conflict, feed enforcement, export, session revocation, keyboard and 390/768/1440px layouts; no inference."
+        "PASS: real document/memory/approval/outbox/renewal/control-plane browser flows, CAS conflict, feed enforcement, export, session revocation, keyboard and 390/768/1440px layouts; "
+        + ("real configured model generation verified." if args.model else "no inference.")
     )
 
 

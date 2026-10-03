@@ -49,13 +49,13 @@ def initialize(directory: Path, policy_path: Path, proxy_path: Path, semantic: s
     bootstrap_operator(directory, policy)
 
 
-def configure_semantic(directory: Path, semantic: str) -> None:
+def configure_semantic(directory: Path, semantic: str, *, profile_changed: bool = False) -> None:
     from agentgate.control_plane import ControlPlane
 
     controls = ControlPlane(Store(directory / "agentgate.sqlite3"))
     snapshot = controls.snapshot()
     required = semantic != "off"
-    if snapshot.policy.semantic_required != required:
+    if snapshot.policy.semantic_required != required or profile_changed:
         policy = snapshot.policy.model_copy(
             update={
                 "semantic_required": required,
@@ -91,6 +91,8 @@ if __name__ == "__main__":
     if sys.argv[1] == "--configure-telemetry":
         configure_telemetry(Path(sys.argv[2]), int(sys.argv[3]), int(sys.argv[4]))
     elif sys.argv[1] == "--configure-semantic":
-        configure_semantic(Path(sys.argv[2]), sys.argv[3])
+        configure_semantic(
+            Path(sys.argv[2]), sys.argv[3], profile_changed=sys.argv[4:5] == ["changed"]
+        )
     else:
         initialize(Path(sys.argv[1]), Path(sys.argv[2]), Path(sys.argv[3]), sys.argv[4])
