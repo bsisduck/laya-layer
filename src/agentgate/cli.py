@@ -15,6 +15,7 @@ from agentgate.app import create_app
 from agentgate.audit_export import export_page
 from agentgate.contracts import Identity
 from agentgate.documents import DocumentRegistry, FixtureExecutor, demo_documents
+from agentgate.inference_engine import PROFILES, QUESTION_SET
 from agentgate.policy import load_policy
 from agentgate.semantic_quota import QuotaUnavailable
 from agentgate.semantics import SemanticClient
@@ -75,6 +76,7 @@ def main() -> None:
     serve.add_argument("--port", type=int, default=8000)
     serve.add_argument("--mcp", action="store_true", help="Enable /mcp (install the mcp extra)")
     serve.add_argument("--semantic-url")
+    serve.add_argument("--semantic-question-set", choices=list(PROFILES), default=QUESTION_SET)
     serve.add_argument("--model-url", help="Private loopback LiteLLM base URL, including /v1")
     serve.add_argument("--model-token-file", type=Path, help="Private upstream credential file")
     serve.add_argument(
@@ -85,6 +87,7 @@ def main() -> None:
     worker.add_argument("--runtime-python", type=Path, required=True)
     worker.add_argument("--root", type=Path, default=Path.cwd())
     worker.add_argument("--port", type=int, default=8091)
+    worker.add_argument("--question-set", choices=list(PROFILES), default=QUESTION_SET)
     worker.add_argument(
         "--daily-calls",
         type=int,
@@ -143,6 +146,7 @@ def main() -> None:
                     args.semantic_url,
                     (args.state_dir / "worker.token").read_text().strip(),
                     args.semantic_backend,
+                    question_set_id=args.semantic_question_set,
                 )
                 if args.semantic_url
                 else None,
@@ -179,10 +183,13 @@ def main() -> None:
                 args.backend,
                 "--root",
                 str(args.root.absolute()),
+                "--question-set",
+                args.question_set,
             ]
             supervisor = Supervisor(
                 command,
                 args.backend,
+                question_set_id=args.question_set,
                 quota=SemanticQuota(
                     args.state_dir / "semantic-quota.sqlite3",
                     args.daily_calls,

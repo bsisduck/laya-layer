@@ -40,15 +40,16 @@ def git(*args):
     return subprocess.check_output(["git", "-C", str(ROOT), *args], text=True).strip()
 
 
-def committed_inputs(frozen):
-    paths = [*frozen, "evaluation/freeze-v1.json", *EVALUATOR_FILES]
+def committed_inputs(frozen, version="v1"):
+    freeze_path = f"evaluation/freeze-{version}.json"
+    paths = [*frozen, freeze_path, *EVALUATOR_FILES]
     for path in paths:
         committed = subprocess.check_output(["git", "-C", str(ROOT), "show", f"HEAD:{path}"])
         if committed != (ROOT / path).read_bytes():
             raise ValueError("Commit evaluation inputs and runner before inference")
     return {
         "commit": git("rev-parse", "HEAD"),
-        "freeze_commit": git("log", "-1", "--format=%H", "--", "evaluation/freeze-v1.json"),
+        "freeze_commit": git("log", "-1", "--format=%H", "--", freeze_path),
         "frozen_sha256": frozen,
         "evaluator_sha256": {p: digest(ROOT / p) for p in EVALUATOR_FILES},
     }
@@ -201,6 +202,8 @@ async def run_backend(args, dataset, protocol, provenance):
                     args.backend,
                     "--assets-root",
                     str(args.assets_root),
+                    "--question-set",
+                    protocol["question_set_id"],
                     stdin=asyncio.subprocess.PIPE,
                     stdout=asyncio.subprocess.PIPE,
                     stderr=asyncio.subprocess.DEVNULL,
@@ -213,6 +216,7 @@ async def run_backend(args, dataset, protocol, provenance):
                     ready["status"] != "ready"
                     or ready["backend"] != args.backend
                     or ready["checkpoint_revision"] != REVISIONS[args.backend]
+                    or ready["question_set_id"] != protocol["question_set_id"]
                 ):
                     raise ValueError("Invalid startup metadata")
                 report["runtime"] = ready
@@ -230,6 +234,7 @@ async def run_backend(args, dataset, protocol, provenance):
                         try:
                             request = SemanticRequest(
                                 request_id=f"{case.id}-p{repetition}",
+                                question_set_id=protocol["question_set_id"],
                                 untrusted_content=case.content,
                             )
                             process.stdin.write(request.model_dump_json().encode() + b"\n")
@@ -242,6 +247,7 @@ async def run_backend(args, dataset, protocol, provenance):
                                 case_id=case.id,
                                 repetition=repetition,
                                 backend=args.backend,
+                                question_set_id=protocol["question_set_id"],
                                 status=result.status,
                                 result=result,
                                 diagnostics=diagnostics,
@@ -267,6 +273,7 @@ async def run_backend(args, dataset, protocol, provenance):
                             case_id=case.id,
                             repetition=repetition,
                             backend=args.backend,
+                            question_set_id=protocol["question_set_id"],
                             status=failure_status,
                             attempted=attempted,
                             error_type=failure,
@@ -283,6 +290,7 @@ async def run_backend(args, dataset, protocol, provenance):
                 case_id=c.id,
                 repetition=r,
                 backend=args.backend,
+                question_set_id=protocol["question_set_id"],
                 status="unavailable",
                 attempted=False,
                 error_type=type(error).__name__,
@@ -315,8 +323,8 @@ async def run_backend(args, dataset, protocol, provenance):
     return report
 
 
-def compare(paths):
-    dataset, protocol, frozen = load_frozen(ROOT)
+def compare(paths, version="v1"):
+    dataset, protocol, frozen = load_frozen(ROOT, version)
     reports = [json.loads(path.read_bytes()) for path in paths]
     if {r["backend"] for r in reports} != set(REVISIONS):
         raise ValueError("Comparison requires one report from each backend")
@@ -334,7 +342,11 @@ def compare(paths):
         [Observation.model_validate(o) for o in r["observations"] if o["repetition"] == 0]
         for r in reports
     ]
-    if any(o.backend != r["backend"] for r, obs in zip(reports, rows, strict=True) for o in obs):
+    if any(
+        o.backend != r["backend"] or o.question_set_id != protocol["question_set_id"]
+        for r, obs in zip(reports, rows, strict=True)
+        for o in obs
+    ):
         raise ValueError("Wrong backend in observations")
     comparisons = {"all": disagreement(dataset, *rows)}
     for field in ("language", "case_class"):
@@ -369,18 +381,20 @@ def main():
     comparison = commands.add_parser("compare")
     comparison.add_argument("reports", type=Path, nargs=2)
     comparison.add_argument("--output", type=Path, required=True)
+    for command in (run, comparison):
+        command.add_argument("--version", choices=["v1", "v2"], default="v1")
     args = parser.parse_args()
     # Reserve the output before expensive work. Never silently replace evidence.
     args.output.parent.mkdir(parents=True, exist_ok=True)
     with args.output.open("x") as stream:
         if args.command == "run":
-            dataset, protocol, frozen = load_frozen(ROOT)
-            provenance = committed_inputs(frozen)
+            dataset, protocol, frozen = load_frozen(ROOT, args.version)
+            provenance = committed_inputs(frozen, args.version)
             args.assets_root = args.assets_root.resolve()
             args.runtime_python = args.runtime_python.absolute()
             report = asyncio.run(run_backend(args, dataset, protocol, provenance))
         else:
-            report = compare(args.reports)
+            report = compare(args.reports, args.version)
         json.dump(report, stream, ensure_ascii=False, indent=2, allow_nan=False)
         stream.write("\n")
     print(json.dumps({"status": report.get("status", "compared"), "output": str(args.output)}))
