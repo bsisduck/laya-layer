@@ -46,5 +46,5 @@ PR: #20
 ### Phase 2: Verify and publish
 
 - [x] 2.1 Freeze API integration and test failure states — cd02f05
-- [ ] 2.2 Validate, browser-test and review
-- [ ] 2.3 Publish ready PR and evidence
+- [x] 2.2 Validate, browser-test and review — cd02f05; make validate 174 passed; real PR17 browser + mocked consumer suites passed
+- [x] 2.3 Publish ready PR and evidence — PR #20; author review and evidence posted; independent integration/release review remains root-owned
