@@ -65,3 +65,46 @@ HTTP collector across restart (two records, no duplicates), reject partial sende
 configuration, and verify timings only after the final body with bounded memory.
 An existing test expecting unknown latency was updated to assert three measured
 responses; no protection contract changed. Product launcher wiring remains next.
+
+## Installed application evidence (2026-10-03)
+
+The product launcher now owns private LiteLLM, the local telemetry collector and
+its gateway; optional semantic worker profiles are version-bound on both sides.
+State migration preserves independent keys, live controls, approvals and ledgers.
+The non-editable wheel rebuild fix from PR22 is integrated. Explicit profile
+changes version the policy; unknown profiles are refused before provisioning.
+
+At 6495842: `make validate` PASS **536 tests**, Ruff, strict mypy, source/wheel
+packaging. The semantic-profile wiring adds real provisioning/CAS checks but
+mocks downloads; it is not inference evidence.
+
+Installed Chromium QA PASS: login rejects agent authority; scoped documents
+allow/redact/deny; memory excludes other-tenant rows; mail approval is immutable;
+changed payload conflicts; execution/retry leaves exactly one SQLite outbox row;
+expired playground authority renews explicitly while identity and all budget rows
+stay unchanged. Policy CAS conflict, next-request feed enforcement, minimized
+export, session revocation, keyboard operation and 390/768/1440px layouts passed.
+A separate authenticated overview/collector comparison observed 51 acknowledged
+minimized records, zero lag, and the tested mail action with no mail payload leak.
+Observed response P50/P95 were 19.286/39.985 ms across 28 playground responses;
+this includes tool time, not isolated security overhead, and resets on restart.
+The test restores configuration at newer revisions without deleting records.
+
+Real installed browser generation also PASS: secret input denied before any model
+attempt; ordinary summary produced 488 characters and usage 36 prompt / 82 output
+= 118 tokens, one durable provider attempt, 4317.436 ms end to end. This is an
+individual generation timing, not a percentile or semantic-quality result.
+
+QA launcher proof PASS: warm reuse 0.244 s, tracked-source touch invalidated reuse,
+double stop was idempotent, restart 7.406 s, and private tokens, credential epochs,
+tool/model budget accounts were unchanged. Evidence and screenshots live in
+ignored `.ai/qa/artifacts_fullstack/`; no credentials or runtime state are published.
+Two first browser attempts exposed test assumptions (same-route focus and the
+immutable payload also including idempotency_key); corrected assertions then
+passed against the unchanged product. Earlier unsuccessful attempts remain in
+local audit state.
+
+The owner requested GPT-6.1-Sol for execution. Cezar's live catalog exposes it;
+subsequent docs and integrated artifact-review tasks explicitly use that model.
+Native prior runs finish on their existing model. Final integration review/CI and
+remaining agent/document delivery are still required before product release.

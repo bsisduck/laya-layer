@@ -129,3 +129,12 @@ label meaning. Worker/client handshake and result mismatches fail closed, with n
 new permissions, threshold, fallback or storage migration. See
 `docs/semantic-question-v2.md`. Evaluation CLI adds `--version v1|v2`; historical
 v1 reproduction requires the pinned PR23 checkout below, not a rewritten freeze.
+
+The installed lifecycle adds a private local telemetry collector (default port
+8095) and gateway-owned durable sender. Existing version-1 installation metadata
+receives a non-colliding collector port and v1 question-set default during
+configuration. `./laya install --question-set content-role-v2` explicitly binds
+both semantic endpoints; switching the profile versions the live policy without
+resetting credentials or usage. `--collector-port` is remembered alongside other
+ports. The dashboard adds bounded process-local response timings and actual
+local-lab delivery state; neither implies a vendor connection or classifier accuracy.
