@@ -497,6 +497,16 @@ def attach_admin_routes(
         mcp_enabled = getattr(app.state, "mcp_enabled", False) is True
         models = getattr(app.state, "models", None)
         model_enabled = isinstance(models, ModelService) and snapshot.policy.models is not None
+        delivery: dict[str, object] = {"enabled": False, "status": "not_configured"}
+        if app.state.telemetry_config is not None:
+            from agentgate.telemetry import telemetry_status
+
+            delivery = telemetry_status(service.store.path, app.state.telemetry_config)
+            task = getattr(app.state, "telemetry_task", None)
+            if task is None or task.done():
+                delivery.update(sender_running=False, status="unavailable")
+            delivery["target_kind"] = "local_contract_lab"
+            delivery["tenant"] = app.state.telemetry_config.tenant
         return {
             "policy_version": snapshot.policy.version,
             "feed_version": snapshot.feed.version,
@@ -541,7 +551,8 @@ def attach_admin_routes(
                 if service.semantic.ready()
                 else "unavailable",
             },
-            "latency": {"status": "unknown", "reason": "Gateway latency is not recorded"},
+            "latency": app.state.latency.snapshot(),
+            "telemetry": delivery,
             "coverage": {
                 "enforced": ["documents.read", "memory.query", "mail.send"]
                 + (["chat.completions"] if model_enabled else []),

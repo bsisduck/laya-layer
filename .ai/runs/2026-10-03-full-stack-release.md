@@ -47,3 +47,21 @@ because the temporary static test server omitted /static mapping; corrected test
 serving matched the packaged route. This was a test environment error, not an
 application failure, and these mocks are not enforcement proof. Installed real
 browser QA remains pending.
+
+## Measured observability integration
+
+The gateway owns one durable telemetry sender inside its lifespan, composed with
+MCP startup/shutdown. Trusted CLI config/token file flags configure it together.
+Admin overview exposes actual acknowledgments, lag, pending/retry state and recent
+delivery timing; no credential or raw request content enters the response. A dead
+sender is unavailable, never presented as healthy. HTTP response timings use a
+bounded 512-sample process-local window and fixed route categories. They explicitly
+include provider/tool time and exclude MCP/disconnected requests; these are not
+isolated guard overhead or permanent historical metrics.
+
+Validation: make validate 464 tests PASS, six JS contract tests PASS. Three new
+integration tests exercise real gateway lifespan + MCP + authenticated admin +
+HTTP collector across restart (two records, no duplicates), reject partial sender
+configuration, and verify timings only after the final body with bounded memory.
+An existing test expecting unknown latency was updated to assert three measured
+responses; no protection contract changed. Product launcher wiring remains next.

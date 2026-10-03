@@ -16,6 +16,11 @@ export async function overview(api) {
   root.append(panel('Resource ledger', el('p', {class: 'hint'}, 'Reserved and spent values use the units reported by each budget. Unreported model usage is unknown.'),
     Array.isArray(counters) && counters.length ? table(['Scope', 'Key', 'Reserved', 'Spent'], counters.map(row => [row.scope, row.scope_key, row.reserved, row.spent])) : empty(Array.isArray(counters) ? 'No tool budget reservations recorded.' : 'Budget counters unavailable.'),
     details('Full budget evidence', data.budgets || {status: 'unknown'})));
+  const delivery = data.telemetry || {status: 'not_configured'};
+  root.append(panel('Audit delivery', el('div', {class: 'section-head'}, tag(delivery.status)),
+    el('p', {class: 'hint'}, 'Local collector contract lab. Acknowledgments confirm persisted minimized events; this is not a bank connection or vendor certification.'),
+    pairs({sender_running: delivery.sender_running, acknowledged_events: delivery.acknowledged_events, backlog_sequences: delivery.source_lag_sequences, last_delivery_ms: delivery.last_delivery_ms}),
+    details('Delivery evidence', delivery)));
   return root;
 }
 export function filterEvents(events, decision, query) {
