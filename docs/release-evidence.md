@@ -82,69 +82,37 @@ V1 stays the compatibility default and semantic inspection is off in the default
 installer. The corpora and question meanings differ, so this is not a controlled
 v1/v2 improvement estimate. No inference ran during documentation authoring.
 
-## Root-reported installed QA updates
+## Root-reported installed QA
 
-Supplied by root during documentation work, separate from this documentation task's own execution and this branch's execution. Root owns these reports and final runtime
-preparation; no browser/model run was repeated by this documentation task.
+These results are supplied by root, separately from this documentation task's own
+control run. Root owns final runtime preparation/current-head review. The
+committed [full-stack QA record](../.ai/runs/2026-10-03-full-stack-release.md)
+is in release snapshot `032bb77`; later observations below identify their refs.
 
-- Collector lifecycle integration `5896766`, model selection `09a7c73`: root
-  reports 508 deterministic tests and actual installed browser allow/redact/tenant
-  denial, tenant-scoped memory, immutable mail approval/changed-payload conflict/
-  exact execution/retry with one SQLite outbox row, explicit tools credential
-  renewal preserving identity/budget rows, policy CAS conflict, next-request feed,
-  minimized export, session revocation, 390/768/1440 responsive layouts.
-- Release `3772ebc`: root reports 509 deterministic tests (including installer
-  wheel preparation fix), installed browser suite and local collector **51 records,
-  zero lag**. Final measured collector assertions were being added.
-- Actual installed model smoke at `3772ebc`: a secret input produced zero new
-  provider attempts. Benign local summary returned 488 characters, 118 tokens
-  (36 prompt, 82 completion), one durable model attempt, **4317 ms end-to-end**.
-  Timing includes generation and is a single observation, not guard-only overhead
-  or a percentile. Root notes runtime was before the next wheel reprepare;
-  final fresh installed-head verification remains root-owned.
-- Root report paths: `tests/frontend/browser_check.py` plus new
-  `tests/frontend/fullstack_flows.py`; `.ai/qa/artifacts_fullstack/model-generation.png`
-  and minimized JSON in root's ignored QA output. The suite is now in the published integration tree; raw generated results
-  remain in root's private ignored output.
-- Artifact28 independent review: root reports 333 tests +56 probes without code
-  defects, then conflict/CLI note fix `a136056` with 493 tests; re-review pending.
-  Do not promote this to a merged artifact feature.
-- Semantic v2: root reports real CPU gateway ordinary allow/attack deny plus
-  ACL/DLP/quota smoke PASS; its frozen holdout mistakes above remain unchanged.
+| Scope and ref | Reported observation | Evidence limit |
+|---|---|---|
+| Installer22 main `b15eb65` | Independent 504-test merged-head gate, both Linux CI green; stale source-only wheel fixed via `--reinstall-package agentgate` | Runtime source preparation still must match the tested installed head |
+| Installed UI through `032bb77` / semantic wiring `6495842` | 536 deterministic checks; real browser document allow/redact/tenant deny, memory isolation, immutable mail approval/changed-payload conflict/exact execution/retry with one SQLite outbox row, explicit renewal preserving identity/budgets, policy CAS/feed/export/session, 390/768/1440 layouts | Synthetic tool resources; root evidence, not this docs task's browser run |
+| Installed collector through `032bb77` | 51 minimized receipt records, zero source lag; tested mail action without payload leak | Local protocol lab, no vendor indexing proof |
+| Operator timings | P50/P95 19.286/39.985 ms, 28 playground responses | Includes tool time; bounded process-local window resets on restart, not isolated security overhead |
+| Actual model smoke `3772ebc` | Secret denied with zero new provider attempts; benign summary 488 characters, 118 tokens (36 prompt,82 output), one durable attempt, 4317.436 ms | Single end-to-end timing including generation; not a percentile/semantic benchmark; root notes subsequent runtime reprepare |
+| QA cache/lifecycle | Warm reuse 0.244 s; source touch invalidated reuse; double stop idempotent; restart 7.406 s; tokens/epochs/tool/model ledgers preserved | Single local observations, not portable startup targets |
+| Installed standard-v2 `f6bccde` | Explicit `--semantic standard --question-set content-role-v2 --no-start`, offline reprepare/start, four owned services ready; ordinary notes allowed/executed; malicious result withheld after executed read; tenant denial before read; quota 0→2/1000 | Proves selected CPU profile for those fixtures, not general detection; no CoreML reinference |
+| Artifact28 main `798bab1`, reviewed `703a33e` | Independent GPT-6.1-Sol full548-test gate +56 negative probes and green CI | Exact metadata policy simulation; release integration still pending in `032bb77` |
+| PR30 author run `f07add0` | REST 4.46 s, MCP 3.32 s, genuine Hermes 6.46 s; each two model calls and one document cycle | Individual end-to-end observations; published inspected head `dfe67c8`; final gate/root review/merge pending |
 
-- Updated published release `032bb77`, semantic integration `6495842`: root's
-  committed [installed QA record](../.ai/runs/2026-10-03-full-stack-release.md)
-  reports **536 deterministic checks** at `6495842`, matching remembered worker/
-  gateway v2 flags, profile-change audited revision and preserved state.
-  Observed operator response P50/P95 were 19.286/39.985 ms over 28 playground
-  responses, including tool time; bounded process-local metrics reset on restart.
-- QA cache/lifecycle report `.ai/qa/artifacts_fullstack/qa-cache-lifecycle.json`:
-  warm reuse 0.244 s, tracked source touch invalidated reuse, double stop
-  idempotent, restart 7.406 s, tokens/epochs/tool and model ledgers preserved.
-  These are single local observations. Final review, remaining agent integration
-  and current-head runtime/CI evidence stay root-owned.
+The installed semantic denial is **`SEMANTIC_BLOCKED`, `executed=true`, result
+withheld**. The cross-tenant denial is **`RESOURCE_NOT_ALLOWED`, `executed=false`**.
+An output denial does not undo an executed read. All owned semantic QA children
+were stopped by root. The earlier failed CoreML run remains retained.
 
-- Artifact28 is now merged main `798bab1`; root reports exact reviewed head
-  `703a33e`, independent GPT-6.1-Sol full548-test gate +56 negative probes, CI green.
-  It remains outside release snapshot `032bb77` until root integrates it.
-- PR30 author reports real local cycles at `f07add0`: direct REST 4.46 s, MCP
-  3.32 s, genuine Hermes 6.46 s; each used two model calls and one document cycle.
-  These are individual end-to-end observations, not guard-only latency or quality
-  percentiles. Published inspected head is still `dfe67c8`; final gate/root review
-  and merge are pending. Root's actual installed standard-v2 profile check and
-  independent PR31 QA were in progress at this status cutoff.
-
-- Actual installed standard-v2 CLI/browser proof at `f6bccde`: root reports
-  `./laya install --semantic standard --question-set content-role-v2 --no-start`,
-  offline reprepare and four owned services ready. Ordinary notes were allowed
-  with `executed=true`; embedded instructions yielded `SEMANTIC_BLOCKED`,
-  **`executed=true` with result withheld**; cross-tenant access yielded
-  `RESOURCE_NOT_ALLOWED`, `executed=false`. Persistent semantic admissions moved
-  from 0 to 2 of 1000. Evidence: `.ai/qa/artifacts_fullstack/installed-semantic-v2.json`,
-  `semantic-output-blocked.png`, `semantic-overview.png` in root's release
-  worktree. Root stopped all owned semantic QA children; no CoreML reinference.
-  This proves the selected installed CPU profile on those resources, not general
-  classification accuracy. An output denial does not undo an executed read.
+Root report paths in its ignored `.ai/qa/artifacts_fullstack/`:
+`model-generation.png`, `qa-cache-lifecycle.json`, `installed-semantic-v2.json`,
+`semantic-output-blocked.png`, `semantic-overview.png` and minimized browser/model
+JSON. The current browser suite includes `tests/frontend/browser_check.py` and
+`fullstack_flows.py`; optional actual-model mode requires prepared Playwright.
+This task neither reruns their inference nor republishes their private artifacts.
+Independent PR31 QA and PR30's final gate/review were pending at this cutoff.
 
 ## Before root freezes the release
 

@@ -45,8 +45,8 @@ security detector. CoreML remains experimental.
 
 ## Remaining release and deployment gates
 
-1. Root reviews/merges pending artifact28, restricted-agent30
-   changes (semantic32 is merged); refresh mappings and claims from exact integrated refs.
+1. Root integrates merged-main artifact28 and reviews/merges restricted-agent30
+   (semantic32 is merged); refresh mappings and claims from exact integrated refs.
 2. Root records final installed source/runtime, browser/effect and collector
    assertions after wheel preparation and verifies required CI at that head.
 3. Preserve permission, root budgets, live controls and all private state on

@@ -15,8 +15,8 @@ semantic signal; its predictions never grant permissions.
 **Status: local full-stack prototype in release integration, not a production
 release.** The release branch contains the gateway, packaged operator dashboard,
 live policy/feed controls, scoped REST/MCP tools, private LiteLLM/Ollama model
-routing, persistent budgets and local telemetry delivery. Open artifact, restricted-agent and release PRs have separate integration
-and review states; see the [commit/PR evidence ledger](docs/release-evidence.md).
+routing, persistent budgets and local telemetry delivery. Artifact28 is merged on main and awaits release integration; restricted-agent30
+and release31 remain open, with separate integration/review states; see the [commit/PR evidence ledger](docs/release-evidence.md).
 Cezar is development orchestration, separate from the product.
 
 ## Run the local application
