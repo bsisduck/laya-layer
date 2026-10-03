@@ -7,7 +7,7 @@ the inspected Apple Silicon Mac. It does not certify the full proposed MVP.
 
 The REST document path now enforces scoped credentials, tenant/role/agent
 permissions, bounded requests, filtered output, and a durable minimized audit.
-`make validate` runs lockfile, lint/format, typing, 84 tests, and package builds.
+`make validate` runs lockfile, lint/format, typing, 135 tests, and package builds.
 Atomic tenant/day, principal/day, and root-run tool budgets are also implemented;
 see [tool budgets](budgets.md) for accounting semantics and schema migration.
 Live HTTP checks verified allowed, denied, redacted, blocked-output, and missing-
@@ -15,7 +15,11 @@ credential cases. See [the implemented contract](document-slice.md).
 
 Actual standard Laya and native CoreML loading also succeeded on pinned assets.
 Both matched 2/4 expected smoke labels, agreeing on all four. These standalone
-runs are not connected to the gateway. See [the inference spike](inference-spike.md).
+runs remain historical loading evidence. Authenticated HTTP workers are now also
+connected to document-result enforcement; both passed the real HTTP integration
+smoke and still matched 2/4 unchanged loading labels under the new field-based
+question. Benign notes abstained and were withheld by the strict profile.
+See [workers](semantic-workers.md) and [the inference spike](inference-spike.md).
 
 ## Harness and skills
 
@@ -79,9 +83,9 @@ The browser doctor launches a temporary headless browser to verify it works.
 2. Confirm the competition start-time ambiguity documented in architecture §2
    before competition implementation. Judging weights and cross-category eligibility
    also remain organizer questions.
-3. Implement authenticated semantic worker services around the verified loaders;
-   enforce token/coverage/time limits and define handling for `unclear`. Dependencies
-   and asset hashes are now pinned. Keep CoreML native, outside Linux containers.
+3. Evaluate classifier quality on held-out examples before enabling a production
+   semantic policy. Workers now enforce capacity, coverage, authentication, and
+   process deadlines; `unclear` withholds output in the strict profile. CoreML is native.
 4. Extend call budgets to inference/provider resources; add approvals, policy
    reload, feeds, and the other architecture controls.
 5. Select and test a local tool-capable generation model. Existing Ollama models

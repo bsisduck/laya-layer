@@ -16,7 +16,8 @@ flowchart LR
         Intent --> Budget["Atomic tool-attempt reservation<br/>tenant, principal, root"]
         Budget --> Executor["Registered document executor"]
         Executor --> Filter["Bounded output<br/>email redaction and synthetic-secret block"]
-        Filter --> Outcome["Persist outcome before release"]
+        Filter --> Semantic["Optional required semantic inspection<br/>standard Laya or native CoreML"]
+        Semantic --> Outcome["Persist outcome before release"]
     end
     Policy -- deny --> Audit[("SQLite audit and credentials")]
     Intent --> Audit
@@ -42,7 +43,7 @@ flowchart TB
         Core["Identity, policy, output filtering, audit<br/>working for documents"]
         Budget["Atomic document call budgets<br/>working; other resources planned"]
         Approval["Exact-action approvals<br/>planned"]
-        Sem["Semantic adapter<br/>planned"]
+        Sem["Semantic result adapter<br/>working; other stages planned"]
     end
     Agent --> REST
     Agent -.-> Model
@@ -52,9 +53,9 @@ flowchart TB
     MCP -.-> Core
     Core --> Budget
     Core -.-> Approval
-    Core -.-> Sem
-    Sem -.-> Laya["Standard Laya worker<br/>real loader tested; service planned"]
-    Sem -.-> Apple["Native CoreML worker<br/>real loader tested; service planned"]
+    Core --> Sem
+    Sem --> Laya["Standard Laya worker<br/>authenticated and supervised"]
+    Sem --> Apple["Native CoreML worker<br/>authenticated and supervised"]
     Core --> Docs["Document fixtures<br/>working"]
     Core -.-> Tools["Memory and test outbox<br/>planned"]
     Model -.-> Lite["Private LiteLLM<br/>planned"]
@@ -65,8 +66,10 @@ flowchart TB
 ```
 
 Solid edges describe implemented paths. Dashed edges describe the target.
-Real Laya and CoreML smoke tests both matched 2 of 4 prewritten labels; they
-are loading evidence, not a validated security classifier or gateway integration.
+The original real loading smoke tests both matched 2 of 4 prewritten labels.
+Both workers now also have real gateway integration evidence, including abstention
+on benign notes. See the [worker runbook](semantic-workers.md); classifier quality
+still needs held-out evaluation.
 
 ## Output-release boundary
 

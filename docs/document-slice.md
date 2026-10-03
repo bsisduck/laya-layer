@@ -70,7 +70,8 @@ lock waits. Schema version 1 is new; there is no prior database migration.
 
 `config/policy.yaml` implements an explicitly partial schema: `schema_version`,
 `policy_id`, `revision`, `ingress`, `documents_read`, `output`, and
-`semantic_required`. Unknown fields, duplicate keys, aliases and oversized policy
+`semantic_required`, `semantic_mode`, and optional `tool_budgets`. Unknown fields,
+duplicate keys, aliases and oversized policy
 files are rejected. The full architecture example cannot yet be loaded verbatim.
 Policy is immutable for a running service; activation/reload endpoints do not exist.
 
@@ -83,8 +84,11 @@ audit records; there is no unauthenticated audit HTTP endpoint.
 
 Atomic document call budgets were added in [the budget slice](budgets.md).
 No inference/provider budgets, rate quotas, approvals, mail/memory tools, external effects, policy
-reload, threat feeds, MCP sessions, model proxy, or semantic worker is implemented.
-`semantic_required: true` blocks readiness/dispatch instead of treating a stub as
+reload, threat feeds, MCP sessions, or model proxy is implemented.
+Optional real standard/CoreML document-result checks are documented in
+[semantic workers](semantic-workers.md).
+`semantic_required: true` blocks readiness/dispatch when the configured worker is
+unavailable instead of treating a stub as
 real inference. The separately run Laya loading spike does not enable enforcement.
 
 The executor performs a bounded in-memory fixture lookup; external workers will

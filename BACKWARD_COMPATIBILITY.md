@@ -10,6 +10,12 @@ The optional `tool_budgets` policy block preserves old defaults when omitted;
 the shipped demo opts in with policy revision 2. HTTP 429/BUDGET_EXCEEDED is an
 additive denial reason. Existing response and audit field shapes are unchanged.
 
+Semantic worker routes now expose the `content-role-v1` contract. Optional
+`semantic_mode` defaults to enforce. `semantic_required` requires a configured,
+ready worker; the default demo still disables it. Audit events add nullable
+`semantic` evidence and new status values while existing rows remain readable.
+No database migration is needed for the additive serialized audit field.
+
 The current operational contracts are `make setup`, `make validate`, `make doctor`,
 `make harness`, Python lint/type/test/build commands, local demo commands, and the
 upstream configuration formats under `.ai/`. Keep their

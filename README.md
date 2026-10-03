@@ -10,9 +10,10 @@ The first working slice authenticates document reads, enforces tenant/role/agent
 permissions, filters output, and persists minimized audit events. The complete
 target design is in [the architecture](AgentGate_Full_Project_Architecture.md).
 
-**Status: document-only local demo.** Laya is not connected to enforcement yet.
-Atomic document call budgets are implemented. Model routing, approvals, MCP,
-Hermes, semantic workers, and the dashboard remain to build.
+**Status: document-enforcement prototype.** Atomic call budgets and authenticated
+standard Laya / native CoreML workers are implemented. The optional semantic
+profile inspects document results before release; classification is experimental.
+Model routing, approvals, MCP, Hermes, and the dashboard remain to build.
 
 ## Run the document demo
 
@@ -39,8 +40,9 @@ and server-owned identity. `init-demo` refuses to overwrite existing state. For 
 fresh session, use `--state-dir .agentgate/session-2` before each subcommand.
 
 The partial policy lives in `config/policy.yaml`; restart to apply changes.
-`semantic_required: true` fails readiness and dispatch until a semantic worker
-is implemented. The output scanner covers the explicit synthetic marker
+Use [the semantic worker runbook](docs/semantic-workers.md) to run real Laya or
+CoreML inspection. A required but unavailable worker fails readiness and dispatch.
+The output scanner covers the explicit synthetic marker
 `AGENTGATE_SECRET[...]` and a bounded email pattern; it is not general DLP.
 The loopback demo assumes trusted host processes and registered fixture executors.
 See [the implemented contract](docs/document-slice.md) for precise boundaries.
