@@ -21,7 +21,7 @@ export const empty = message => el('p', {class: 'empty'}, message);
 export const panel = (title, ...children) => el('section', {class: 'panel'}, el('div', {class: 'section-head'}, el('h2', {}, title)), ...children);
 export function pairs(data) {
   const dl = el('dl', {class: 'kv'});
-  for (const [key, value] of Object.entries(data || {})) dl.append(el('dt', {}, key.replaceAll('_', ' ')), el('dd', {}, text(value)));
+  for (const [key, value] of Object.entries(data || {})) dl.append(el('dt', {}, key.replaceAll('_', ' ')), el('dd', {}, Array.isArray(value) ? value.map(text).join(' · ') || 'None reported' : text(value)));
   return dl;
 }
 export function details(title, data, open = false) {
@@ -30,7 +30,7 @@ export function details(title, data, open = false) {
   return node;
 }
 export function table(headers, rows) {
-  return el('div', {class: 'table-wrap'}, el('table', {},
+  return el('div', {class: 'table-wrap', tabindex: '0', role: 'region', 'aria-label': 'Scrollable records'}, el('table', {},
     el('thead', {}, el('tr', {}, headers.map(h => el('th', {scope: 'col'}, h)))),
     el('tbody', {}, rows.map(row => el('tr', {}, row.map(cell => el('td', {}, cell)))))));
 }

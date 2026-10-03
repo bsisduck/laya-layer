@@ -75,8 +75,10 @@ async function editorView(kind, api, setDirty) {
   const output = status(); const preview = el('div');
   const validation = status();
   const validate = button('Validate on server', () => busy(validate, validation, async () => {
-    const policy = parseEditor(editor.value);
+    const submitted = editor.value;
+    const policy = parseEditor(submitted);
     const result = await api.request('/admin/policy/validate', {method: 'POST', body: {policy}});
+    if (editor.value !== submitted) {validation.textContent = 'Edits changed during validation. Validate the current document again.'; return;}
     validation.textContent = result.valid === true ? `Valid · ${text(result.version)}. Activation still requires current-version validation.` : 'Server did not confirm validity.';
   }));
   const review = button('Review activation →', () => {
@@ -90,7 +92,10 @@ async function editorView(kind, api, setDirty) {
       const activate = button('Activate reviewed version', () => busy(activate, output, async () => {
         if (!check.checked || editor.value !== candidateText) throw new Error('Review the current edits before activating.');
         const path = kind === 'policy' ? '/admin/policy/activate' : '/admin/feed';
-        const data = await api.request(path, {method: 'POST', body: {[kind]: candidate, expected_version: expectedVersion}});
+        editor.disabled = true;
+        let data;
+        try {data = await api.request(path, {method: 'POST', body: {[kind]: candidate, expected_version: expectedVersion}});}
+        finally {editor.disabled = false;}
         if (!data[kind] || typeof data.version !== 'string') throw new Error('Activation response incomplete. Refresh to inspect current state.');
         current = data; editor.value = pretty(data[kind]); setDirty(false); updateVersion();
         preview.replaceChildren(); output.textContent = `Activated ${data.version}.`; validation.textContent = '';
@@ -135,13 +140,15 @@ function scopedList(kind, api) {
           const controls = el('div', {class: 'actions'});
           for (const approve of [true, false]) {
             const control = button(approve ? 'Approve exact action' : 'Reject action', () => busy(control, rowStatus, async () => {
+              if (!check.checked) throw new Error('Review this exact action first.');
+              check.disabled = true;
               controls.querySelectorAll('button').forEach(b => {b.disabled = true;});
               try {
                 const result = await api.request(`/admin/approvals/${encodeURIComponent(item.action_id)}/decision`, {method: 'POST', body: {tenant_id: scope, fingerprint: item.fingerprint, approve}, decision: true});
                 response.replaceChildren(resultView(result));
                 controls.remove(); check.disabled = true;
                 rowStatus.textContent = 'Decision returned. Refresh to inspect current state; approval alone is not delivery.';
-              } catch (error) {controls.querySelectorAll('button').forEach(b => {b.disabled = !check.checked;}); throw error;}
+              } catch (error) {check.disabled = false; controls.querySelectorAll('button').forEach(b => {b.disabled = !check.checked;}); throw error;}
             }), approve ? 'primary' : 'secondary');
             control.disabled = true; controls.append(control);
           }

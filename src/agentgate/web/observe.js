@@ -20,7 +20,7 @@ export async function overview(api) {
 }
 export function filterEvents(events, decision, query) {
   const search = query.toLowerCase();
-  return events.filter(event => (!decision || event.decision === decision) &&
+  return events.filter(event => (!decision || event.decision === (decision === 'pending' ? 'require_approval' : decision)) &&
     [event.trace_id, event.operation, event.tenant_id, event.principal_id, ...(event.reason_codes || [])].some(value => text(value).toLowerCase().includes(search)));
 }
 export async function timeline(api) {

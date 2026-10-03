@@ -52,6 +52,8 @@ test('filters preserve actual events, editor errors and server-owned identity', 
   const events = [{decision: 'deny', trace_id: 'abc', reason_codes: ['TENANT_DENIED']}, {decision: 'allow', operation: 'documents.read'}];
   assert.deepEqual(filterEvents(events, 'deny', 'tenant'), [events[0]]);
   assert.deepEqual(filterEvents(events, 'allow', 'abc'), []);
+  const pending = {decision: 'require_approval', operation: 'mail.send'};
+  assert.deepEqual(filterEvents([pending], 'pending', ''), [pending]);
   assert.throws(() => parseEditor('[]'), /JSON object/);
   assert.throws(() => parseEditor('{'), /Invalid JSON/);
   assert.throws(() => parseEditor(' '.repeat(65537)), /64 KiB/);

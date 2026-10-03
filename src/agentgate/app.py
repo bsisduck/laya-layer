@@ -81,6 +81,7 @@ def create_app(service: ActionService) -> FastAPI:
     app = FastAPI(
         title="AgentGate", version="0.1.0", docs_url=None, redoc_url=None, openapi_url=None
     )
+    attach_web_routes(app)
     bearer = HTTPBearer(auto_error=False)
 
     @app.get("/health/live")
@@ -138,5 +139,4 @@ def create_app(service: ActionService) -> FastAPI:
             headers=headers,
         )
 
-    attach_web_routes(app)
     return app
