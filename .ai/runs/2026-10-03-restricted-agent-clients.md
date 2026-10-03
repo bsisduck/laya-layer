@@ -67,8 +67,8 @@ PR: #30
 
 ### Phase 2: Genuine restricted Hermes
 
-- [ ] 2.1 Pin upstream and implement restricted launcher
-- [ ] 2.2 Test actual Hermes profile and registry
+- [x] 2.1 Pin upstream and implement restricted launcher — 3cb8790
+- [x] 2.2 Test actual Hermes profile and registry — 3cb8790
 
 ### Phase 3: Evidence and delivery
 
