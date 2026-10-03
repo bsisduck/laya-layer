@@ -131,6 +131,7 @@ class Store:
         event: AuditEvent,
         clock: Callable[[], float],
         limits: ToolBudgets | None = None,
+        before_dispatch: Callable[[sqlite3.Connection], None] | None = None,
     ) -> None:
         with self.connection() as connection:
             connection.execute("BEGIN IMMEDIATE")
@@ -138,6 +139,8 @@ class Store:
             now = clock()
             if self._resolve(connection, digest, now) != identity:
                 raise CredentialInvalid
+            if before_dispatch is not None:
+                before_dispatch(connection)
             if limits is not None:
                 budgets.reserve(
                     connection, event.action_id, identity, limits, now, event.policy_version

@@ -76,7 +76,7 @@ async def read_body(request: Request, maximum: int, timeout: float) -> bytes:
     return bytes(body)
 
 
-def create_app(service: ActionService) -> FastAPI:
+def create_app(service: ActionService, *, admin_origin: str | None = None) -> FastAPI:
     app = FastAPI(
         title="AgentGate", version="0.1.0", docs_url=None, redoc_url=None, openapi_url=None
     )
@@ -88,7 +88,10 @@ def create_app(service: ActionService) -> FastAPI:
 
     @app.get("/health/ready")
     def ready() -> JSONResponse:
-        healthy = service.store.ready() and service.semantic_ready()
+        try:
+            healthy = service.store.ready() and service.semantic_ready()
+        except StorageUnavailable:
+            healthy = False
         return JSONResponse(
             {"status": "ready" if healthy else "not_ready"}, status_code=200 if healthy else 503
         )
@@ -117,7 +120,7 @@ def create_app(service: ActionService) -> FastAPI:
                 )
             ):
                 raise GateError(422, Reason.IDENTITY_OVERRIDE)
-            limits = service.policy.ingress
+            limits = service.context_controls(context).policy.ingress
             body = await read_body(request, limits.max_body_bytes, limits.body_timeout_seconds)
             service.digest_payload(context, body)
             action = parse_action(body, limits.max_json_depth)
@@ -137,4 +140,20 @@ def create_app(service: ActionService) -> FastAPI:
             headers=headers,
         )
 
+    if admin_origin is not None:
+        from agentgate.admin import attach_admin_routes
+
+        attach_admin_routes(app, service, origin=admin_origin)
     return app
+
+
+def response_status(response: ActionResponse) -> int:
+    """Additive tool-state mapping shared by operator and agent adapters."""
+    state = getattr(response, "action_state", None)
+    if state in ("pending", "approved"):
+        return 202
+    if state == "expired":
+        return 410
+    if state == "denied":
+        return 403
+    return 200

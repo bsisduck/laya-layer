@@ -55,6 +55,11 @@ def main() -> None:
         "init-demo", help="Create private local state and a one-hour scoped credential"
     )
     serve = commands.add_parser("serve", help="Serve the document-only gateway on loopback")
+    operator = commands.add_parser("init-operator", help="Create a private operator token once")
+    operator.add_argument("--policy", type=Path, default=Path("config/policy.yaml"))
+    serve.add_argument(
+        "--admin-origin", help="Exact operator browser origin; defaults to loopback URL"
+    )
     serve.add_argument("--policy", type=Path, default=Path("config/policy.yaml"))
     serve.add_argument("--port", type=int, default=8000)
     serve.add_argument("--semantic-url")
@@ -95,6 +100,13 @@ def main() -> None:
             print(
                 "Demo initialized. Scoped credential stored in the private client.token file; expires in one hour."
             )
+        elif args.command == "init-operator":
+            from agentgate.admin import bootstrap_operator
+
+            bootstrap_operator(args.state_dir, load_policy(args.policy))
+            print(
+                "Operator initialized. Credential stored in private operator.token; never shared with agents."
+            )
         elif args.command == "serve":
             policy = load_policy(args.policy)
             store = Store(args.state_dir / "agentgate.sqlite3")
@@ -115,7 +127,14 @@ def main() -> None:
                 if args.semantic_url
                 else None,
             )
-            uvicorn.run(create_app(service), host="127.0.0.1", port=args.port, access_log=False)
+            uvicorn.run(
+                create_app(
+                    service, admin_origin=args.admin_origin or f"http://127.0.0.1:{args.port}"
+                ),
+                host="127.0.0.1",
+                port=args.port,
+                access_log=False,
+            )
         elif args.command == "semantic-worker":
             from agentgate.semantic_worker import Supervisor, create_worker
 
