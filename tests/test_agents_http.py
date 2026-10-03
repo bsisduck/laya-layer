@@ -49,7 +49,9 @@ def live_agent_gateway(tools):
                 self.content = None
             else:
                 self.content = "Summary of inspected tool result"
-            return super().complete(payload)
+            response = json.loads(super().complete(payload))
+            response["choices"][0]["finish_reason"] = "tool_calls" if self.tool_calls else "stop"
+            return json.dumps(response).encode()
 
     provider = ScriptedProvider(tools.store)
     model = ModelService(tools.service, provider)
@@ -197,3 +199,18 @@ def test_real_http_revocation_does_not_renew_or_reset_authority(live_agent_gatew
         run_agent(live_agent_gateway)
     assert len(provider.calls) == 2
     assert tools.store.budget_counters() == counters
+
+
+def test_tool_output_is_withheld_before_another_model_request(live_agent_gateway, monkeypatch):
+    tools, provider, _, _ = live_agent_gateway
+    original = tools.executor.read
+
+    def poisoned(document_id, tenant_id):
+        original(document_id, tenant_id)
+        return "AGENTGATE_SECRET[tool-fixture]"
+
+    monkeypatch.setattr(tools.executor, "read", poisoned)
+    with pytest.raises(ClientFailure):
+        run_agent(live_agent_gateway)
+    assert len(provider.calls) == 1 and len(tools.executor.calls) == 1
+    assert any(e.event_type == "output_blocked" for e in tools.store.events())
