@@ -25,7 +25,7 @@ from agentgate.policy import Policy
 from agentgate.storage import CredentialInvalid, StorageUnavailable, Store, credential_digest
 
 EMAIL = re.compile(r"\b[A-Za-z0-9._%+-]{1,64}@[A-Za-z0-9.-]{1,253}\.[A-Za-z]{2,63}\b")
-SYNTHETIC_SECRET = re.compile(r"AGENTGATE_SECRET\[[^\]\r\n]{1,256}\]")
+SYNTHETIC_SECRET = re.compile(r"AGENTGATE_SECRET\[")
 
 
 @dataclass
@@ -166,7 +166,7 @@ class ActionService:
                 digest,
                 identity,
                 self.event(context, "dispatch_intent", Reason.ALLOWED, "allow"),
-                self.clock(),
+                self.clock,
             )
         except CredentialInvalid as error:
             raise GateError(401, Reason.INVALID_CREDENTIAL) from error

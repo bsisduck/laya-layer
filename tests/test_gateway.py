@@ -1,8 +1,11 @@
+import asyncio
 import json
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
+from threading import Event
 
+import httpx
 import pytest
 from fastapi.testclient import TestClient
 
@@ -137,6 +140,25 @@ def test_T04_revocation_between_admission_and_dispatch(harness: Harness, monkeyp
     assert [event.event_type for event in harness.store.events()] == ["action_denied"]
 
 
+def test_expiry_while_waiting_for_dispatch_lock_is_rechecked(harness: Harness, monkeypatch):
+    original = harness.store.dispatch_intent
+    entered = Event()
+
+    def signal_dispatch(*args):
+        entered.set()
+        original(*args)
+
+    monkeypatch.setattr(harness.store, "dispatch_intent", signal_dispatch)
+    with ThreadPoolExecutor(max_workers=1) as pool, harness.store.connection() as blocker:
+        blocker.execute("BEGIN IMMEDIATE")
+        response = pool.submit(harness.read)
+        assert entered.wait(timeout=2)
+        harness.now[0] = 2000.0
+        blocker.execute("COMMIT")
+        assert response.result(timeout=2).status_code == 401
+    assert harness.executor.calls == []
+
+
 @pytest.mark.parametrize("document_id", ["tenant-b-notes", "unknown", "tenant-a-secret"])
 def test_T05_resource_authorization_happens_before_executor(harness: Harness, document_id):
     result = harness.read(document_id)
@@ -259,6 +281,34 @@ def test_body_limit_applies_with_and_without_content_length(harness: Harness):
     assert harness.executor.calls == []
 
 
+def test_slow_request_body_has_a_deadline(harness: Harness):
+    harness.service.policy = harness.service.policy.model_copy(
+        update={
+            "ingress": harness.service.policy.ingress.model_copy(
+                update={"body_timeout_seconds": 0.01}
+            )
+        }
+    )
+
+    async def run():
+        async def body():
+            yield b'{"operation":'
+            await asyncio.sleep(0.1)
+            yield b'"documents.read","arguments":{}}'
+
+        transport = httpx.ASGITransport(app=create_app(harness.service))
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            return await client.post(
+                "/v1/actions/execute",
+                headers=harness.headers | {"Content-Type": "application/json"},
+                content=body(),
+            )
+
+    result = asyncio.run(run())
+    assert result.status_code == 408
+    assert harness.executor.calls == []
+
+
 def test_unsupported_content_encoding_and_type(harness: Harness):
     for headers in [
         {"Content-Type": "text/plain"},
@@ -290,6 +340,14 @@ def test_synthetic_secret_output_is_withheld_and_never_audited(harness: Harness)
         [event.model_dump(mode="json") for event in harness.store.events()]
     )
     assert harness.store.events()[-1].event_type == "output_blocked"
+
+
+def test_long_or_unclosed_secret_marker_cannot_bypass_output_filter(harness: Harness, monkeypatch):
+    monkeypatch.setattr(harness.executor, "read", lambda *_: "AGENTGATE_SECRET[" + "x" * 1000)
+    result = harness.read()
+    assert result.status_code == 403
+    assert result.json()["reason_codes"] == ["SECRET_IN_OUTPUT"]
+    assert "result" not in result.json()
 
 
 @pytest.mark.parametrize("content", ["ą" * 20000, b"not text", "\ud800"])
@@ -363,6 +421,18 @@ def test_health_has_no_identity_policy_or_credentials(harness: Harness, monkeypa
     assert harness.client.get("/health/ready").status_code == 503
     for path in ["/admin/events", "/v1/chat/completions", "/mcp", "/openapi.json"]:
         assert harness.client.get(path).status_code == 404
+
+
+def test_readiness_rejects_unknown_or_incomplete_database_schema(harness: Harness):
+    with harness.store.connection() as connection:
+        connection.execute("PRAGMA user_version=2")
+    assert harness.client.get("/health/ready").status_code == 503
+    with harness.store.connection() as connection:
+        connection.execute("PRAGMA user_version=1")
+        connection.execute("DROP TABLE audit_events")
+    assert harness.client.get("/health/ready").status_code == 503
+    assert harness.read().status_code == 503
+    assert harness.executor.calls == []
 
 
 def test_concurrent_requests_keep_distinct_correlated_audit_pairs(harness: Harness):

@@ -4,7 +4,7 @@ import hashlib
 import math
 import secrets
 import sqlite3
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from pathlib import Path
 
@@ -112,11 +112,12 @@ class Store:
             self._append(connection, event)
 
     def dispatch_intent(
-        self, digest: str, identity: Identity, event: AuditEvent, now: float
+        self, digest: str, identity: Identity, event: AuditEvent, clock: Callable[[], float]
     ) -> None:
         with self.connection() as connection:
             connection.execute("BEGIN IMMEDIATE")
-            if self._resolve(connection, digest, now) != identity:
+            # Lock acquisition can wait; never authorize using a timestamp sampled before it.
+            if self._resolve(connection, digest, clock()) != identity:
                 raise CredentialInvalid
             self._append(connection, event)
             connection.execute("COMMIT")
@@ -124,6 +125,12 @@ class Store:
     def ready(self) -> bool:
         try:
             with self.connection() as connection:
+                if connection.execute("PRAGMA user_version").fetchone()[0] != 1:
+                    return False
+                connection.execute(
+                    "SELECT digest, identity, expires_at, revoked FROM credentials LIMIT 0"
+                )
+                connection.execute("SELECT event_id, action_id, event FROM audit_events LIMIT 0")
                 connection.execute("INSERT OR REPLACE INTO health_probe(id) VALUES (1)")
             return True
         except StorageUnavailable:
