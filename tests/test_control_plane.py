@@ -338,3 +338,10 @@ def test_inflight_uses_dispatched_snapshot_then_next_action_uses_reload(harness,
         "test:2",
         "test:2",
     ]
+
+
+def test_static_snapshot_does_not_require_control_tables(harness):
+    snapshot = harness.service.current_controls()
+    assert snapshot.generation == 0
+    with harness.store.connection() as db:
+        snapshot.assert_current(db)

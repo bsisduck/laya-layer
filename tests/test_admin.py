@@ -166,7 +166,7 @@ def test_playground_uses_server_owned_scope_and_real_document_enforcement(admin)
     assert event.tenant_id == "tenant-a"
     assert event.root_run_id == "operator-playground"
     with admin.gateway.store.connection() as db:
-        assert db.execute("SELECT count(*) FROM credentials").fetchone()[0] == 1
+        assert db.execute("SELECT count(*) FROM credentials").fetchone()[0] == 2
 
 
 def test_private_bootstrap_never_overwrites_and_preserves_agent_auth(tmp_path):
@@ -454,3 +454,140 @@ def test_storage_outage_is_safe_admin_error_and_no_action_dispatch(admin, monkey
     assert response.status_code == 503
     assert response.json()["reason_codes"] == ["AUDIT_UNAVAILABLE"]
     assert admin.gateway.executor.calls == []
+
+
+def test_duplicate_security_headers_and_non_ascii_csrf_are_denied(admin):
+    admin.login()
+    csrf = admin.headers()["X-CSRF-Token"]
+    for headers in [
+        [("Origin", ORIGIN), ("Origin", ORIGIN), ("X-CSRF-Token", csrf)],
+        [("Origin", ORIGIN), ("X-CSRF-Token", csrf), ("X-CSRF-Token", csrf)],
+        [(b"Origin", ORIGIN.encode()), (b"X-CSRF-Token", b"\xff")],
+    ]:
+        response = admin.client.delete("/admin/session", headers=headers)
+        assert response.status_code == 403
+    assert admin.client.get("/admin/session").status_code == 200
+
+
+def test_stable_playground_credential_survives_retry_restart_and_respects_revocation(admin):
+    from agentgate.admin import playground_credential
+    from agentgate.service import ActionService, GateError
+
+    service = admin.gateway.service
+    token = playground_credential(service)
+    assert playground_credential(service) == token
+    restarted = ActionService(
+        service.store,
+        service.policy,
+        service.registry,
+        service.executor,
+        service.audit_key,
+        clock=service.clock,
+        controls=service.controls,
+    )
+    assert playground_credential(restarted) == token
+    with service.store.connection() as db:
+        row = db.execute(
+            "SELECT identity, expires_at FROM credentials WHERE digest=?",
+            (credential_digest(token),),
+        ).fetchone()
+        assert row["expires_at"] == service.clock() + 86400
+        assert '"mail.send"' in row["identity"]
+    service.store.revoke(token)
+    assert playground_credential(restarted) == token
+    with pytest.raises(GateError) as error:
+        restarted.authenticate(restarted.new_context(), token)
+    assert error.value.status_code == 401
+
+
+def test_stable_playground_credential_expiry_is_never_silently_extended(admin):
+    from agentgate.admin import playground_credential
+    from agentgate.service import GateError
+
+    service = admin.gateway.service
+    token = playground_credential(service)
+    admin.gateway.now[0] += 86400
+    assert playground_credential(service) == token
+    with pytest.raises(GateError) as error:
+        service.authenticate(service.new_context(), token)
+    assert error.value.status_code == 401
+
+
+def test_memory_mail_adapters_forward_exact_payload_with_same_internal_credential(
+    admin, monkeypatch
+):
+    # Adapter contract fixture only. Real mail approval/execution belongs to PR19.
+    from agentgate.contracts import ActionResponse, Reason
+
+    admin.login()
+    calls = []
+
+    def execute(context, action):
+        calls.append((context.identity, context.credential_digest, action))
+        return ActionResponse(
+            status="completed",
+            action_id=context.action_id,
+            trace_id=context.trace_id,
+            decision="allow",
+            reason_codes=(Reason.ALLOWED,),
+            policy_version="test:1",
+            executed=False,
+        )
+
+    memory = {"mode": "memory", "query": "quarterly", "limit": 2}
+    mail = {
+        "mode": "mail",
+        "recipient": "analyst@demo.internal",
+        "subject": "subject",
+        "body": "exact body",
+        "idempotency_key": "mail-key",
+    }
+    assert (
+        admin.client.post("/admin/playground", headers=admin.headers(), json=memory).status_code
+        == 503
+    )
+    admin.gateway.service.tools = object()
+    monkeypatch.setattr(admin.gateway.service, "execute", execute)
+    for payload in (memory, mail, mail):
+        assert (
+            admin.client.post(
+                "/admin/playground", headers=admin.headers(), json=payload
+            ).status_code
+            == 200
+        )
+    assert len({digest for _, digest, _ in calls}) == 1
+    assert all(
+        identity.tenant_id == "tenant-a" and identity.root_run_id == "operator-playground"
+        for identity, _, _ in calls
+    )
+    assert calls[0][2].operation == "memory.query"
+    assert calls[0][2].arguments == {"query": "quarterly", "limit": 2}
+    assert calls[1][2].operation == "mail.send"
+    assert calls[1][2].arguments == {k: v for k, v in mail.items() if k != "mode"}
+    assert calls[1][2] == calls[2][2]
+    assert (
+        admin.client.post(
+            "/admin/playground", headers=admin.headers(), json=memory | {"limit": 11}
+        ).status_code
+        == 422
+    )
+    assert admin.client.get("/admin/approvals?tenant_id=tenant-a&limit=101").status_code == 422
+
+
+@pytest.mark.parametrize(
+    "state,status",
+    [
+        ("pending", 202),
+        ("approved", 202),
+        ("expired", 410),
+        ("denied", 403),
+        ("consumed", 200),
+        (None, 200),
+    ],
+)
+def test_forwarded_tool_response_http_status(state, status):
+    from types import SimpleNamespace
+
+    from agentgate.app import response_status
+
+    assert response_status(SimpleNamespace(action_state=state)) == status

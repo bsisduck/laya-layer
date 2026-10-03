@@ -131,7 +131,8 @@ class ControlSnapshot:
     generation: int = 0
 
     def assert_current(self, connection: sqlite3.Connection) -> None:
-        ControlPlane.assert_current(connection, self)
+        if self.generation != 0:
+            ControlPlane.assert_current(connection, self)
 
     def inspect(
         self, stage: Stage, text: str, *, artifacts: tuple[ArtifactMetadata, ...] = ()

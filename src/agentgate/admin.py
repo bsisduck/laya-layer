@@ -4,6 +4,7 @@ Attach to an existing FastAPI app; no frontend, inference, or agent permission
 is implemented here. The only playground authority is a server-owned demo run.
 """
 
+import base64
 import hashlib
 import hmac
 import json
@@ -20,12 +21,20 @@ from fastapi import APIRouter, FastAPI, Request, Response
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 from fastapi.routing import APIRoute
-from pydantic import Field
+from pydantic import BaseModel, Field, RootModel
 from starlette.concurrency import run_in_threadpool
 
-from agentgate.app import read_body, reject_constant, unique_object
+from agentgate.app import read_body, reject_constant, response_status, unique_object
 from agentgate.audit_export import MAX_SEQUENCE, export_page, format_event
-from agentgate.contracts import ActionRequest, AuditEvent, Contract, Identifier, Identity, Reason
+from agentgate.contracts import (
+    ActionRequest,
+    ActionResponse,
+    AuditEvent,
+    Contract,
+    Identifier,
+    Identity,
+    Reason,
+)
 from agentgate.control_plane import ControlConflict, ControlPlane, ThreatFeed
 from agentgate.policy import Policy
 from agentgate.service import ActionService, GateError
@@ -75,7 +84,7 @@ class AdminRoute(APIRoute):
         return bounded_errors
 
 
-async def body_model[T: Contract](request: Request, model: type[T], maximum: int = 131072) -> T:
+async def body_model[T: BaseModel](request: Request, model: type[T], maximum: int = 131072) -> T:
     body = await read_body(request, maximum, 5.0)
     try:
         value = json.loads(body, object_pairs_hook=unique_object, parse_constant=reject_constant)
@@ -110,9 +119,63 @@ class ActivateFeed(Contract):
     expected_version: Annotated[str, Field(min_length=1, max_length=128)]
 
 
-class Playground(Contract):
+class DocumentPlayground(Contract):
     mode: Literal["document"]
-    document_id: Annotated[str, Field(pattern=r"^[a-zA-Z0-9][a-zA-Z0-9._-]{0,95}$")]
+    document_id: Identifier
+
+
+class MemoryPlayground(Contract):
+    mode: Literal["memory"]
+    query: Annotated[str, Field(min_length=1, max_length=512)]
+    limit: Annotated[int, Field(ge=1, le=10)] = 10
+
+
+class MailPlayground(Contract):
+    mode: Literal["mail"]
+    recipient: Annotated[str, Field(min_length=1, max_length=254)]
+    subject: Annotated[str, Field(min_length=1, max_length=200)]
+    body: Annotated[str, Field(min_length=1, max_length=8192)]
+    idempotency_key: Identifier
+
+
+class Playground(
+    RootModel[
+        Annotated[
+            DocumentPlayground | MemoryPlayground | MailPlayground, Field(discriminator="mode")
+        ]
+    ]
+):
+    pass
+
+
+def playground_credential(service: ActionService) -> str:
+    # Domain-separated derivation keeps the token stable across process restarts
+    # without storing or exposing plaintext. Expired/revoked rows are NOT renewed.
+    token = (
+        base64.urlsafe_b64encode(
+            hmac.new(
+                service.audit_key, b"operator-playground-credential-v1", hashlib.sha256
+            ).digest()
+        )
+        .decode("ascii")
+        .rstrip("=")
+    )
+    identity = Identity(
+        principal_id="operator-playground",
+        tenant_id="tenant-a",
+        agent_id="admin-demo",
+        root_run_id="operator-playground",
+        roles=("analyst",),
+        operations=("documents.read", "memory.query", "mail.send"),
+    )
+    with service.store.connection() as db:
+        db.execute("BEGIN IMMEDIATE")
+        db.execute(
+            "INSERT OR IGNORE INTO credentials(digest, identity, expires_at) VALUES (?, ?, ?)",
+            (credential_digest(token), identity.model_dump_json(), service.clock() + 86400),
+        )
+        db.execute("COMMIT")
+    return token
 
 
 @dataclass(frozen=True)
@@ -296,8 +359,10 @@ def attach_admin_routes(
             else:
                 session = await run_in_threadpool(auth.resolve, request.cookies.get(COOKIE))
                 request.state.operator_session = session
-                if write and not hmac.compare_digest(
-                    request.headers.get("x-csrf-token", ""), session.csrf_token
+                csrf = request.headers.get("x-csrf-token", "")
+                if write and (
+                    re.fullmatch(r"[a-f0-9]{64}", csrf) is None
+                    or not hmac.compare_digest(csrf, session.csrf_token)
                 ):
                     raise AdminError(403, "Valid CSRF token required")
             response = await call_next(request)
@@ -516,45 +581,34 @@ def attach_admin_routes(
         )
 
     def execute_playground(body: Playground) -> Response:
+        selection = body.root
+        if selection.mode != "document":
+            tool_service()  # Explicit unavailable until the real executor is attached.
         context = service.new_context()
-        # One fixed principal/root: repeated playground calls cannot reset budgets.
-        identity = Identity(
-            principal_id="operator-playground",
-            tenant_id="tenant-a",
-            agent_id="admin-demo",
-            root_run_id="operator-playground",
-            roles=("analyst",),
-            operations=("documents.read",),
-        )
-        token = service.store.issue(identity, service.clock() + 60)
         try:
-            service.authenticate(context, token)
+            service.authenticate(context, playground_credential(service))
             action = ActionRequest(
-                operation="documents.read", arguments={"document_id": body.document_id}
+                operation={
+                    "document": "documents.read",
+                    "memory": "memory.query",
+                    "mail": "mail.send",
+                }[selection.mode],
+                arguments=selection.model_dump(mode="json", exclude={"mode"}),
             )
             service.digest_payload(context, action.model_dump_json().encode())
-            try:
-                result = service.execute(context, action)
-                status = 200
-            except (GateError, StorageUnavailable) as error:
-                status, result = service.reject(
-                    context,
-                    error
-                    if isinstance(error, GateError)
-                    else GateError(503, Reason.AUDIT_UNAVAILABLE),
-                )
-            return JSONResponse(
-                result.model_dump(mode="json", exclude_none=True), status_code=status
+            result = service.execute(context, action)
+            status = response_status(result)
+        except (GateError, StorageUnavailable) as error:
+            status, result = service.reject(
+                context,
+                error if isinstance(error, GateError) else GateError(503, Reason.AUDIT_UNAVAILABLE),
             )
-        finally:
-            # Scoped credential is internal and never returned to the browser.
-            with service.store.connection() as db:
-                db.execute("DELETE FROM credentials WHERE digest=?", (credential_digest(token),))
+        return JSONResponse(result.model_dump(mode="json", exclude_none=True), status_code=status)
 
     @router.post("/playground")
     async def playground(request: Request) -> Response:
         query(request, set())
-        body = await body_model(request, Playground, 2048)
+        body = await body_model(request, Playground, 65536)
         return await run_in_threadpool(execute_playground, body)
 
     def tool_service() -> OperatorTools:
@@ -568,7 +622,7 @@ def attach_admin_routes(
         tenant_id = params.get("tenant_id", "")
         if re.fullmatch(r"[a-zA-Z0-9][a-zA-Z0-9._-]{0,95}", tenant_id) is None:
             raise ValueError("Tenant required")
-        return tenant_id, number(params.get("limit", "100"), 1, 1000)
+        return tenant_id, number(params.get("limit", "100"), 1, 100)
 
     @router.get("/approvals")
     def approvals(request: Request) -> Response:
@@ -590,7 +644,8 @@ def attach_admin_routes(
             approve=body.approve,
             actor="operator",
         )
-        return JSONResponse(jsonable_encoder(result))
+        status = response_status(result) if isinstance(result, ActionResponse) else 200
+        return JSONResponse(jsonable_encoder(result), status_code=status)
 
     @router.get("/outbox")
     def outbox(request: Request) -> Response:

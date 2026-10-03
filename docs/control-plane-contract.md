@@ -21,7 +21,7 @@ model budgets, new tools, approvals, and frontend remain separate work. Preserve
   `indicator_ids` (never matched content); malformed/oversized input raises
   `ValueError`. Fail closed on either. Text is limited to 262144 UTF-8 bytes;
   structured caller payloads must be normalized before passing them here.
-- `ControlPlane.assert_current(connection, snapshot)` runs inside the same SQLite
+- `snapshot.assert_current(connection)` (also `ControlPlane.assert_current(connection, snapshot)`) runs inside the same SQLite
   `BEGIN IMMEDIATE` transaction as reservation/intent. `ControlsChanged` requires
   bounded retry of the whole decision with a fresh snapshot, before dispatch.
   `Store.dispatch_intent(..., before_dispatch=callback)` provides this hook for
@@ -62,9 +62,8 @@ live updates: stop serving before rollback; export remains compatible.
 
 ## HTTP and bootstrap
 
-The exact routes, session protocol and error shapes will be finalized here with
-the authenticated router implementation. Integration entry point:
-`attach_admin_routes(app, service, *, origin, ...)`. Only small optional app/CLI
+The routes below are frozen for the authenticated router. Integration entry point:
+`attach_admin_routes(app, service, *, origin, tools=None)`. Only small optional app/CLI
 hooks belong in this branch; root resolves those hooks on integration.
 
 ## Frozen frontend API (2026-10-03)
@@ -147,24 +146,54 @@ status with that action body, not a fabricated success. Tenant/roles/principal a
 never accepted from the body. Fixed server-owned tenant-a analyst demo scope/root.
 Known fixtures: tenant-a-notes (allow), tenant-a-contact (redact), tenant-a-leak
 (output deny), tenant-a-secret (pre-read deny), tenant-b-notes (tenant deny).
-This branch implements document mode only. Other modes remain visibly unavailable
-until their owning story attaches a real implementation. Do not synthesize responses.
+Document execution is implemented here. Memory/mail adapters forward these exact
+additional discriminated shapes to `service.execute` when real `service.tools` is
+attached (otherwise 503):
+
+- `{"mode":"memory","query":"…","limit":10}` (limit optional, 1–10).
+- `{"mode":"mail","recipient":"analyst@demo.internal","subject":"…","body":"…",
+  "idempotency_key":"stable-key"}`. The canonical operation is `mail.send`; the
+  payload is unchanged except removing mode. After approval, repeat this same
+  body/key to execute through the tool owner. No new resume mode.
+
+`response_status(result)` maps pending/approved to 202, expired to 410, denied to
+403, consumed/completed to 200; gate errors retain their own status. ActionResponse
+is returned directly, preserving tool-owned approval_id/action_state/expires_at.
+Model playground remains with the model owner; no model executor is added here.
+
+One internal credential is deterministically derived with a domain-separated HMAC
+from the private audit key and registered once for the fixed demo principal/root.
+Its initial lifetime is 24 hours (greater than the tool owner's maximum 1-hour
+approval TTL). It persists through retry/process restart and is never deleted after
+pending/approved output, exposed to the browser, renewed on expiry, or unrevoked.
+Expiry/revocation denies later proposals/retries. For a fresh demo after expiry,
+initialize a new private demo state explicitly; do not silently reset credentials
+or budget counters. A pending approval can still expire earlier if its credential
+expires; the tool authority must revalidate both.
 
 ### Tools integration reserved routes
 
 The tools owner supplies `service.tools` with tenant-required bounded
-`list_approvals`, `decide`, `outbox` hooks. The admin adapter will call those real
-hooks only when installed. Contract:
+`list_approvals`, `decide`, `outbox` hooks. The admin adapter calls those real
+hooks only when installed. Supply `tools=` at attachment or `service.tools`;
+these are forwarding adapters, not an approval implementation. Contract:
 
-- GET `/admin/approvals?tenant_id=tenant-a&limit=100` -> `{"approvals":[...]}`.
+- GET `/admin/approvals?tenant_id=tenant-a&limit=100` (limit 1–100) -> `{"approvals":[...]}`.
 - POST `/admin/approvals/{id}/decision`: JSON
-  `{"tenant_id":"tenant-a","fingerprint":"…","approve":true}` -> decision result
+  `{"tenant_id":"tenant-a","fingerprint":"<64 lowercase SHA-256 hex>","approve":true}` -> decision result
   from the tools hook. Adapter fixes `actor="operator"` (never body-selected).
-- GET `/admin/outbox?tenant_id=tenant-a&limit=100` -> `{"messages":[...]}`.
+- GET `/admin/outbox?tenant_id=tenant-a&limit=100` (limit 1–100) -> `{"messages":[...]}`.
 
 Missing hooks return 503 with a safe explicit unavailable detail, never a fake
-empty list or approved result. Tool owner defines immutable approval item and
-outbox metadata fields. This global local operator can select a tenant; agent
+empty list or approved result. Tool owner's frozen list row contains action_id, tenant_id, principal_id,
+root_run_id, operation, exact stored payload (recipient/subject/body/idempotency_key),
+payload_digest, fingerprint, policy_digest, registry_digest, policy_version,
+created_at, expires_at, state, reason, decided_by. Display exact payload and submit
+its fingerprint; there is no separate detail route. A successful decision returns
+ActionResponse directly and never executes: approved/require_approval, executed=false,
+action_state=approved, approval_id=action_id. The tool authority owns stale/replay
+handling. Outbox rows contain action_id, recipient, created_at, delivery_state=fixture;
+this is a local test effect, never a claim of SMTP delivery. This global local operator can select a tenant; agent
 credentials cannot use this boundary. No approval bypass or execution is added here.
 
 ### Export
@@ -177,3 +206,30 @@ schema 1. `X-AgentGate-Cursor` is JSON containing next_after_sequence,
 through_sequence, scanned, exported, has_more. Continue with the returned high-water
 and cursor to stay in the same snapshot. An empty page can still advance scan
 progress. This is a local download, not downstream delivery acknowledgment.
+
+
+## Local startup and limits
+
+From a stopped checkout: `make setup`, `agentgate init-demo`, then
+`agentgate init-operator` in the same `--state-dir` (default `.agentgate`). The latter
+creates `operator.token` with mode 0600 in a private directory, stores only its hash
+in a separate table, prints no secret and refuses existing files/credentials. Then
+`agentgate serve` attaches admin routes at `http://127.0.0.1:8000`; change the exact
+origin with `--admin-origin`. A frontend must use that exact host, not interchange
+localhost and 127.0.0.1. Existing agent routes remain usable via `create_app(service)`
+without admin attachment. Root combines `models=` with the optional `admin_origin=`
+keyword; this branch does not create or route ModelService.
+
+No browser UI is supplied by E01-S01. Use the frontend story for login/display.
+The operator has global local administrative authority, not enterprise tenant RBAC.
+At most 32 unexpired sessions are retained; login rotates the supplied old session,
+expiry/logout invalidates replay, and expired rows are pruned at login. A host
+administrator remains trusted. Loopback HTTP cannot promise transport encryption;
+use HTTPS for remote access. Never expose this demo through wildcard CORS or
+untrusted reverse-proxy forwarded headers.
+
+The CSRF design uses exact configured origins plus a session-bound header and
+SameSite cookies, following the relevant
+[OWASP guidance](https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html).
+Literal/domain feeds are deterministic matching, not semantic evaluation or a
+universal attack detector. No Laya/Ollama inference is run by this story's tests.

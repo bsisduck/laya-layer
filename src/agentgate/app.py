@@ -145,3 +145,15 @@ def create_app(service: ActionService, *, admin_origin: str | None = None) -> Fa
 
         attach_admin_routes(app, service, origin=admin_origin)
     return app
+
+
+def response_status(response: ActionResponse) -> int:
+    """Additive tool-state mapping shared by operator and agent adapters."""
+    state = getattr(response, "action_state", None)
+    if state in ("pending", "approved"):
+        return 202
+    if state == "expired":
+        return 410
+    if state == "denied":
+        return 403
+    return 200
