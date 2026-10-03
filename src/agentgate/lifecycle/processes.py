@@ -53,6 +53,8 @@ def clean_environment() -> dict[str, str]:
         TRANSFORMERS_OFFLINE="1",
         HF_HUB_DISABLE_TELEMETRY="1",
         LITELLM_LOCAL_MODEL_COST_MAP="True",
+        LITELLM_MODE="PRODUCTION",
+        PYTHON_DOTENV_DISABLED="1",
         DO_NOT_TRACK="1",
     )
     return env
@@ -116,7 +118,7 @@ def healthy(service: Service) -> bool:
         if service.name == "litellm":
             return any(row.get("id") == "local-demo" for row in result.get("data", []))
         return result.get("backend") in ("laya_standard", "laya_coreml")
-    except (OSError, ValueError, LifecycleError):
+    except (OSError, ValueError, TypeError, AttributeError, LifecycleError):
         return False
 
 
@@ -344,21 +346,24 @@ def launch(state: Path, services: list[Service], timeout: float = 60) -> dict[st
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )
-    deadline = time.monotonic() + timeout * len(services) + 5
-    while time.monotonic() < deadline:
-        if process.poll() is not None:
-            raise LifecycleError(
-                "Startup failed. Read ./laya logs; existing services were not taken over"
-            )
-        try:
-            result = control(state, "status")
-            return result
-        except (FileNotFoundError, ConnectionRefusedError, ConnectionResetError, TimeoutError):
-            time.sleep(0.1)
-    if process.poll() is None:
-        process.terminate()
-        process.wait(timeout=15)
-    raise LifecycleError("Startup timed out; owned services stopped")
+    try:
+        end = time.monotonic() + timeout * len(services) + 5
+        while time.monotonic() < end:
+            if process.poll() is not None:
+                raise LifecycleError(
+                    "Startup failed. Read ./laya logs; existing services were not taken over"
+                )
+            try:
+                return control(state, "status")
+            except (FileNotFoundError, ConnectionRefusedError, ConnectionResetError, TimeoutError):
+                time.sleep(0.1)
+        raise LifecycleError("Startup timed out; owned services stopped")
+    except BaseException:
+        # Cancel/failed startup never abandons a supervisor we just created.
+        if process.poll() is None:
+            process.terminate()
+            process.wait(timeout=15)
+        raise
 
 
 if __name__ == "__main__":

@@ -80,6 +80,10 @@ Repeat `--state-dir` for a nondefault installation. Start is idempotent; repeate
 install reuses matching prepared assets and preserves state, including revoked
 or expired credentials. Changed package inputs require a stopped installation.
 Port/profile options are remembered; repeat installation need not restate them.
+To change a port or backend, stop first, then run install with the new option and
+the same state directory. Changing the semantic profile updates its required flag
+through an audited, versioned policy activation; unrelated policy fields remain.
+Routine reinstall does not override operator changes to live policy.
 Status returns zero only when the owned services and shared Ollama check are
 ready. A stopped, unavailable or corrupt installation exits nonzero. Doctor checks
 host support, installed interpreters, optional asset hashes and the expected local
@@ -102,12 +106,14 @@ the gateway's normal minimized audit contract.
 
 Default installation uses deterministic authorization, filtering, approvals and
 budgets; **semantic classification is off**. Choose exactly one optional backend
-when preparing a fresh installation:
+when preparing an installation:
 
 ```sh
-./laya install --state-dir "$HOME/.local/share/laya-standard" --semantic standard
-# Native Apple Silicon macOS only:
-./laya install --state-dir "$HOME/.local/share/laya-apple" --semantic coreml
+./laya stop
+./laya install --semantic standard
+# To switch the same preserved state on native Apple Silicon macOS:
+./laya stop
+./laya install --semantic coreml
 ```
 
 These commands prepare the separately pinned requirements and download only the

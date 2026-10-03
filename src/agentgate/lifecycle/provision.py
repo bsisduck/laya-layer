@@ -41,5 +41,24 @@ def initialize(directory: Path, policy_path: Path, proxy_path: Path, semantic: s
     bootstrap_operator(directory, policy)
 
 
+def configure_semantic(directory: Path, semantic: str) -> None:
+    from agentgate.control_plane import ControlPlane
+
+    controls = ControlPlane(Store(directory / "agentgate.sqlite3"))
+    snapshot = controls.snapshot()
+    required = semantic != "off"
+    if snapshot.policy.semantic_required != required:
+        policy = snapshot.policy.model_copy(
+            update={
+                "semantic_required": required,
+                "revision": snapshot.policy.revision + 1,
+            }
+        )
+        controls.activate_policy(policy, snapshot.policy.version)
+
+
 if __name__ == "__main__":
-    initialize(Path(sys.argv[1]), Path(sys.argv[2]), Path(sys.argv[3]), sys.argv[4])
+    if sys.argv[1] == "--configure-semantic":
+        configure_semantic(Path(sys.argv[2]), sys.argv[3])
+    else:
+        initialize(Path(sys.argv[1]), Path(sys.argv[2]), Path(sys.argv[3]), sys.argv[4])

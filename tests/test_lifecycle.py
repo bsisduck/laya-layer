@@ -449,3 +449,88 @@ def test_invalid_ports_do_not_create_partial_installation(installation_fixture):
     with pytest.raises(LifecycleError, match="distinct"):
         installer.install(root, state, **(options | {"port": 80}))
     assert not state.exists()
+
+
+def test_port_reconfiguration_preserves_existing_authority(installation_fixture):
+    installer, root, state, options = installation_fixture
+    installer.install(root, state, **options)
+    token = (state / "data/client.token").read_bytes()
+    new_port = free_port()
+    installer.install(root, state, **(options | {"port": new_port}))
+    assert configuration(state)["port"] == new_port
+    assert (state / "data/client.token").read_bytes() == token
+
+
+def test_semantic_activation_retains_policy_and_root(installation_fixture):
+    from agentgate.control_plane import ControlPlane
+    from agentgate.lifecycle.provision import configure_semantic
+    from agentgate.storage import Store
+
+    installer, root, state, options = installation_fixture
+    installer.install(root, state, **options)
+    store = Store(state / "data/agentgate.sqlite3")
+    controls = ControlPlane(store)
+    before = controls.snapshot()
+    with store.connection() as connection:
+        identities = connection.execute("SELECT digest, identity FROM credentials").fetchall()
+    configure_semantic(state / "data", "standard")
+    after = controls.snapshot()
+    assert after.policy.semantic_required
+    assert after.policy.revision == before.policy.revision + 1
+    assert after.policy.tool_budgets == before.policy.tool_budgets
+    assert after.policy.output == before.policy.output
+    with store.connection() as connection:
+        assert (
+            connection.execute("SELECT digest, identity FROM credentials").fetchall() == identities
+        )
+    configure_semantic(state / "data", "coreml")
+    assert controls.snapshot().policy.version == after.policy.version
+
+
+def test_clean_environment_excludes_cloud_keys_proxies_and_dotenv(monkeypatch):
+    from agentgate.lifecycle.processes import clean_environment
+
+    monkeypatch.setenv("OPENAI_API_KEY", "synthetic-must-not-be-inherited")
+    monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "synthetic-must-not-be-inherited")
+    monkeypatch.setenv("HTTPS_PROXY", "http://127.0.0.1:1")
+    monkeypatch.setenv("PYTHONPATH", "/untrusted-modules")
+    result = clean_environment()
+    assert (
+        not {"OPENAI_API_KEY", "AWS_SECRET_ACCESS_KEY", "HTTPS_PROXY", "PYTHONPATH"} & result.keys()
+    )
+    assert result["PYTHON_DOTENV_DISABLED"] == "1"
+    assert result["LITELLM_MODE"] == "PRODUCTION"
+
+
+def test_optional_asset_missing_or_corrupt_is_not_ready(state):
+    import hashlib
+
+    from agentgate.lifecycle.install import verify_assets
+
+    content = b"fixture bytes; not a real model"
+    private_dir(state / "assets/manifests", create=True)
+    save_json(
+        state / "assets/manifests/model-assets.json",
+        {
+            "models": {
+                "laya_standard": {
+                    "directory": "models/standard",
+                    "files": {
+                        "asset": {
+                            "bytes": len(content),
+                            "sha256": hashlib.sha256(content).hexdigest(),
+                        }
+                    },
+                }
+            }
+        },
+    )
+    with pytest.raises(FileNotFoundError):
+        verify_assets(state, "standard")
+    private_dir(state / "assets/models/standard", create=True)
+    path = state / "assets/models/standard/asset"
+    write_new(path, content)
+    verify_assets(state, "standard")
+    path.write_bytes(b"corrupt")
+    with pytest.raises(LifecycleError, match="differs"):
+        verify_assets(state, "standard")

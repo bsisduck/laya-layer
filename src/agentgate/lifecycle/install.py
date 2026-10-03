@@ -6,6 +6,7 @@ import os
 import platform
 import secrets
 import subprocess
+import tempfile
 import time
 from pathlib import Path
 from typing import Any
@@ -127,11 +128,11 @@ def install(
         settings = configuration(state)
         wanted = (port, proxy_port, worker_port, semantic)
         existing = tuple(settings[key] for key in ("port", "proxy_port", "worker_port", "semantic"))
-        if wanted != existing:
-            raise LifecycleError(
-                "Existing installation configuration differs; reuse its original options"
-            )
+        changed = wanted != existing
     else:
+        changed = False
+        for value in (port, proxy_port, worker_port):
+            available_port(value)
         private_dir(state, create=True)
         write_new(state / "control.key", secrets.token_urlsafe(32).encode())
         save_json(
@@ -149,7 +150,11 @@ def install(
         )
     settings = configuration(state)
     fingerprint = source_fingerprint(root)
-    if settings.get("prepared") and settings.get("source_fingerprint") == fingerprint:
+    if (
+        not changed
+        and settings.get("prepared")
+        and settings.get("source_fingerprint") == fingerprint
+    ):
         for profile in ("gateway", "litellm"):
             validate_environment(state / "runtime" / profile)
             if not (runtime(state, profile) / "python").is_file():
@@ -159,9 +164,18 @@ def install(
         return
     with ownership(state):
         settings = configuration(state)
-        for key in ("port", "proxy_port", "worker_port"):
-            available_port(settings[key])
+        for value in {
+            port,
+            proxy_port,
+            worker_port,
+            settings["port"],
+            settings["proxy_port"],
+            settings["worker_port"],
+        }:
+            available_port(value)
         verify_ollama()
+        settings["prepared"] = False
+        save_json(state / "installation.json", settings)
         private_dir(state / "runtime", create=True)
         env = clean_environment()
         env["UV_LINK_MODE"] = "copy"
@@ -241,8 +255,26 @@ def install(
             run([gateway, "--state-dir", str(data), "migrate"])
         if semantic != "off":
             prepare_assets(root, state, semantic, offline=offline)
+        if settings["semantic"] != semantic:
+            run(
+                [
+                    str(runtime(state, "gateway") / "python"),
+                    "-m",
+                    "agentgate.lifecycle.provision",
+                    "--configure-semantic",
+                    str(data),
+                    semantic,
+                ]
+            )
         settings.update(
-            prepared=True, root=str(root), installed_at=time.time(), source_fingerprint=fingerprint
+            port=port,
+            proxy_port=proxy_port,
+            worker_port=worker_port,
+            semantic=semantic,
+            prepared=True,
+            root=str(root),
+            installed_at=time.time(),
+            source_fingerprint=fingerprint,
         )
         save_json(state / "installation.json", settings)
 
@@ -268,17 +300,28 @@ def prepare_assets(root: Path, state: Path, semantic: str, *, offline: bool) -> 
             url = f"https://huggingface.co/{metadata['repository']}/resolve/{metadata['revision']}/{name}"
             import urllib.request
 
-            with urllib.request.urlopen(url, timeout=60) as response:
-                temporary = path.with_name(path.name + ".download")
-                write_new(temporary, b"")
-                size = 0
-                with temporary.open("wb") as stream:
+            descriptor, name_on_disk = tempfile.mkstemp(prefix=".download-", dir=path.parent)
+            temporary = Path(name_on_disk)
+            try:
+                opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+                with (
+                    os.fdopen(descriptor, "wb") as stream,
+                    opener.open(url, timeout=60) as response,
+                ):
+                    size = 0
                     while chunk := response.read(1024 * 1024):
                         size += len(chunk)
                         if size > expected["bytes"]:
                             raise LifecycleError("Model download exceeds manifest size")
                         stream.write(chunk)
-                os.rename(temporary, path)
+                with temporary.open("rb") as stream:
+                    downloaded = hashlib.file_digest(stream, "sha256").hexdigest()
+                if size != expected["bytes"] or downloaded != expected["sha256"]:
+                    raise LifecycleError("Downloaded model asset differs from pinned manifest")
+                # Exclusive publication: another file is never silently overwritten.
+                os.link(temporary, path)
+            finally:
+                temporary.unlink(missing_ok=True)
         if not path.is_file():
             raise LifecycleError("Requested model assets unavailable offline")
         check_file(path)
