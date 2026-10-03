@@ -83,7 +83,7 @@ def test_T45_fragmented_upstream_is_inspected_before_any_client_output(
     assert marker in raw and all(b"AGENTGATE_SECRET[" not in part for part in fragments)
     consumed = [Event() for _ in fragments]
     release = [Event() for _ in fragments]
-    emitted, observed, upstream_requests = [], [], []
+    emitted, observed, upstream_requests, upstream_headers = [], [], [], []
     response_messages, release_audit, consumer_bytes = [], [], []
     consumer_started = Event()
     provider_token = uuid4().hex
@@ -150,6 +150,7 @@ def test_T45_fragmented_upstream_is_inspected_before_any_client_output(
         class ObservedTransport(httpx.AsyncBaseTransport):
             async def handle_async_request(self, request):
                 response = await inner.handle_async_request(request)
+                upstream_headers.append(response.headers)
                 response.stream = ObservedStream(response.stream)
                 return response
 
@@ -227,6 +228,8 @@ def test_T45_fragmented_upstream_is_inspected_before_any_client_output(
     assert emitted == fragments and b"".join(observed) == raw
     if upstream_kind == "split_transport":
         assert observed == fragments
+    else:
+        assert upstream_headers[0]["transfer-encoding"] == "chunked"
     assert code == 403 and headers["content-type"].startswith("application/json")
     blocked = json.loads(body)
     assert blocked["status"] == "denied" and blocked["decision"] == "deny"
@@ -249,7 +252,8 @@ def test_T45_fragmented_upstream_is_inspected_before_any_client_output(
     assert intent.executed is False and terminal.executed is True
     assert terminal.decision == "deny" and terminal.reason_codes == (Reason.SECRET_IN_OUTPUT,)
     assert {e.action_id for e in events} == {blocked["action_id"]}
-    assert {e.trace_id for e in events} == {blocked["trace_id"], headers["x-request-id"]}
+    assert {e.trace_id for e in events} == {blocked["trace_id"]}
+    assert headers["x-request-id"] == blocked["trace_id"]
     assert all(
         e.operation == "chat.completions" and e.principal_id == model.identity.principal_id
         for e in events
