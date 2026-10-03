@@ -1,7 +1,14 @@
 # First implementation slice
 
 Source of truth: `AgentGate_Full_Project_Architecture.md`, especially §§7, 10,
-19–23. This is a handoff checklist, not an executed implementation or test report.
+19–23. This records the initial task and follow-up sequence.
+
+Progress: locked Python environment, document contracts and enforcement, audit,
+and denied-path tests are implemented. Both real Laya loaders work on pinned
+assets; neither is a deployed worker or connected to gateway decisions yet.
+See `docs/document-slice.md` and `docs/inference-spike.md` for observed evidence.
+Organizer timing remains unverified; implementation proceeded on the user's
+explicit instruction to proceed, not a claimed organizer confirmation.
 
 1. Resolve the organizer's start-time ambiguity recorded in §2 before competition
    implementation. Confirm judging-weight and cross-category questions separately.

@@ -65,7 +65,7 @@ def main():
     else:
         print("GAP: browser QA not installed; use .ai/browsers/agent-browser.md")
     check_skills()
-    print("NOTE: AgentGate runtime, Laya loading, and end-to-end coverage remain unverified")
+    print("NOTE: This is a tool inventory. Gateway checks: make validate; real inference: scripts/semantic_smoke.py")
 
 
 if __name__ == "__main__":

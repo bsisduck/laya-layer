@@ -1,7 +1,19 @@
 # Development readiness — 3 October 2026
 
-This record covers development preparation on the inspected Apple Silicon Mac.
-It does not certify the proposed AgentGate runtime, models, or security controls.
+This record covers development preparation and the first document-only slice on
+the inspected Apple Silicon Mac. It does not certify the full proposed MVP.
+
+## Current implementation
+
+The REST document path now enforces scoped credentials, tenant/role/agent
+permissions, bounded requests, filtered output, and a durable minimized audit.
+`make validate` runs lockfile, lint/format, typing, 57 tests, and package builds.
+Live HTTP checks verified allowed, denied, redacted, blocked-output, and missing-
+credential cases. See [the implemented contract](document-slice.md).
+
+Actual standard Laya and native CoreML loading also succeeded on pinned assets.
+Both matched 2/4 expected smoke labels, agreeing on all four. These standalone
+runs are not connected to the gateway. See [the inference spike](inference-spike.md).
 
 ## Harness and skills
 
@@ -47,7 +59,8 @@ The browser doctor launches a temporary headless browser to verify it works.
 
 ## Validation evidence
 
-- Preparation checks passed, including Cezar's actual config and workflow loaders.
+- Preparation checks passed, including Cezar's actual config and workflow loaders;
+  the gate has since been extended to Python implementation checks above.
 - Cezar 0.14.0 HTTP startup/health verified the project, Codex runner, disabled
   automation/dispatch, and loaded local workflow. No coding agent task was launched.
 - The pinned upstream catalog resolved to all 42 Open Mercato skills. Global
@@ -63,16 +76,18 @@ The browser doctor launches a temporary headless browser to verify it works.
 2. Confirm the competition start-time ambiguity documented in architecture §2
    before competition implementation. Judging weights and cross-category eligibility
    also remain organizer questions.
-3. Resolve and lock Python gateway and worker dependencies. Create separate worker
-   environments where needed; do not run native CoreML inside a Linux container.
-4. Retrieve approved standard Laya and CoreML assets, verify licenses and digests,
-   and run actual loading/inference checks. Neither backend was loaded during setup.
+3. Implement authenticated semantic worker services around the verified loaders;
+   enforce token/coverage/time limits and define handling for `unclear`. Dependencies
+   and asset hashes are now pinned. Keep CoreML native, outside Linux containers.
+4. Add atomic resource budgets, approvals, policy reload, feeds, and the other
+   architecture controls. The current document fixture path does not claim these.
 5. Select and test a local tool-capable generation model. Existing Ollama models
    have not been validated for this workflow; generation is separate from Laya.
 6. Implement and verify LiteLLM, MCP, and Hermes integration. Available development
    tools do not establish application integration compatibility.
 
-The first bounded implementation task is in
+The initial task and next slices are recorded in
 [implementation-start.md](../.ai/specs/implementation-start.md). Follow the
 architecture's separate deterministic, real-semantic, and end-to-end suites.
-The architecture describes 48 planned cases; none has been implemented or run here.
+The 57 pytest cases include parametrizations of a subset of the architecture's
+48 planned scenarios; they are not a claim that all 48 scenarios are implemented.

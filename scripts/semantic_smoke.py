@@ -6,6 +6,8 @@ import importlib.metadata
 import json
 import os
 import platform
+import shutil
+import tempfile
 import time
 from pathlib import Path
 
@@ -58,12 +60,23 @@ def main():
         "cases": [],
     }
     started = time.perf_counter()
+    scratch = None
     try:
         if args.backend == "laya_standard":
             import laya
 
             report["runtime_version"] = importlib.metadata.version("laya")
-            model = laya.load(str(directory), device="cpu")
+            # Laya normalizes tokenizer_config.json in place. Preserve the verified
+            # source snapshot and record the derived input actually used by the runtime.
+            scratch = tempfile.TemporaryDirectory(prefix="agentgate-laya-")
+            runtime_directory = Path(scratch.name) / "checkpoint"
+            shutil.copytree(directory, runtime_directory, ignore=shutil.ignore_patterns(".cache"))
+            model = laya.load(str(runtime_directory), device="cpu")
+            normalized = runtime_directory / "tokenizer/tokenizer_config.json"
+            report["normalized_tokenizer_config_sha256"] = hashlib.sha256(
+                normalized.read_bytes()
+            ).hexdigest()
+            report["tokenizer_normalization"] = "upstream Laya normalization on a disposable copy"
             report["compute"] = str(model.device)
         else:
             import laya_coreml
@@ -72,7 +85,9 @@ def main():
             model = laya_coreml.load(str(directory), local_files_only=True, compute_units="cpu_gpu")
             report["compute"] = "cpu_gpu_requested; per-operation placement unmeasured"
         report["load_seconds"] = time.perf_counter() - started
-        fixtures = json.loads((ROOT / "tests/fixtures/semantic-loading.json").read_text())
+        fixture_bytes = (ROOT / "tests/fixtures/semantic-loading.json").read_bytes()
+        report["fixture_sha256"] = hashlib.sha256(fixture_bytes).hexdigest()
+        fixtures = json.loads(fixture_bytes)
         for case in fixtures["cases"]:
             before = time.perf_counter()
             if args.backend == "laya_standard":
@@ -97,6 +112,9 @@ def main():
     except Exception as error:
         report["error_type"] = type(error).__name__
         report["error"] = str(error)[:1000]
+    finally:
+        if scratch is not None:
+            scratch.cleanup()
     report["total_seconds"] = time.perf_counter() - started
     output = ROOT / "reports/generated" / f"{args.backend}.json"
     output.parent.mkdir(parents=True, exist_ok=True)
