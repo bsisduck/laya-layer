@@ -47,8 +47,8 @@ PR: #23
 ### Phase 1: Freeze and measure
 
 - [x] 1.1 Freeze labels and evaluation contract — b4922c4
-- [ ] 1.2 Implement real evaluation and minimized reporting
-- [ ] 1.3 Verify math and failure handling deterministically
+- [x] 1.2 Implement real evaluation and minimized reporting — e8ac4c3
+- [x] 1.3 Verify math and failure handling deterministically — e8ac4c3
 
 ### Phase 2: Verify and deliver
 
