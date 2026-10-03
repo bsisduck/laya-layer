@@ -1,0 +1,21 @@
+name: agentgate-local
+description: Implement one authorized AgentGate task, review locally, and validate.
+steps:
+  - id: implement
+    name: Implement and review locally
+    runner: codex
+    prompt: |
+      Read AGENTS.md, SDLC.md, CODE_REVIEW.md, BACKWARD_COMPATIBILITY.md,
+      and the relevant sections of AgentGate_Full_Project_Architecture.md.
+      Complete only this task: {{task}}
+      Keep changes local and make working commits. Review the diff against
+      CODE_REVIEW.md and fix findings. Run make validate and the tests appropriate
+      to the changed behavior. If introducing application code, replace the
+      setup-only gate with real lint, type, test, and build checks in the same task.
+      Report evidence and remaining limitations. Publish only on explicit user instruction.
+  - id: verify
+    name: Validate the repository
+    command: make validate
+    onFail:
+      retry: implement
+      max: 2

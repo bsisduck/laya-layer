@@ -1,0 +1,14 @@
+{
+  "skillsRepos": [
+    {
+      "repo": "open-mercato/skills",
+      "ref": "2b5647fd35048ee391c7a3dea0e944bd2cdadf07"
+    }
+  ],
+  "defaultRunner": "codex",
+  "modelsLocked": true,
+  "baseBranch": "main",
+  "maxParallel": 1,
+  "worktreeRetention": 5,
+  "systemPrompt": "Read AGENTS.md and follow the user's publication boundary: commit locally as work progresses; push, PRs, tags, remote changes, and messages require an explicit user instruction. Read AgentGate_Full_Project_Architecture.md for project scope. Do not represent setup validation or classifier fixtures as working AgentGate enforcement or real-model evaluation."
+}

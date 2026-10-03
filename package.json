@@ -1,0 +1,15 @@
+{
+  "name": "laya-sec-agent-tooling",
+  "private": true,
+  "description": "Development harness only; AgentGate runtime is planned in Python.",
+  "scripts": {
+    "harness": "CEZ_HOME=.ai/cezar/home CEZ_DISPATCH=0 CEZ_AUTOMATIONS=0 CEZ_SKILLS_AUTO_UPDATE=0 CEZ_NO_BANNER=1 cezar serve --port 4322",
+    "check:setup": "python3 .ai/scripts/check_setup.py"
+  },
+  "devDependencies": {
+    "@open-mercato/cezar": "0.14.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
