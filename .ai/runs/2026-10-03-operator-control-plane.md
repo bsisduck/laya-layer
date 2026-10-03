@@ -52,18 +52,42 @@ push ready PR with exact deterministic/API evidence and inference exclusions.
 
 ## Progress
 
+PR: #17
+Issue: #8
+
 > Convention: `- [ ]` pending, `- [x]` done. Append ` — <commit sha>` when a step lands. Do not rename step titles.
 
 ### Phase 1: Durable controls
 
-- [x] 1.1 Publish stable snapshot/inspection contract and durable validated controls
-- [x] 1.2 Enforce feed and snapshot safety in document actions
+- [x] 1.1 Publish stable snapshot/inspection contract and durable validated controls — ca11d2f
+- [x] 1.2 Enforce feed and snapshot safety in document actions — f9dd6d7
 
 ### Phase 2: Operator APIs
 
-- [x] 2.1 Implement authenticated APIs and private operator bootstrap
-- [x] 2.2 Verify boundary behavior and document compatibility
+- [x] 2.1 Implement authenticated APIs and private operator bootstrap — 387e7e6
+- [x] 2.2 Verify boundary behavior and document compatibility — a16aa0b
 
 ### Phase 3: Verify and publish
 
-- [ ] 3.1 Validate, review, and publish ready PR
+- [x] 3.1 Validate, review, and publish ready PR
+
+
+## Evidence and remaining integration scope
+
+At a16aa0b, `make validate` passed all workflow/config/lock checks, Ruff,
+strict mypy (15 source files), pytest (246 tests), source and wheel build.
+Both GitHub validate checks passed. Tests include real loopback CLI/HTTP startup,
+operator bootstrap/login, document execution, activation/denial, export, restart,
+and logout. Auth/CAS race/replay/denial assertions use deterministic fixtures.
+
+Author `om-code-review` pass found and fixed malformed non-ASCII CSRF handling,
+static snapshot hook compatibility, and retained playground credential binding.
+No unresolved blocker/major; the FastAPI coroutine generic and trusted tools
+Protocol cast are narrowly scoped typing limitations, documented in PR review.
+Independent high-risk release review remains with root; no merge performed.
+
+Per later coordination, memory/mail playground request adapters and stable private
+24-hour demo credential plumbing are included. Actual tools, approvals and MCP
+come from PR19; model execution/status comes from PR6; frontend/browser QA comes
+from PR20. No Laya/Ollama inference ran here. Export schema 1 is unchanged.
+Labels remain disabled. No agents spawned, new issues duplicated, or merges made.

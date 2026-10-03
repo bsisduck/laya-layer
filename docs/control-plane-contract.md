@@ -233,3 +233,17 @@ SameSite cookies, following the relevant
 [OWASP guidance](https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html).
 Literal/domain feeds are deterministic matching, not semantic evaluation or a
 universal attack detector. No Laya/Ollama inference is run by this story's tests.
+
+
+## Integration handoff
+
+The model/tools owner combines the additive `models` and `scoped_tools` Policy
+blocks with this branch's persisted Policy serialization. Preserve tool-owned
+`Context.policy`, `inspect_text` and audit operation enums (documents.read,
+memory.query, mail.send, chat.completions) alongside `Context.controls`. This
+branch never removes those additions from the other branches. Resolve small
+`app.py`/`cli.py` hooks with named keywords; preserve `response_status` from the
+tools story when combining adapters. Static generation-0 snapshots make
+`assert_current` a no-op; live snapshots verify the generation inside the
+caller's reservation/intent transaction. Real model/tool integration validation
+belongs to the integrating branch, not this story's callback/forwarding fixtures.
