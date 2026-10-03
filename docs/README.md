@@ -6,6 +6,9 @@ Start with the [visual architecture](architecture.md), then follow the
 | Document | Purpose |
 |---|---|
 | [Visual architecture](architecture.md) | Working path, trust boundaries, and target system |
+| [Challenge alignment](challenge-alignment.md) | Supplied PDFs mapped to implemented controls, gaps and submission evidence |
+| [Enterprise integration design](enterprise-integrations.md) | Bank-stack context, interface choices, diagram and verification boundaries |
+| [Security event export](audit-export.md) | Implemented tenant-scoped JSONL, ECS-oriented records and Splunk HEC envelopes |
 | [Full design](../AgentGate_Full_Project_Architecture.md) | Original requirements, decisions, protocols, and acceptance cases |
 | [Document API](document-slice.md) | Implemented authentication, authorization, filtering, and audit contract |
 | [Tool budgets](budgets.md) | Atomic scopes, uncertain usage, operator counters, and schema migration |

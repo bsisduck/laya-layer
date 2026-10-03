@@ -4,6 +4,7 @@ import argparse
 import json
 import os
 import secrets
+import sys
 import time
 from pathlib import Path
 
@@ -11,6 +12,7 @@ import httpx
 import uvicorn
 
 from agentgate.app import create_app
+from agentgate.audit_export import export_page
 from agentgate.contracts import Identity
 from agentgate.documents import DocumentRegistry, FixtureExecutor, demo_documents
 from agentgate.policy import load_policy
@@ -71,6 +73,16 @@ def main() -> None:
     read.add_argument("--port", type=int, default=8000)
     audit = commands.add_parser("audit", help="Print minimized local audit events")
     audit.add_argument("--limit", type=int, default=20)
+    export = commands.add_parser(
+        "audit-export", help="Export one bounded page for a local operator"
+    )
+    scope = export.add_mutually_exclusive_group(required=True)
+    scope.add_argument("--tenant")
+    scope.add_argument("--unattributed", action="store_true")
+    export.add_argument("--format", choices=["jsonl", "ecs", "splunk-hec"], default="jsonl")
+    export.add_argument("--after-sequence", type=int, default=0)
+    export.add_argument("--through-sequence", type=int)
+    export.add_argument("--limit", type=int, default=100)
     budgets = commands.add_parser("budgets", help="Print bounded local tool-budget counters")
     budgets.add_argument("--limit", type=int, default=100)
     commands.add_parser(
@@ -135,6 +147,19 @@ def main() -> None:
         elif args.command == "audit":
             for event in Store(args.state_dir / "agentgate.sqlite3").events(args.limit):
                 print(event.model_dump_json())
+        elif args.command == "audit-export":
+            page = export_page(
+                args.state_dir / "agentgate.sqlite3",
+                tenant=args.tenant,
+                format=args.format,
+                after_sequence=args.after_sequence,
+                through_sequence=args.through_sequence,
+                limit=args.limit,
+            )
+            if page.lines:
+                sys.stdout.write("\n".join(page.lines) + "\n")
+            sys.stdout.flush()
+            print(json.dumps(page.metadata()), file=sys.stderr)
         elif args.command == "budgets":
             for counter in Store(args.state_dir / "agentgate.sqlite3").budget_counters(args.limit):
                 print(json.dumps(counter))
