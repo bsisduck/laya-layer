@@ -1,0 +1,16 @@
+#!/bin/sh
+# The installed product requires uv and Python, never Node or the Cezar harness.
+set -eu
+ROOT=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+if ! command -v uv >/dev/null 2>&1; then
+    echo 'Laya requires uv. Install it from https://docs.astral.sh/uv/getting-started/installation/' >&2
+    exit 1
+fi
+if [ "${1:-}" = install ]; then
+    uv python install 3.12
+fi
+LAYA_PYTHON=$(uv python find --offline 3.12) || {
+    echo 'Python 3.12 is unavailable locally. Run ./laya install first.' >&2
+    exit 1
+}
+exec "$LAYA_PYTHON" "$ROOT/scripts/laya.py" "$@"
