@@ -29,7 +29,7 @@ def reject_constant(value: str) -> NoReturn:
     raise ValueError("Nonfinite JSON number")
 
 
-def parse_action(body: bytes, max_depth: int) -> ActionRequest:
+def parse_json(body: bytes, max_depth: int) -> object:
     try:
         data = json.loads(body, object_pairs_hook=unique_object, parse_constant=reject_constant)
         pending: list[tuple[object, int]] = [(data, 1)]
@@ -41,8 +41,15 @@ def parse_action(body: bytes, max_depth: int) -> ActionRequest:
                 pending.extend((value, depth + 1) for value in item.values())
             elif isinstance(item, list):
                 pending.extend((value, depth + 1) for value in item)
-        return ActionRequest.model_validate(data)
+        return data
     except (ValueError, UnicodeError, RecursionError, ValidationError) as error:
+        raise GateError(422, Reason.MALFORMED_REQUEST) from error
+
+
+def parse_action(body: bytes, max_depth: int) -> ActionRequest:
+    try:
+        return ActionRequest.model_validate(parse_json(body, max_depth))
+    except ValidationError as error:
         raise GateError(422, Reason.MALFORMED_REQUEST) from error
 
 
@@ -76,7 +83,7 @@ async def read_body(request: Request, maximum: int, timeout: float) -> bytes:
     return bytes(body)
 
 
-def create_app(service: ActionService) -> FastAPI:
+def create_app(service: ActionService, *, enable_mcp: bool = False) -> FastAPI:
     app = FastAPI(
         title="AgentGate", version="0.1.0", docs_url=None, redoc_url=None, openapi_url=None
     )
@@ -122,7 +129,7 @@ def create_app(service: ActionService) -> FastAPI:
             service.digest_payload(context, body)
             action = parse_action(body, limits.max_json_depth)
             response = await run_in_threadpool(service.execute, context, action)
-            status_code = 200
+            status_code = response_status(response)
         except (GateError, StorageUnavailable) as error:
             rejection = (
                 error if isinstance(error, GateError) else GateError(503, Reason.AUDIT_UNAVAILABLE)
@@ -137,4 +144,21 @@ def create_app(service: ActionService) -> FastAPI:
             headers=headers,
         )
 
+    from agentgate.tool_routes import attach_tool_routes
+
+    attach_tool_routes(app, service)
+    if enable_mcp:
+        from agentgate.mcp_adapter import attach_mcp
+
+        attach_mcp(app, service)
     return app
+
+
+def response_status(response: ActionResponse) -> int:
+    if response.action_state in ("pending", "approved"):
+        return 202
+    if response.action_state == "expired":
+        return 410
+    if response.action_state == "denied":
+        return 403
+    return 200

@@ -38,10 +38,10 @@ reservations retained. High-risk independent review remains required before rele
 
 ### Phase 1: Durable authority
 - [x] 1.1 Preserve legacy root spend while sharing tenant/root counters across principals.
-- [ ] 1.2 Implement strict tools, immutable approvals, idempotency and atomic local outbox.
+- [x] 1.2 Implement strict tools, immutable approvals, idempotency and atomic local outbox.
 
 ### Phase 2: Adapters and verification
-- [ ] 2.1 Add REST retrieve/resume and operator callable hooks with contract docs.
-- [ ] 2.2 Add authenticated official-SDK MCP with filtered discovery and bound sessions.
-- [ ] 2.3 Exercise denied side effects, races, restarts, mutation, expiry and MCP wire flows.
+- [x] 2.1 Add REST retrieve/resume and operator callable hooks with contract docs.
+- [x] 2.2 Add authenticated official-SDK MCP with filtered discovery and bound sessions.
+- [x] 2.3 Exercise denied side effects, races, restarts, mutation, expiry and MCP wire flows.
 - [ ] 2.4 Run make validate, author om-code-review, publish evidence and ready PR.

@@ -13,7 +13,9 @@ target design is in [the architecture](AgentGate_Full_Project_Architecture.md).
 **Status: document-enforcement prototype.** Atomic call budgets and authenticated
 standard Laya / native CoreML workers are implemented. The optional semantic
 profile inspects document results before release; classification is experimental.
-Model routing, approvals, MCP, Hermes, and the dashboard remain to build.
+Scoped memory queries, exact mail approvals/local outbox, and official-SDK MCP are
+implemented; see [scoped tools](docs/scoped-tools.md). Model routing, Hermes, and
+the integrated operator dashboard remain separate delivery work.
 The product is also referred to as **Laya Sec Layer**. See the
 [challenge coverage](docs/challenge-alignment.md) and
 [enterprise integration design](docs/enterprise-integrations.md) for the supplied

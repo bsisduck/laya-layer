@@ -10,7 +10,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Literal
 
-from pydantic import ValidationError
+from pydantic import JsonValue, ValidationError
 
 from agentgate.budgets import BudgetExceeded
 from agentgate.contracts import (
@@ -38,7 +38,10 @@ class Context:
     identity: Identity | None = None
     credential_digest: str | None = None
     payload_digest: str | None = None
-    operation: Literal["documents.read"] | None = None
+    operation: Literal["documents.read", "memory.query", "mail.send", "chat.completions"] | None = (
+        None
+    )
+    policy: Policy | None = None
     executed: bool = False
     semantic: SemanticResult | None = None
     semantic_failure: Literal["unavailable", "invalid_output"] | None = None
@@ -70,6 +73,9 @@ class ActionService:
         self.audit_key = audit_key
         self.clock = clock
         self.semantic = semantic
+        from agentgate.scoped_tools import ScopedTools
+
+        self.tools = ScopedTools(self)
 
     def semantic_ready(self) -> bool:
         return not self.policy.semantic_required or (
@@ -106,9 +112,11 @@ class ActionService:
             "action_completed",
             "output_blocked",
             "execution_failed",
+            "action_pending",
+            "approval_decided",
         ],
         reason: Reason,
-        decision: Literal["allow", "redact", "deny"],
+        decision: Literal["allow", "redact", "deny", "require_approval"],
     ) -> AuditEvent:
         identity = context.identity
         return AuditEvent(
@@ -123,7 +131,7 @@ class ActionService:
             operation=context.operation,
             decision=decision,
             reason_codes=(reason,),
-            policy_version=self.policy.version,
+            policy_version=(context.policy or self.policy).version,
             payload_digest=context.payload_digest,
             executed=context.executed,
             semantic_status=(
@@ -156,7 +164,7 @@ class ActionService:
             trace_id=context.trace_id,
             decision="deny",
             reason_codes=(error.reason,),
-            policy_version=self.policy.version,
+            policy_version=(context.policy or self.policy).version,
             executed=context.executed,
         )
 
@@ -165,7 +173,13 @@ class ActionService:
         digest = context.credential_digest
         if identity is None or digest is None:
             raise GateError(401, Reason.AUTHENTICATION_REQUIRED)
-        if request.operation != "documents.read":
+        from agentgate.scoped_contracts import ALIASES
+
+        operation = ALIASES.get(request.operation)
+        if operation in ("memory.query", "mail.send"):
+            return self.tools.execute(context, request.model_copy(update={"operation": operation}))
+        context.policy = self.policy
+        if operation != "documents.read":
             raise GateError(403, Reason.UNKNOWN_OPERATION)
         context.operation = "documents.read"
         try:
@@ -197,18 +211,42 @@ class ActionService:
         except Exception as error:
             # Executor exception text may contain document contents or credentials.
             raise GateError(503, Reason.EXECUTION_FAILED) from error
+        released = self.inspect_text(context, content)
+        decision: Literal["allow", "redact"] = "redact" if released != content else "allow"
+        reason = Reason.EMAIL_REDACTED if decision == "redact" else Reason.ALLOWED
+        result: dict[str, JsonValue] = {"document_id": arguments.document_id, "content": released}
+        if (
+            len(json.dumps(result, ensure_ascii=False, separators=(",", ":")).encode("utf-8"))
+            > self.policy.output.max_result_bytes
+        ):
+            raise GateError(403, Reason.OUTPUT_TOO_LARGE)
+        self.store.append(self.event(context, "action_completed", reason, decision))
+        return ActionResponse(
+            status="completed",
+            action_id=context.action_id,
+            trace_id=context.trace_id,
+            decision=decision,
+            reason_codes=(reason,),
+            policy_version=(context.policy or self.policy).version,
+            executed=True,
+            result=result,
+        )
+
+    def inspect_text(self, context: Context, content: object, *, input_text: bool = False) -> str:
+        policy = context.policy or self.policy
         if not isinstance(content, str):
             raise GateError(503, Reason.OUTPUT_INVALID)
         try:
             size = len(content.encode("utf-8"))
         except UnicodeError as error:
             raise GateError(503, Reason.OUTPUT_INVALID) from error
-        if size > self.policy.output.max_result_bytes:
+        if size > policy.output.max_result_bytes:
             raise GateError(403, Reason.OUTPUT_TOO_LARGE)
         if SYNTHETIC_SECRET.search(content):
-            raise GateError(403, Reason.SECRET_IN_OUTPUT)
-        if self.policy.semantic_required:
-            assert self.semantic is not None
+            raise GateError(403, Reason.SECRET_IN_INPUT if input_text else Reason.SECRET_IN_OUTPUT)
+        if policy.semantic_required:
+            if self.semantic is None or not self.semantic.ready():
+                raise GateError(503, Reason.REQUIRED_SEMANTIC_UNAVAILABLE)
             try:
                 context.semantic = self.semantic.evaluate(context.action_id, content)
             except SemanticUnavailable as error:
@@ -225,30 +263,13 @@ class ActionService:
                     "unavailable": Reason.REQUIRED_SEMANTIC_UNAVAILABLE,
                 }[semantic.status]
                 raise GateError(503, reason)
-            if self.policy.semantic_mode == "enforce":
+            if policy.semantic_mode == "enforce":
                 if semantic.status == "abstain":
                     raise GateError(403, Reason.SEMANTIC_ABSTAIN)
                 if semantic.selected_labels["content_role"] == "behavior_instruction":
                     raise GateError(403, Reason.SEMANTIC_BLOCKED)
-        released = (
-            EMAIL.sub("[REDACTED_EMAIL]", content) if self.policy.output.redact_emails else content
-        )
-        decision: Literal["allow", "redact"] = "redact" if released != content else "allow"
-        reason = Reason.EMAIL_REDACTED if decision == "redact" else Reason.ALLOWED
-        result = {"document_id": arguments.document_id, "content": released}
-        if (
-            len(json.dumps(result, ensure_ascii=False, separators=(",", ":")).encode("utf-8"))
-            > self.policy.output.max_result_bytes
-        ):
-            raise GateError(403, Reason.OUTPUT_TOO_LARGE)
-        self.store.append(self.event(context, "action_completed", reason, decision))
-        return ActionResponse(
-            status="completed",
-            action_id=context.action_id,
-            trace_id=context.trace_id,
-            decision=decision,
-            reason_codes=(reason,),
-            policy_version=self.policy.version,
-            executed=True,
-            result=result,
+        return (
+            EMAIL.sub("[REDACTED_EMAIL]", content)
+            if policy.output.redact_emails and not input_text
+            else content
         )

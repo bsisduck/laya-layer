@@ -40,23 +40,32 @@ def initialize_demo(directory: Path) -> None:
             agent_id="demo-reader",
             root_run_id="run-demo",
             roles=("analyst",),
-            operations=("documents.read",),
+            operations=("documents.read", "memory.query", "mail.send"),
         ),
         time.time() + 3600,
     )
     private_file(directory / "client.token", token.encode("ascii"))
+    with store.connection() as connection:
+        connection.executemany(
+            "INSERT INTO memory_entries VALUES (?, ?, 'internal', ?)",
+            [
+                ("tenant-a", "demo-notes", "Quarterly memory notes for tenant A."),
+                ("tenant-b", "demo-notes", "Quarterly private memory notes for tenant B."),
+            ],
+        )
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="AgentGate document enforcement demo")
+    parser = argparse.ArgumentParser(description="AgentGate scoped tool enforcement demo")
     parser.add_argument("--state-dir", type=Path, default=Path(".agentgate"))
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser(
         "init-demo", help="Create private local state and a one-hour scoped credential"
     )
-    serve = commands.add_parser("serve", help="Serve the document-only gateway on loopback")
+    serve = commands.add_parser("serve", help="Serve the scoped tool gateway on loopback")
     serve.add_argument("--policy", type=Path, default=Path("config/policy.yaml"))
     serve.add_argument("--port", type=int, default=8000)
+    serve.add_argument("--mcp", action="store_true", help="Enable /mcp (install the mcp extra)")
     serve.add_argument("--semantic-url")
     serve.add_argument(
         "--semantic-backend", choices=["laya_standard", "laya_coreml"], default="laya_standard"
@@ -115,7 +124,12 @@ def main() -> None:
                 if args.semantic_url
                 else None,
             )
-            uvicorn.run(create_app(service), host="127.0.0.1", port=args.port, access_log=False)
+            uvicorn.run(
+                create_app(service, enable_mcp=args.mcp),
+                host="127.0.0.1",
+                port=args.port,
+                access_log=False,
+            )
         elif args.command == "semantic-worker":
             from agentgate.semantic_worker import Supervisor, create_worker
 
@@ -168,7 +182,9 @@ def main() -> None:
             if not path.is_file():
                 raise StorageUnavailable
             Store(path).initialize()
-            print("State upgraded to schema 2; credentials and audit retained.")
+            print(
+                "State upgraded to schema 2 plus scoped tools; credentials, audit and budget spend retained."
+            )
     except BrokenPipeError:
         # Avoid a second failing flush during interpreter shutdown. No export
         # checkpoint has been emitted when the data stream fails.

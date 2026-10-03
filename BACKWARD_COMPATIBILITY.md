@@ -35,3 +35,14 @@ policy versions, approval payload binding, budget units, audit events, and SDK c
 For a used contract, incompatible changes require a consumer update, migration or
 versioning plan as appropriate, and tests. Never silently change identity,
 authorization, or accounting semantics to preserve apparent compatibility.
+
+Scoped tools add optional `scoped_tools` policy defaults, memory/mail audit operation
+and event variants, `require_approval`, and optional approval/state/expiry fields
+on ActionResponse. Results can include structured memory rows; existing document
+result fields are preserved. Exact underscored aliases are newly supported.
+`docs/scoped-tools.md` specifies REST/MCP, trusted operator hooks and migration.
+Schema 2 gains scoped-tool tables with their own version marker. Readiness requires
+the additive migration and tenant+root accounting layout; old binaries must remain
+stopped. Existing credentials keep their old scopes; only newly initialized demo
+credentials include memory/mail. `make setup`/`make validate` install/use the locked
+MCP extra for typechecking and wire tests; base package runtime remains optional.

@@ -36,7 +36,7 @@ a process crash can remain unresolved; it is not proof of successful execution.
 
 `GET /health/live` returns only liveness. `/health/ready` requires writable SQLite
 and no unavailable required semantic dependency. It certifies this document slice
-only. Other architecture routes, including MCP/admin/model paths, are absent.
+only. Scoped-tool/MCP routes are described in [scoped tools](scoped-tools.md); admin/model paths are separate work.
 
 ## Enforced boundaries
 
@@ -84,7 +84,7 @@ audit records; there is no unauthenticated audit HTTP endpoint.
 
 Atomic document call budgets were added in [the budget slice](budgets.md).
 No inference/provider budgets, rate quotas, approvals, mail/memory tools, external effects, policy
-reload, threat feeds, MCP sessions, or model proxy is implemented.
+reload, threat feeds, or model proxy is implemented in this document slice. MCP sessions and approvals are now described in [scoped tools](scoped-tools.md).
 Optional real standard/CoreML document-result checks are documented in
 [semantic workers](semantic-workers.md).
 `semantic_required: true` blocks readiness/dispatch when the configured worker is
