@@ -11,6 +11,7 @@ working local commit. Keep security claims tied to demonstrated behavior.
 | 2 | Public repository, docs, CI | Reproducible setup, architecture diagrams, hosted validation | Published; GitHub CI passed |
 | 3 | Atomic tool resource budgets | Tenant/day, principal/day, root-run limits; race tests; uncertain dispatch retains reservation | Implemented; deterministic suite now 84 tests |
 | 4 | Authenticated semantic workers | Both real backends; capacity and coverage validation; timeout/invalid-result denial | Implemented; 135 deterministic tests; both real HTTP profiles pass; label-quality gaps documented |
+| 4a | Security event export foundation | Tenant-scoped bounded JSONL, ECS-oriented records, Splunk HEC envelopes; no raw content; resumable snapshot | Implemented locally; live vendor delivery remains planned |
 | 5 | Model facade and private LiteLLM | Model allowlist, per-attempt reservations, bounded output, buffered SSE | Planned |
 | 6 | MCP and remaining fixture tools | Shared authorization; isolated memory; exact-payload approval and one outbox write under retry | Planned |
 | 7 | Policy/feed activation and dashboard | Privileged access, valid atomic activation, event-derived reporting and export | Planned |
@@ -19,6 +20,9 @@ working local commit. Keep security claims tied to demonstrated behavior.
 
 Steps 3–8 may be split further when a contract or failure mode needs its own
 review. No deadline or organizer confirmation is inferred from this plan.
+The [PDF alignment assessment](challenge-alignment.md) maps the current gaps to
+the judging criteria. [Enterprise integrations](enterprise-integrations.md)
+extend reporting; they do not replace the remaining core AI-control deliverables.
 
 ## Which skills to use
 

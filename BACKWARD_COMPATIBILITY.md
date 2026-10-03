@@ -16,6 +16,13 @@ ready worker; the default demo still disables it. Audit events add nullable
 `semantic` evidence and new status values while existing rows remain readable.
 No database migration is needed for the additive serialized audit field.
 
+`audit-export` is an additive local operator command. It reads schema-1 and
+schema-2 audit rows, uses a version-1 allowlisted export record and retains the
+existing `audit` command unchanged. ECS-oriented and HEC-envelope formats share
+that projection. Cursor metadata is emitted on stderr; it records local scan
+progress, not downstream delivery. See `docs/audit-export.md` for scope and
+snapshot semantics. No public HTTP endpoint or storage migration is added.
+
 The current operational contracts are `make setup`, `make validate`, `make doctor`,
 `make harness`, Python lint/type/test/build commands, local demo commands, and the
 upstream configuration formats under `.ai/`. Keep their

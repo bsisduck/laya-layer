@@ -14,6 +14,11 @@ target design is in [the architecture](AgentGate_Full_Project_Architecture.md).
 standard Laya / native CoreML workers are implemented. The optional semantic
 profile inspects document results before release; classification is experimental.
 Model routing, approvals, MCP, Hermes, and the dashboard remain to build.
+The product is also referred to as **Laya Sec Layer**. See the
+[challenge coverage](docs/challenge-alignment.md) and
+[enterprise integration design](docs/enterprise-integrations.md) for the supplied
+PDF requirements and proposed bank-stack connections. Local event export is
+implemented; live vendor and bank integrations are not yet verified.
 
 ## Run the document demo
 
@@ -32,6 +37,7 @@ uv run agentgate demo-read tenant-a-contact    # email redacted before release
 uv run agentgate demo-read tenant-a-leak       # synthetic secret withheld after read
 uv run agentgate audit                         # minimized local event records
 uv run agentgate budgets                       # reserved and spent tool attempts
+uv run agentgate audit-export --tenant tenant-a --format ecs  # one local export page
 ```
 
 Denied reads exit with code 1. Credentials are written with mode 0600 and never
@@ -46,6 +52,7 @@ The output scanner covers the explicit synthetic marker
 `AGENTGATE_SECRET[...]` and a bounded email pattern; it is not general DLP.
 The loopback demo assumes trusted host processes and registered fixture executors.
 See [the implemented contract](docs/document-slice.md) for precise boundaries.
+The [export runbook](docs/audit-export.md) covers formats, privacy and resumable pages.
 Existing schema-1 state needs the [budget migration](docs/budgets.md#upgrading-existing-local-state)
 before starting this version. Fresh demo initialization needs no migration.
 
