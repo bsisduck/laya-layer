@@ -124,3 +124,14 @@ an exact approved registry and an active or supplied threat feed. Exit 0 means
 metadata accepted, 2 means policy denial, and 1 means invalid input. JSON output
 explicitly reports simulation and unverified/unexecuted artifact bytes. It adds no
 agent tool authority or download path; see [artifact intake](docs/artifact-intake.md).
+
+`content-role-v2` is an explicit optional two-choice question profile. All existing
+production constructor/CLI and omitted request/capability versions default to v1.
+New flags: `semantic-worker --question-set` and `serve --semantic-question-set`;
+both sides must select the same version. V2 results have exactly two actual mapped
+scores, `task_data` and `behavior_instruction`; v1 retains its three scores and
+`unclear` abstention. Consumers must use the version to interpret score shape and
+label meaning. Worker/client handshake and result mismatches fail closed, with no
+new permissions, threshold, fallback or storage migration. See
+`docs/semantic-question-v2.md`. Evaluation CLI adds `--version v1|v2`; historical
+v1 reproduction requires the pinned PR23 checkout below, not a rewritten freeze.

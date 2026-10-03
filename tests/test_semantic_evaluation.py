@@ -43,18 +43,31 @@ def case(cid, expected="task_data"):
     )
 
 
-def observation(cid, label="task_data", status="ok", backend="laya_standard"):
-    data = dict(case_id=cid, repetition=0, backend=backend, status=status, elapsed_ms=10.0)
+def observation(
+    cid, label="task_data", status="ok", backend="laya_standard", version="content-role-v1"
+):
+    data = dict(
+        case_id=cid,
+        repetition=0,
+        backend=backend,
+        status=status,
+        elapsed_ms=10.0,
+        question_set_id=version,
+    )
     if status == "unavailable":
         return Observation(**data)
     complete = status in ("ok", "abstain")
     scores = {"task_data": 0.1, "behavior_instruction": 0.1, "unclear": 0.1}
-    scores[label] = 0.8
+    if version == "content-role-v2":
+        scores.pop("unclear")
+        scores[label] = 0.9
+    else:
+        scores[label] = 0.8
     data["result"] = dict(
         request_id=f"{cid}-p0",
         backend=backend,
         checkpoint_revision=REVISIONS[backend],
-        question_set_id="content-role-v1",
+        question_set_id=version,
         status=status,
         selected_labels={"content_role": label} if complete else {},
         raw_scores=scores if complete else {},
@@ -141,18 +154,18 @@ def test_reject_invalid_measurements(mutation):
 
 
 def test_corpus_and_freeze_validation(tmp_path):
-    dataset, _, frozen = load_frozen(ROOT)
-    assert len(dataset.cases) == 26
+    dataset, _, frozen = load_frozen(ROOT, "v2")
+    assert len(dataset.cases) == 28
     loading = json.loads((ROOT / "tests/fixtures/semantic-loading.json").read_text())
     assert not {c.content for c in dataset.cases} & {c["state"] for c in loading["cases"]}
-    for path in [*frozen, "evaluation/freeze-v1.json"]:
+    for path in [*frozen, "evaluation/freeze-v2.json"]:
         target = tmp_path / path
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(ROOT / path, target)
-    assert load_frozen(tmp_path)[0] == dataset
-    (tmp_path / "evaluation/semantic-heldout-v1.json").write_text("{}")
+    assert load_frozen(tmp_path, "v2")[0] == dataset
+    (tmp_path / "evaluation/semantic-heldout-v2.json").write_text("{}")
     with pytest.raises(ValueError, match="Frozen"):
-        load_frozen(tmp_path)
+        load_frozen(tmp_path, "v2")
     value = dataset.model_dump()
     value["cases"][1]["language"] = "en"
     with pytest.raises(ValueError, match="Pairs"):
@@ -166,15 +179,15 @@ def test_corpus_and_freeze_validation(tmp_path):
 
 
 def test_slices_disagreement_and_percentiles():
-    dataset, _, _ = load_frozen(ROOT)
+    dataset, _, _ = load_frozen(ROOT, "v2")
     left = [observation(c.id, c.expected) for c in dataset.cases]
     right = [observation(c.id, c.expected, backend="laya_coreml") for c in dataset.cases]
     right[0] = observation(dataset.cases[0].id, "unclear", "abstain", "laya_coreml")
     result = disagreement(dataset, left, right)
-    assert result["n"] == 26 and result["decisive_pairs"] == 25
+    assert result["n"] == 28 and result["decisive_pairs"] == 27
     assert result["status_or_label_disagreements"] == [dataset.cases[0].id]
     assert result["decisive_label_disagreements"] == []
-    assert slices(dataset, left)["language:pl"]["n"] == 13
+    assert slices(dataset, left)["language:pl"]["n"] == 14
     assert slices(dataset, left)["en:security_quotation"]["n"] == 2
     assert distribution([1, 2, 3, 4, 5]) == dict(n=5, p50=3, p95=5, max=5)
     assert distribution([]) == dict(n=0, p50=None, p95=None, max=None)
@@ -184,15 +197,15 @@ def test_slices_disagreement_and_percentiles():
 
 def test_missing_runtime_reports_all_cases_unavailable(tmp_path, monkeypatch):
     monkeypatch.setattr(runner, "active_workers", lambda: [])
-    dataset, protocol, _ = load_frozen(ROOT)
+    dataset, protocol, _ = load_frozen(ROOT, "v2")
     args = SimpleNamespace(
         backend="laya_standard", assets_root=tmp_path, runtime_python=tmp_path / "missing"
     )
     result = asyncio.run(runner.run_backend(args, dataset, protocol, {}))
     assert result["status"] == "unavailable" and result["runtime"] is None
-    assert len(result["observations"]) == 104
-    assert result["metrics"]["all"]["n"] == 26
-    assert result["metrics"]["all"]["statuses"]["unavailable"] == 26
+    assert len(result["observations"]) == 112
+    assert result["metrics"]["all"]["n"] == 28
+    assert result["metrics"]["all"]["statuses"]["unavailable"] == 28
     assert all(c.content not in json.dumps(result, ensure_ascii=False) for c in dataset.cases)
 
 
@@ -210,11 +223,14 @@ def test_lock_never_kills_external_workers(tmp_path, monkeypatch):
 def test_malformed_child_is_reaped_and_no_case_is_dropped(tmp_path, monkeypatch, bad_frame):
     """Actual subprocess; deliberately invalid deterministic output, never model evidence."""
     monkeypatch.setattr(runner, "active_workers", lambda: [])
-    dataset, protocol, _ = load_frozen(ROOT)
+    dataset, protocol, _ = load_frozen(ROOT, "v2")
     original_spawn = asyncio.create_subprocess_exec
     processes = []
     ready = dict(
-        status="ready", backend="laya_standard", checkpoint_revision=REVISIONS["laya_standard"]
+        status="ready",
+        backend="laya_standard",
+        checkpoint_revision=REVISIONS["laya_standard"],
+        question_set_id="content-role-v2",
     )
     fixture = f"import json,sys,time; print({json.dumps(json.dumps(ready))},flush=True); sys.stdin.readline(); print({json.dumps(bad_frame)},flush=True); time.sleep(30)"
 
@@ -230,12 +246,12 @@ def test_malformed_child_is_reaped_and_no_case_is_dropped(tmp_path, monkeypatch,
     report = asyncio.run(runner.run_backend(args, dataset, protocol, {}))
     assert report["status"] == "failed"
     assert report["observations"][0]["status"] == "invalid_output"
-    assert report["metrics"]["all"]["statuses"]["unavailable"] == 25
+    assert report["metrics"]["all"]["statuses"]["unavailable"] == 27
     assert processes[0].returncode is not None
 
 
 def test_comparison_rejects_unmatched_provenance(tmp_path, monkeypatch):
-    dataset, protocol, frozen = load_frozen(ROOT)
+    dataset, protocol, frozen = load_frozen(ROOT, "v2")
     reports = []
     for backend in REVISIONS:
         reports.append(
@@ -246,7 +262,9 @@ def test_comparison_rejects_unmatched_provenance(tmp_path, monkeypatch):
                 protocol=protocol,
                 provenance=dict(frozen_sha256=frozen, evaluator_sha256={}),
                 observations=[
-                    observation(c.id, c.expected, backend=backend).model_dump()
+                    observation(
+                        c.id, c.expected, backend=backend, version="content-role-v2"
+                    ).model_dump()
                     for c in dataset.cases
                 ],
             )
@@ -254,22 +272,25 @@ def test_comparison_rejects_unmatched_provenance(tmp_path, monkeypatch):
     paths = [tmp_path / "a.json", tmp_path / "b.json"]
     for path, report in zip(paths, reports, strict=True):
         path.write_text(json.dumps(report))
-    assert runner.compare(paths)["disagreement"]["n"] == 26
+    assert runner.compare(paths, "v2")["disagreement"]["n"] == 28
     bad = copy.deepcopy(reports[1])
     bad["provenance"]["frozen_sha256"] = {}
     paths[1].write_text(json.dumps(bad))
     with pytest.raises(ValueError, match="provenance"):
-        runner.compare(paths)
+        runner.compare(paths, "v2")
 
 
 def test_timeout_reaps_owned_process_and_retains_denominator(tmp_path, monkeypatch):
     monkeypatch.setattr(runner, "active_workers", lambda: [])
-    dataset, protocol, _ = load_frozen(ROOT)
+    dataset, protocol, _ = load_frozen(ROOT, "v2")
     protocol = protocol | {"case_timeout_seconds": 0.03}
     original_spawn = asyncio.create_subprocess_exec
     processes = []
     ready = dict(
-        status="ready", backend="laya_standard", checkpoint_revision=REVISIONS["laya_standard"]
+        status="ready",
+        backend="laya_standard",
+        checkpoint_revision=REVISIONS["laya_standard"],
+        question_set_id="content-role-v2",
     )
     fixture = f"import sys,time; print({json.dumps(json.dumps(ready))},flush=True); sys.stdin.readline(); time.sleep(30)"
 
@@ -286,6 +307,37 @@ def test_timeout_reaps_owned_process_and_retains_denominator(tmp_path, monkeypat
     assert report["status"] == "failed"
     assert report["observations"][0]["error_type"] == "call_TimeoutError"
     assert report["metrics"]["all"]["attempted"] == 1
-    assert report["metrics"]["all"]["statuses"]["unavailable"] == 26
+    assert report["metrics"]["all"]["statuses"]["unavailable"] == 28
     assert report["timings"]["warm"]["attempt_wall_ms"]["n"] == 0
     assert processes[0].returncode is not None
+
+
+def test_original_v1_freeze_and_corpus_remain_pinned():
+    from agentgate.semantic_evaluation import digest
+
+    frozen = json.loads((ROOT / "evaluation/freeze-v1.json").read_bytes())["files"]
+    for path, expected in frozen.items():
+        if path != "src/agentgate/inference_engine.py":
+            assert digest(ROOT / path) == expected
+    # The current engine is intentionally versioned. Reproduction must not
+    # silently rewrite v1's historical hash to match this changed engine.
+    with pytest.raises(ValueError, match="pinned PR23 checkout"):
+        load_frozen(ROOT, "v1")
+
+
+def test_v2_holdout_is_separate_from_v1_and_development():
+    dataset, protocol, _ = load_frozen(ROOT, "v2")
+    old = Dataset.model_validate_json((ROOT / "evaluation/semantic-heldout-v1.json").read_bytes())
+    dev = json.loads((ROOT / "evaluation/development-v2.json").read_bytes())
+    assert not {c.content for c in dataset.cases} & (
+        {c.content for c in old.cases} | {c[2] for c in dev["cases"]}
+    )
+    assert protocol["questions"] == dev["questions"]
+    assert protocol["label_mapping"] == {"A": "task_data", "B": "behavior_instruction"}
+
+
+def test_observation_cannot_relabel_profile():
+    data = observation("a", version="content-role-v2").model_dump()
+    data["question_set_id"] = "content-role-v1"
+    with pytest.raises(runner.SemanticInvalid):
+        Observation.model_validate(data)

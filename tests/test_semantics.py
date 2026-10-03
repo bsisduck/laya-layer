@@ -401,3 +401,188 @@ def test_supervisor_owns_scratch_cleanup_when_killing_native_work():
         assert not scratch.exists()
 
     asyncio.run(run())
+
+
+def v2_result(label="task_data"):
+    data = result_data(label)
+    data["question_set_id"] = "content-role-v2"
+    data["raw_scores"] = {
+        name: 0.75 if name == label else 0.25 for name in ("task_data", "behavior_instruction")
+    }
+    return data
+
+
+@pytest.mark.parametrize("label", ["task_data", "behavior_instruction"])
+def test_two_option_result_requires_exact_profile_and_actual_scores(label):
+    result = SemanticResult.model_validate(v2_result(label))
+    validate_result(result, "req-1", "laya_standard", "content-role-v2")
+    with pytest.raises(SemanticInvalid):
+        validate_result(result, "req-1", "laya_standard")
+    with pytest.raises(SemanticInvalid):
+        validate_result(
+            SemanticResult.model_validate(result_data()),
+            "req-1",
+            "laya_standard",
+            "content-role-v2",
+        )
+
+
+@pytest.mark.parametrize(
+    "patch",
+    [
+        {"raw_scores": {"task_data": 0.75, "behavior_instruction": 0.25, "unclear": 0.0}},
+        {"raw_scores": {"A": 0.75, "B": 0.25}},
+        {"status": "abstain"},
+        {"selected_labels": {"content_role": "unclear"}},
+        {"question_set_id": "content-role-v99"},
+    ],
+)
+def test_v2_never_accepts_fabricated_third_score_or_wrong_protocol(patch):
+    with pytest.raises((SemanticInvalid, ValidationError)):
+        validate_result(
+            SemanticResult.model_validate(v2_result() | patch),
+            "req-1",
+            "laya_standard",
+            "content-role-v2",
+        )
+
+
+def test_v2_client_binds_readiness_request_and_result(monkeypatch):
+    client = SemanticClient("http://127.0.0.1:8091", "w" * 43, "laya_standard", "content-role-v2")
+    capabilities = Capabilities(
+        status="ready", backend="laya_standard", checkpoint_revision=REVISIONS["laya_standard"]
+    ).model_dump()
+    seen = []
+
+    def request(method, path, body=None):
+        if body is not None:
+            seen.append(json.loads(body))
+            return json.dumps(v2_result()).encode()
+        return json.dumps(capabilities).encode()
+
+    monkeypatch.setattr(client, "_request", request)
+    assert not client.ready()
+    capabilities["question_set_id"] = "content-role-v2"
+    assert client.ready()
+    assert client.evaluate("req-1", "data").raw_scores == v2_result()["raw_scores"]
+    assert seen == [
+        {
+            "request_id": "req-1",
+            "question_set_id": "content-role-v2",
+            "operation": "documents.read",
+            "untrusted_content": "data",
+        }
+    ]
+    capabilities["question_set_id"] = "unknown"
+    assert not client.ready()
+
+
+def test_v2_supervisor_rejects_mismatch_before_spending_or_dispatch(tmp_path):
+    from agentgate.semantic_quota import SemanticQuota
+
+    async def run():
+        capabilities = Capabilities(
+            status="ready",
+            backend="laya_standard",
+            checkpoint_revision=REVISIONS["laya_standard"],
+            question_set_id="content-role-v2",
+        ).model_dump_json()
+        body = "import sys,time\nprint(" + repr(capabilities) + ",flush=True)\ntime.sleep(60)"
+        quota = SemanticQuota(tmp_path / "quota.sqlite3", 10)
+        supervisor = Supervisor(
+            [sys.executable, "-u", "-c", body],
+            "laya_standard",
+            question_set_id="content-role-v2",
+            quota=quota,
+        )
+        await supervisor.start()
+        try:
+            with pytest.raises(ValueError, match="Mismatched"):
+                await supervisor.evaluate(
+                    SemanticRequest(request_id="req-1", untrusted_content="data")
+                )
+            assert quota.status()["calls"] == 0
+            assert supervisor.ready
+        finally:
+            await supervisor.close()
+        mismatch = Supervisor([sys.executable, "-u", "-c", body], "laya_standard")
+        with pytest.raises(SemanticUnavailable):
+            await mismatch.start()
+        assert not mismatch.ready and mismatch.process.returncode is not None
+
+    asyncio.run(run())
+
+
+def test_v2_wrong_child_result_is_killed_after_admission(tmp_path):
+    from agentgate.semantic_quota import SemanticQuota
+
+    async def run():
+        body = child_script(
+            "sys.stdin.readline()\nprint("
+            + repr(json.dumps(result_data()))
+            + ",flush=True)\ntime.sleep(60)"
+        )
+        body = body.replace("content-role-v1", "content-role-v2", 1)
+        quota = SemanticQuota(tmp_path / "quota.sqlite3", 10)
+        supervisor = Supervisor(
+            [sys.executable, "-u", "-c", body],
+            "laya_standard",
+            question_set_id="content-role-v2",
+            quota=quota,
+        )
+        await supervisor.start()
+        with pytest.raises(SemanticUnavailable):
+            await supervisor.evaluate(
+                SemanticRequest(
+                    request_id="req-1", untrusted_content="data", question_set_id="content-role-v2"
+                )
+            )
+        assert quota.status()["calls"] == 1
+        assert not supervisor.ready and supervisor.process.returncode is not None
+
+    asyncio.run(run())
+
+
+@pytest.mark.parametrize("label,code", [("task_data", 200), ("behavior_instruction", 403)])
+def test_gateway_consumes_versioned_client_and_keeps_hard_controls(
+    harness, monkeypatch, label, code
+):
+    client = SemanticClient("http://127.0.0.1:8091", "w" * 43, "laya_standard", "content-role-v2")
+    requests = []
+
+    def request(method, path, body=None):
+        if body is None:
+            return (
+                Capabilities(
+                    status="ready",
+                    backend="laya_standard",
+                    checkpoint_revision=REVISIONS["laya_standard"],
+                    question_set_id="content-role-v2",
+                )
+                .model_dump_json()
+                .encode()
+            )
+        job = json.loads(body)
+        requests.append(job)
+        return json.dumps(v2_result(label) | {"request_id": job["request_id"]}).encode()
+
+    monkeypatch.setattr(client, "_request", request)
+    harness.service.semantic = client
+    harness.service.policy = harness.service.policy.model_copy(update={"semantic_required": True})
+    assert harness.read().status_code == code
+    assert harness.store.events()[-1].semantic.question_set_id == "content-role-v2"
+    assert harness.read("tenant-b-notes").status_code == 403
+    assert harness.read("tenant-a-leak").status_code == 403
+    enable(harness, root_run=0)
+    assert harness.read().status_code == 429
+    assert len(requests) == 1
+
+
+@pytest.mark.parametrize("version", ["unknown", "content-role-v3"])
+def test_unknown_config_and_request_versions_are_rejected(version):
+    with pytest.raises(ValueError):
+        SemanticClient("http://127.0.0.1:8091", "w" * 43, "laya_standard", version)
+    with pytest.raises(ValueError):
+        Supervisor([], "laya_standard", question_set_id=version)
+    with pytest.raises(ValidationError):
+        SemanticRequest(request_id="req-1", untrusted_content="data", question_set_id=version)

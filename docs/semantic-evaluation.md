@@ -204,3 +204,24 @@ engine, model-manifest and requirements hashes. Checkpoints are standard
 `e4e9ddf21a7b1903b7acffd8814ad4307bf63a67` and CoreML
 `8139e9089273319512c730218903784074133187`. A rerun records new timing/report
 hashes; it must preserve these labels and retain any failures.
+
+## Preserve and reproduce the original v1 engine
+
+The optional v2 production engine changes the engine source hash. **Do not update
+`freeze-v1.json` to match it.** The original corpus, protocol, failed CoreML report
+identifiers and all observations above remain historical evidence. Reproduce v1
+from the exact PR23 merge checkout, which contains the original engine and complete
+runner; use the same existing asset/runtime root and a new output filename:
+
+```sh
+git worktree add --detach /tmp/agentgate-v1-reproduce \
+  639ea1fdb4651894db03eb2a6edefaf8c8a3865a
+cd /tmp/agentgate-v1-reproduce
+make setup
+# Run the original commands above from this checkout.
+```
+
+The new checkout's `--version v1` intentionally refuses a changed original engine.
+`--version v2` runs the shared harness against the separately frozen v2 inputs;
+see [semantic-question-v2.md](semantic-question-v2.md). This pin preserves the
+original freeze hash, instead of silently presenting a new engine as v1 evidence.

@@ -9,9 +9,9 @@ import httpx
 from pydantic import Field
 
 from agentgate.contracts import Contract, Identifier, SemanticResult
+from agentgate.inference_engine import QUESTION_SET, QuestionSet, question_profile
 
 Backend = Literal["laya_standard", "laya_coreml"]
-QUESTION_SET: Literal["content-role-v1"] = "content-role-v1"
 REVISIONS: dict[Backend, str] = {
     "laya_standard": "e4e9ddf21a7b1903b7acffd8814ad4307bf63a67",
     "laya_coreml": "8139e9089273319512c730218903784074133187",
@@ -21,7 +21,7 @@ LABELS = {"task_data", "behavior_instruction", "unclear"}
 
 class SemanticRequest(Contract):
     request_id: Identifier
-    question_set_id: Literal["content-role-v1"] = QUESTION_SET
+    question_set_id: QuestionSet = QUESTION_SET
     operation: Literal["documents.read"] = "documents.read"
     untrusted_content: Annotated[str, Field(max_length=32768)]
 
@@ -30,7 +30,7 @@ class Capabilities(Contract):
     status: Literal["ready"]
     backend: Backend
     checkpoint_revision: str
-    question_set_id: Literal["content-role-v1"] = QUESTION_SET
+    question_set_id: QuestionSet = QUESTION_SET
     token_capacity: Literal[1024] = 1024
     max_concurrency: Literal[1] = 1
 
@@ -55,12 +55,21 @@ class SemanticInvalid(Exception):
     pass
 
 
-def validate_result(result: SemanticResult, request_id: str, backend: Backend) -> None:
+def validate_result(
+    result: SemanticResult,
+    request_id: str,
+    backend: Backend,
+    question_set_id: QuestionSet = QUESTION_SET,
+) -> None:
+    try:
+        labels = set(question_profile(question_set_id).labels.values())
+    except ValueError as error:
+        raise SemanticInvalid from error
     if (
         result.request_id != request_id
         or result.backend != backend
         or result.checkpoint_revision != REVISIONS[backend]
-        or result.question_set_id != QUESTION_SET
+        or result.question_set_id != question_set_id
     ):
         raise SemanticInvalid
     coverage = result.coverage
@@ -74,8 +83,8 @@ def validate_result(result: SemanticResult, request_id: str, backend: Backend) -
             or coverage.options_collapsed
             or result.usage.input_tokens == 0
             or set(result.selected_labels) != {"content_role"}
-            or result.selected_labels["content_role"] not in LABELS
-            or set(result.raw_scores) != LABELS
+            or result.selected_labels["content_role"] not in labels
+            or set(result.raw_scores) != labels
             or any(not 0 <= score <= 1 for score in result.raw_scores.values())
             or not math.isclose(sum(result.raw_scores.values()), 1.0, abs_tol=0.001)
         ):
@@ -96,7 +105,14 @@ class SemanticEvaluator(Protocol):
 
 
 class SemanticClient:
-    def __init__(self, base_url: str, token: str, backend: Backend) -> None:
+    def __init__(
+        self,
+        base_url: str,
+        token: str,
+        backend: Backend,
+        question_set_id: QuestionSet = QUESTION_SET,
+    ) -> None:
+        question_profile(question_set_id)
         parsed = urlsplit(base_url)
         if (
             parsed.scheme != "http"
@@ -112,6 +128,7 @@ class SemanticClient:
         self.base_url = base_url.rstrip("/")
         self.token = token
         self.backend = backend
+        self.question_set_id = question_set_id
 
     def _request(self, method: str, path: str, body: bytes | None = None) -> bytes:
         return asyncio.run(self._request_async(method, path, body))
@@ -154,18 +171,21 @@ class SemanticClient:
             return (
                 result.backend == self.backend
                 and result.checkpoint_revision == REVISIONS[self.backend]
+                and result.question_set_id == self.question_set_id
             )
         except (ValueError, SemanticUnavailable, SemanticInvalid):
             return False
 
     def evaluate(self, request_id: str, content: str) -> SemanticResult:
-        request = SemanticRequest(request_id=request_id, untrusted_content=content)
+        request = SemanticRequest(
+            request_id=request_id, untrusted_content=content, question_set_id=self.question_set_id
+        )
         data = self._request(
             "POST", "/internal/v1/semantic/evaluate", request.model_dump_json().encode()
         )
         try:
             result = SemanticResult.model_validate_json(data)
-            validate_result(result, request_id, self.backend)
+            validate_result(result, request_id, self.backend, self.question_set_id)
             return result
         except ValueError as error:
             raise SemanticInvalid from error

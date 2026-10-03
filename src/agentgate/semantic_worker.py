@@ -13,6 +13,7 @@ from fastapi.responses import JSONResponse
 
 from agentgate.app import read_body, reject_constant, unique_object
 from agentgate.contracts import SemanticResult
+from agentgate.inference_engine import QUESTION_SET, QuestionSet, question_profile
 from agentgate.semantic_quota import QuotaExhausted, QuotaUnavailable, SemanticQuota
 from agentgate.semantics import (
     REVISIONS,
@@ -33,10 +34,13 @@ class Supervisor:
         backend: Backend,
         *,
         timeout: float = 5.0,
+        question_set_id: QuestionSet = QUESTION_SET,
         quota: SemanticQuota | None = None,
     ) -> None:
         if not 0 < timeout <= 5:
             raise ValueError("Job deadline must be within five seconds")
+        question_profile(question_set_id)
+        self.question_set_id = question_set_id
         self.command = command
         self.backend = backend
         self.timeout = timeout
@@ -73,6 +77,7 @@ class Supervisor:
                 if (
                     capabilities.backend != self.backend
                     or capabilities.checkpoint_revision != REVISIONS[self.backend]
+                    or capabilities.question_set_id != self.question_set_id
                 ):
                     raise SemanticInvalid
                 self.capabilities = capabilities
@@ -98,6 +103,8 @@ class Supervisor:
             self.scratch = None
 
     async def evaluate(self, request: SemanticRequest) -> SemanticResult:
+        if request.question_set_id != self.question_set_id:
+            raise ValueError("Mismatched question profile")
         if not self.ready or self.lock.locked():
             raise SemanticUnavailable
         async with self.lock:
@@ -112,7 +119,7 @@ class Supervisor:
                     result = SemanticResult.model_validate_json(
                         await self.process.stdout.readline()
                     )
-                    validate_result(result, request.request_id, self.backend)
+                    validate_result(result, request.request_id, self.backend, self.question_set_id)
                     return result
             except asyncio.CancelledError:
                 await self.close()
