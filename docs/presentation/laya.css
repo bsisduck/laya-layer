@@ -40,3 +40,8 @@ section.lead .note { color: #c8d4c4; }
 section.lead .kicker { color: #e6a27b; }
 section.lead .node { color: #14342f; }
 section.lead .node strong { color: #116751; }
+
+section.closing { justify-content: flex-start; padding-top: 64px; }
+section.closing h2 { font-size: 42px; margin-bottom: 20px; }
+section.closing p { font-size: 28px; margin: 8px 0 18px; }
+section.closing .node { font-size: 22px; padding: 18px; line-height: 1.25; }

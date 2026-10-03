@@ -82,7 +82,7 @@ Changed payload conflicts. Credential renewal preserves identity and root spend.
 <div class="note">Control fixtures and model accuracy are separate. Metadata intake and restricted REST/MCP/Hermes clients are integrated and reviewed.</div>
 
 ---
-<!-- _class: lead -->
+<!-- _class: lead closing -->
 ## Working local prototype. Explicit limits.
 
 **Original work:** policy enforcement, controlled execution, budgets, approvals, live controls and minimized evidence.

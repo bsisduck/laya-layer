@@ -82,7 +82,7 @@ Zmieniona treść daje konflikt. Odnowienie zachowuje tożsamość i zużyty bud
 <div class="note">Testy reguł i jakość modelu to osobne dowody. Kontrola manifestów i klienci REST/MCP/Hermes są zintegrowani po przeglądzie.</div>
 
 ---
-<!-- _class: lead -->
+<!-- _class: lead closing -->
 ## Działający lokalny prototyp. Jawne ograniczenia.
 
 **Własny wkład:** egzekwowanie polityki, kontrolowane wykonanie, budżety, zgody, aktywne reguły i minimalny audyt.
