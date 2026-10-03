@@ -12,12 +12,13 @@ permissions and budgets, filters supported text, requires exact mail approval an
 records minimized evidence before releasing output. Laya is an optional local
 semantic signal; its predictions never grant permissions.
 
-**Status: local full-stack prototype in release integration, not a production
-release.** The release branch contains the gateway, packaged operator dashboard,
+**Status: working local full-stack application on a trusted host.** The product
+contains the gateway, packaged operator dashboard,
 live policy/feed controls, scoped REST/MCP tools, private LiteLLM/Ollama model
 routing, persistent budgets, local telemetry delivery, metadata intake checks and
-restricted REST/MCP/Hermes agents. These components are integrated; final release
-review is tracked in the [commit/PR evidence ledger](docs/release-evidence.md).
+restricted REST/MCP/Hermes agents. These components are integrated; exact validation and independent review
+are tracked in the [commit/PR evidence ledger](docs/release-evidence.md).
+Enterprise deployment and the limits below require separate acceptance.
 Cezar is development orchestration, separate from the product.
 
 ## Run the local application

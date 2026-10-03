@@ -1,6 +1,6 @@
 # Release readiness and evidence — 3 October 2026
 
-The local full-stack prototype is in release integration. See the
+The local full-stack application has integrated implementation and validation. See the
 [claim ledger](release-evidence.md) for exact commits, merged versus open PRs,
 frozen semantic measurements and root-reported installed QA. This record does
 not certify production readiness or challenge completion.
@@ -21,11 +21,11 @@ providers/native child protocols and real SQLite/loopback transport. It does not
 load Laya, certify semantic accuracy or substitute for installed browser/local
 model QA. No empty proposed `make test-e2e`/`eval-*` target is claimed.
 
-Reviewed installer, artifact intake and restricted-agent clients are integrated.
-PR31's independent follow-up at `9e1cfec` passed 557 tests, six JavaScript checks
-and installed browser/collector-port migration QA. The final integrated gate and
-CI are tracked in [release evidence](release-evidence.md) and PR31; historical
-component counts are not the final integrated count.
+Integrated head `074cace` passed **614 tests with zero skips**, six JavaScript
+contracts and 139 mapped control observations; both CI checks passed. The installed
+browser suite at `b740c35` passed full tool/control/session flows with actual
+local generation and collector delivery. Component and final integration review
+references remain in [release evidence](release-evidence.md) and PR31.
 
 ## Runtime preparation
 
@@ -46,10 +46,10 @@ security detector. CoreML remains experimental.
 
 ## Remaining release and deployment gates
 
-1. Artifact28, restricted-agent30 and semantic32 are integrated after review.
-   Complete the final integration review and retain its exact commit reference.
-2. Root records final installed source/runtime, browser/effect and collector
-   assertions after wheel preparation and verifies required CI at that head.
+1. Reviewed artifact intake, restricted agents and semantic profiles are integrated.
+   Keep the exact independent review and validation references with each release.
+2. Reprepare the installed wheel after source changes; retain source/runtime and
+   browser/effect/collector evidence, and require green CI before publication.
 3. Preserve permission, root budgets, live controls and all private state on
    upgrade/restart/renewal; independent security review remains required for
    consequential changes. No privileged same-user host isolation is provided.

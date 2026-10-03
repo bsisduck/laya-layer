@@ -11,14 +11,14 @@ for T01–T48 mappings; test counts are not completion percentages.
 |---|---|---|
 | Document/memory/mail enforcement and MCP | Scoped identity, actual fixture effects, immutable approval and replay tests | Integrated; local outbox only |
 | Model facade/private LiteLLM | Allowlist, input/output inspection, atomic call/token/money ledger, actual local cycle | Integrated; buffered output, local zero/simulated tariffs |
-| Operator/live controls | Separate sessions/CSRF, policy/feed CAS, explicit renewal, root installed browser checks | Integrated prototype; final root current-head review/CI remains |
+| Operator/live controls | Separate sessions/CSRF, policy/feed CAS, explicit renewal, root installed browser checks | Integrated; exact-head gates and independent review in release ledger |
 | Standard/native CoreML | Frozen v1/v2 reports and real CPU gateway smoke | V2 merged, opt-in; v1 poor/failed evidence retained; CoreML experimental |
 | Resource accounting | Shared-root tool/model budgets and persistent worker call quota | Integrated; full cumulative physical-resource governance incomplete |
 | Evidence delivery | Scoped exports, durable sender and installed local collector | Local contract lab only; vendor/bank acceptance unverified |
-| Install/offline restart | Owned gateway/proxy/collector, prepared runtime reuse, preserved authority/ledgers | Installer22 merged; final installed source/runtime provenance required |
+| Install/offline restart | Owned gateway/proxy/collector, prepared runtime reuse, preserved authority/ledgers | Integrated; installed browser, offline restart and source-only upgrade verified |
 | Artifact intake | Exact approved metadata tuple and no-download/execution probes | Integrated from reviewed PR28; metadata simulation only |
 | Restricted direct/Hermes clients | Actual REST/MCP/Hermes two-model/one-document cycles; independently reviewed source and 584 checks | Integrated from reviewed PR30; trusted host, restricted profile |
-| Documentation/submission assets | Truthful quickstart, diagrams, requirement map, inventory, nine-slide EN/PL sources/PDFs | Reviewable docs package; user fills team/submission facts; root final status refresh |
+| Documentation/submission assets | Truthful quickstart, diagrams, requirement map, inventory, nine-slide EN/PL sources/PDFs | Reviewable docs package; user fills team/submission facts |
 
 No organizer confirmation, enterprise deployment, certification or submission
 follows from this development plan. [Challenge alignment](challenge-alignment.md)

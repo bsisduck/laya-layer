@@ -9,7 +9,7 @@ Polish. See [challenge alignment](challenge-alignment.md) for source discrepanci
 | Project title | Laya Sec Layer — AgentGate (confirm final title) |
 | Team name | [TEAM NAME] |
 | Members (1–6) | [MEMBER NAMES AND CONTRIBUTIONS] |
-| Repository URL / final revision | [REVIEWED URL AND HEAD] |
+| Repository URL / final revision | https://github.com/bsisduck/laya-sec-agent — validated integration `074cace`; use final PR31 merge revision |
 | Demo URL / recording | [USER-APPROVED URL] |
 | Presentation language / PDF | [ENGLISH OR POLISH; REVIEWED NINE-SLIDE PDF] |
 | Confirmed organizer times/timezone | [ORGANIZER CONFIRMATION] |

@@ -1,6 +1,6 @@
 # Release evidence and claim boundaries
 
-Updated **2026-10-03**, integrated source `c7e3a5f` (PR31). Laya Sec Layer is the
+Updated **2026-10-03**, validated integration `074cace` (PR31). Laya Sec Layer is the
 product; AgentGate is its gateway. Cezar orchestrates development. This is a
 working local prototype on a trusted host, not an enterprise production release.
 
@@ -22,6 +22,25 @@ The [T01–T48 inventory](acceptance.md) maps concrete control tests, measured
 semantic cases and gaps. A passing control suite does not imply all 48 outcomes
 or reliable semantic detection.
 
+## Final integrated validation
+
+At `074cace`, `make validate` passed **614 tests, zero skips**, including pinned
+upstream Hermes fixtures, plus workflow/config/lock checks, Ruff, strict mypy and
+source/wheel packaging. Six JavaScript contract checks passed. The acceptance
+runner executed **139 control observations**, all passed, and retained the
+39 control /3 partial /5 measured /1 gap classifications. ANE remains the gap;
+pytest does not turn measured semantic errors into success. Both GitHub CI checks
+passed (604 tests plus 10 optional upstream-Hermes skips in CI; local enabled
+fixtures account for the full 614). See [push](https://github.com/bsisduck/laya-sec-agent/actions/runs/37154818912),
+[PR](https://github.com/bsisduck/laya-sec-agent/actions/runs/37154821021).
+
+Source-prepared installed browser QA at `b740c35` passed all full-stack flows
+with `--model`. The actual summary used one provider attempt and 118 tokens in
+3450.325 ms; secret input caused zero attempts. The local collector held 92
+acknowledged records with zero lag. The 12-response P50/P95 was 8.944/3404.923 ms,
+including generation time. These are local observations, not latency guarantees.
+Reports remain in ignored `.ai/qa/artifacts_fullstack_final/`.
+
 ## Review and integration ledger
 
 | PR | Reviewed head | Integrated result |
@@ -34,8 +53,9 @@ or reliable semantic detection.
 | [28 artifact intake](https://github.com/bsisduck/laya-sec-agent/pull/28) | `703a33e` | `798bab1`; independent GPT-6.1-Sol 548-test gate and 56 negative probes, green CI |
 | [30 restricted clients](https://github.com/bsisduck/laya-sec-agent/pull/30) | `08d6e7b` | `0010602`; independent 584-test gate with all pinned upstream fixtures enabled, green CI |
 | [32 semantic v2](https://github.com/bsisduck/laya-sec-agent/pull/32) | `3ec6ec5` | `4a1fe3d`; reviewed frozen measurements and version binding, green CI |
+| [35 fragmented HTTP](https://github.com/bsisduck/laya-sec-agent/pull/35) | `54f3369` | `ba2dae8`; independent 60-test model/transport gate, green CI; no product code changes |
 | [33 documentation](https://github.com/bsisduck/laya-sec-agent/pull/33) | `4586f40` | `aaaa0e0` into PR31; reviewed mapping runner and EN/PL deck sources |
-| [31 full-stack release](https://github.com/bsisduck/laya-sec-agent/pull/31) | Initial `032bb77`, fixes `9e1cfec` | Independent installed browser review found two defects; fixes and final integration review tracked on PR |
+| [31 full-stack release](https://github.com/bsisduck/laya-sec-agent/pull/31) | Final `074cace` | Independent GPT-6.1-Sol delta review: APPROVE, no blockers/majors; earlier two defects fixed and independently reproduced |
 
 PR31's initial review reproduced a plain-FastAPI overview failure and a stranded
 sender after a collector-port change. Fix `9e1cfec` supplies honest unconfigured
@@ -108,6 +128,13 @@ Ignored browser evidence includes `installed-semantic-v2.json`,
 and `qa-cache-lifecycle.json` under `.ai/qa/artifacts_fullstack/`.
 The executable browser suite is `tests/frontend/browser_check.py`, with `--model`
 for the actual configured local provider.
+
+Final independent [review at `074cace`](https://github.com/bsisduck/laya-sec-agent/pull/31#pullrequestreview-5402838442)
+checked preserved runtime files and merge resolution, six HTTP/effect checks, six
+JavaScript contracts, all 21 acceptance report source hashes and sanitized installed
+model/collector evidence. It issued an APPROVE technical verdict as COMMENT
+(the authenticated repository account also authored the PR). The final result
+documentation is a subsequent docs-only delta reviewed by the release owner.
 
 ## Acceptance still outside the local product
 

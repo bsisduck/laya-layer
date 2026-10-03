@@ -116,43 +116,42 @@ python3 tests/frontend/browser_components.py --url http://127.0.0.1:8765
 It tests loading/empty/error/401/503, payload text safety, exact approval bodies,
 CSRF consumption and mail draft/key preservation. It is not enforcement evidence.
 
-For real control-plane browser proof, run `serve.py` on an integrated checkout, or
-pass `--backend-source /path/to/reviewed/backend/src`. The harness uses a disposable
-real SQLite store and real document/control-plane implementations. It refuses to
-simulate absent admin routes. For reproducible cross-PR QA, extract a recorded
-backend commit into an ignored directory, then point `--backend-source` there.
+For full product verification, prepare an isolated **installed** application:
 
 ```sh
-python3 tests/frontend/browser_check.py --url http://127.0.0.1:8765 \
-  --state-dir .runtime/dashboard-qa --artifacts .ai/qa/artifacts_dashboard
+.ai/scripts/test-env-up.sh
+uv run --locked --with playwright python tests/frontend/browser_check.py \
+  --url <baseUrl-from-.ai/qa/test-env.json> \
+  --state-dir <stateDir-from-descriptor>/data \
+  --artifacts .ai/qa/artifacts_fullstack
+.ai/scripts/test-env-down.sh
 ```
 
-Run on a fresh disposable state directory: this test activates policies/feeds and
-uses actual document budgets. It verifies agent-token rejection, cookie sessions,
-reload/logout, keyboard login, actual allow/redact/deny audit evidence, timeline
-filters, policy CAS rejection, active-feed denial, bounded audit download, and
-390/768/1440px layouts. It expects unavailable tools for the control-plane-only
-snapshot. Root's fully integrated QA must add real memory/mail/model outcomes.
-Screenshots/state remain ignored; never commit tokens, databases or generated images.
+Install Playwright Chromium separately if needed. The suite asserts document and
+memory isolation, exact approval/one outbox effect/replay, explicit renewal,
+live policy/feed activation, scoped exports, sessions and 390/768/1440 layouts.
+It temporarily changes controls and a QA-owned credential, then restores controls
+at newer audited revisions; it retains effects and budgets. Use the isolated QA
+state, not an unrelated operator installation. Add `--model` to exercise the real
+configured provider in an exclusive inference slot. Model observations are written
+separately from the common delivery/latency report.
 
-Observed baseline: backend PR17 commit `90b262da16df628471d9c83491b1ee9c89bd9c4b`.
-Real document/control-plane checks and mocked component checks are separate from
-real-model evaluation. No Laya or generation model was loaded by this frontend QA.
+The historical control-plane-only browser baseline used backend PR17 commit
+`90b262da16df628471d9c83491b1ee9c89bd9c4b`. The current expanded suite requires
+the installed full stack; the old development harness is only for component QA.
+Screenshots and runtime data stay ignored; never publish credentials or databases.
 
 Accessibility uses semantic headings/forms/tables, explicit labels, keyboard focus,
 a skip link, scrollable table regions, live status announcements, reduced-motion
 support, local font fallbacks and mobile navigation. Screenshots do not substitute
 for independent release accessibility/security review.
 
-## Installed release QA update
+## Installed release QA
 
-The lower-level baseline above is historical. Release integration `032bb77` now
-includes `tests/frontend/fullstack_flows.py` and the expanded
-`tests/frontend/browser_check.py` suite. Root reports actual installed memory/mail/
-policy/feed/renewal/export/session/layout checks, exact SQLite outbox effects and
-local collector receipt/lag assertions; optional `--model` exercises the actual
-configured provider with separately prepared Playwright. See
-[release evidence](release-evidence.md) for exact attribution and single-observation
-generation timing. Mocked UI consumer tests are still separate from these live
-checks and real semantic accuracy. No further browser/model inference ran in this
-documentation task.
+The source-prepared installation at `b740c35` passed the complete browser suite
+with `--model`: actual memory/mail/renewal/control/export/session/layout checks,
+one SQLite outbox effect under replay and local collector receipt/lag assertions.
+The local generation used one attempt and 118 tokens; input secret denial made
+no attempt. See [release evidence](release-evidence.md) for exact source, timings
+and limits. Mocked UI consumers, installed integration and real semantic accuracy
+remain separate evidence classes.

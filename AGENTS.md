@@ -2,7 +2,7 @@
 
 AgentGate is the policy-enforcement gateway specified in
 `AgentGate_Full_Project_Architecture.md`. This repository currently contains the
-specification and a local release-integration prototype: document/scoped-tool REST
+specification and a working local full-stack prototype: document/scoped-tool REST
 and official-SDK MCP enforcement, exact approvals/local fixture outbox, model
 routing through private LiteLLM, packaged operator UI, live controls, persistent
 budgets and a local telemetry contract lab. Optional standard/CoreML semantic

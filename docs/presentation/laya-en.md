@@ -83,14 +83,14 @@ Changed payload conflicts. Credential renewal preserves identity and root spend.
 
 ---
 <!-- _class: lead -->
-## Reviewable prototype. Explicit next gates.
+## Working local prototype. Explicit limits.
 
 **Original work:** policy enforcement, controlled execution, budgets, approvals, live controls and minimized evidence.
 
 Laya, LiteLLM, Ollama and Hermes are dependencies; Cezar is development tooling.
 
-Final installed-head review/CI and enterprise acceptance remain separate gates. Measured semantic errors stay visible.
+Independent review and reproducible checks support the local product. Enterprise acceptance remains separate; semantic errors stay visible.
 
-<div class="node"><strong>Submission fields — user owned</strong>Team: [TEAM NAME] · Members (1–6): [MEMBERS]<br>Repository/demo: [URLS] · Organizer clarification: [CONFIRMED DETAILS]</div>
+<div class="node"><strong>Submission fields — user owned</strong>Team: [TEAM NAME] · Members (1–6): [MEMBERS]<br>Repository: github.com/bsisduck/laya-sec-agent<br>Public demo: [URL] · Organizer: [CONFIRMED DETAILS]</div>
 
 <!-- Speaker notes: Fill deliberate template fields before submission. English or Polish is permitted. Keep at most ten PDF pages. Do not claim organizer eligibility or submission from documentation completion. -->

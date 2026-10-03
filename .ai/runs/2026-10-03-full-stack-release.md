@@ -152,3 +152,15 @@ green; root separately ran60 model/fragment tests. T45 now has real chunked HTTP
 barriers and exact split-transport evidence, no partial headers/body release,
 retained one-dispatch usage and durable audit. No product code changed.
 Nine-page EN/PL PDFs rendered with pinned Marp4.5.1; changed slides inspected.
+
+Final integrated source074cace: makevalidate614 passed, ZERO skips,97.62s,
+including prepared pinned Hermes upstream fixtures. Config/lock/Ruff/strictmypy
+and source/wheel packaging passed. Six JavaScript contracts and139 executable
+acceptance observations passed; inventory retains39control/3partial/5measured/1gap.
+Both exact-head CI runs37154821021/37154818912 passed604 tests with10 optional
+upstream-Hermes skips (local enabled fixtures supply that separate evidence).
+Independent GPT-6.1-Sol review5402838442 at074cace APPROVE: no blocker/major,
+merge/runtime preservation, six HTTP/effect checks, sixJS, source-hash and
+installed-record verification. Final documentation append is root-reviewed only.
+Default user state prepared successfully with standard/content-role-v2; pinned
+assets downloaded and verified. Final main-source reprepare/start follows.

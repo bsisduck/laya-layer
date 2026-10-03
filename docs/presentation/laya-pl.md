@@ -83,14 +83,14 @@ Zmieniona treść daje konflikt. Odnowienie zachowuje tożsamość i zużyty bud
 
 ---
 <!-- _class: lead -->
-## Prototyp do przeglądu. Jawne kolejne bramki.
+## Działający lokalny prototyp. Jawne ograniczenia.
 
 **Własny wkład:** egzekwowanie polityki, kontrolowane wykonanie, budżety, zgody, aktywne reguły i minimalny audyt.
 
 Laya, LiteLLM, Ollama i Hermes to zależności; Cezar jest narzędziem pracy.
 
-Końcowy przegląd instalacji/CI i akceptacja przedsiębiorstwa pozostają osobne. Zmierzone błędy semantyczne są jawne.
+Lokalny produkt ma niezależny przegląd i odtwarzalne testy. Akceptacja przedsiębiorstwa pozostaje osobna; błędy semantyczne są jawne.
 
-<div class="node"><strong>Dane zgłoszenia — uzupełnia użytkownik</strong>Zespół: [TEAM NAME] · Członkowie (1–6): [MEMBERS]<br>Repozytorium/demo: [URLS] · Ustalenia organizatora: [CONFIRMED DETAILS]</div>
+<div class="node"><strong>Dane zgłoszenia — uzupełnia użytkownik</strong>Zespół: [TEAM NAME] · Członkowie (1–6): [MEMBERS]<br>Repo: github.com/bsisduck/laya-sec-agent<br>Publiczne demo: [URL] · Organizator: [CONFIRMED DETAILS]</div>
 
 <!-- Notatki: Uzupełnij celowe pola szablonu przed zgłoszeniem. Dopuszczalny język: angielski lub polski. Maksymalnie dziesięć stron PDF. Dokumentacja nie oznacza zgłoszenia ani decyzji o kwalifikowalności. -->
