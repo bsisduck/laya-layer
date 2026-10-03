@@ -384,10 +384,20 @@ def test_source_only_upgrade_rebuilds_actual_installed_wheel(installation_fixtur
         ignore=shutil.ignore_patterns("__pycache__"),
     )
     dependency_fixture = installer.run
+    # make setup prepares this cache; CI deliberately locates it outside HOME.
+    # Keep the offline wheel probe on that cache without inheriting provider env.
+    cache = subprocess.check_output(["uv", "cache", "dir"], text=True, timeout=10).strip()
 
     def actual_gateway_sync(command, *, env=None):
         if command[:2] == ["uv", "sync"]:
-            subprocess.run(command, env=env, check=True, capture_output=True, timeout=90)
+            result = subprocess.run(
+                command,
+                env=env | {"UV_CACHE_DIR": cache},
+                capture_output=True,
+                text=True,
+                timeout=90,
+            )
+            assert result.returncode == 0, result.stderr
         else:
             dependency_fixture(command, env=env)
 
