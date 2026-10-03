@@ -159,17 +159,25 @@ def control(state: Path, command: str) -> dict[str, Any]:
             json.dumps({"key": (state / "control.key").read_text(), "command": command}).encode()
             + b"\n"
         )
-        response = bytearray()
-        while b"\n" not in response and len(response) <= 65536:
-            part = client.recv(4096)
-            if not part:
-                break
-            response.extend(part)
-        if not response:
-            raise ConnectionResetError("Lifecycle owner exited")
-        result = json.loads(response)
+        result = receive_json(client, 65536, 5)
         if not isinstance(result, dict) or result.get("installation") != str(state):
             raise LifecycleError("Unexpected lifecycle owner")
+        return result
+
+
+def receive_json(stream: socket.socket, limit: int, seconds: float) -> dict[str, Any]:
+    with deadline(seconds):
+        content = bytearray()
+        while b"\n" not in content and len(content) <= limit:
+            part = stream.recv(min(4096, limit + 1 - len(content)))
+            if not part:
+                raise ConnectionResetError("Lifecycle owner exited")
+            content.extend(part)
+        if len(content) > limit or not content.endswith(b"\n"):
+            raise ValueError("Invalid lifecycle frame")
+        result = json.loads(content)
+        if not isinstance(result, dict):
+            raise ValueError("Invalid lifecycle frame")
         return result
 
 
@@ -289,8 +297,7 @@ def supervise(state: Path, services: list[Service], timeout: float) -> None:
                     with client:
                         client.settimeout(1)
                         try:
-                            raw = client.recv(4096)
-                            body = json.loads(raw)
+                            body = receive_json(client, 4096, 1)
                             if not hmac.compare_digest(
                                 str(body.get("key", "")), (state / "control.key").read_text()
                             ):

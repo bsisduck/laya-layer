@@ -4,17 +4,30 @@ import argparse
 import json
 import os
 import platform
+import subprocess
 import time
 from pathlib import Path
 
-from agentgate.lifecycle.install import configuration, install, services, verify_ollama
-from agentgate.lifecycle.processes import available_port, control, launch
+from agentgate.lifecycle.install import configuration, install, runtime, services, verify_ollama
+from agentgate.lifecycle.processes import available_port, clean_environment, control, launch
 from agentgate.lifecycle.state import LifecycleError, check_file, ownership
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Laya Sec Layer local application lifecycle")
-    parser.add_argument("command", choices=["install", "start", "status", "stop", "logs", "doctor"])
+    parser.add_argument(
+        "command",
+        choices=[
+            "install",
+            "start",
+            "status",
+            "stop",
+            "logs",
+            "doctor",
+            "renew-agent",
+            "renew-playground",
+        ],
+    )
     parser.add_argument("--state-dir", type=Path, default=Path.home() / ".local/share/laya")
     parser.add_argument("--port", type=int)
     parser.add_argument("--proxy-port", type=int)
@@ -25,6 +38,9 @@ def main() -> None:
     )
     parser.add_argument(
         "--no-start", action="store_true", help="Prepare installation without starting"
+    )
+    parser.add_argument(
+        "--scope", choices=["tools", "model"], default="tools", help="Playground authority to renew"
     )
     args = parser.parse_args()
     state = args.state_dir.expanduser().absolute()
@@ -101,6 +117,41 @@ def main() -> None:
                 except LifecycleError:
                     time.sleep(0.1)
             raise LifecycleError("Stop still pending; no PID-based fallback is permitted")
+        elif args.command in ("renew-agent", "renew-playground"):
+            settings = configuration(state)
+            with ownership(state):
+                for key in ("port", "proxy_port", "worker_port"):
+                    available_port(settings[key])
+                scope = "agent" if args.command == "renew-agent" else args.scope
+                result_code = subprocess.run(
+                    [
+                        str(runtime(state, "gateway") / "python"),
+                        "-m",
+                        "agentgate.lifecycle.renewal",
+                        str(state / "data"),
+                        scope,
+                    ],
+                    env=clean_environment(),
+                    stdin=subprocess.DEVNULL,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    timeout=30,
+                ).returncode
+                if result_code:
+                    reason = {
+                        4: "credential is still active",
+                        5: "revoked credentials cannot be renewed",
+                        6: "credential is missing or unissued",
+                        8: "stale or conflicting renewal",
+                    }.get(
+                        result_code, "runtime hook or recovery unavailable; preserve private state"
+                    )
+                    raise LifecycleError(f"Renewal refused: {reason}")
+            print(
+                "Expired credential renewed with preserved identity and root budget; prior approvals remain invalid."
+            )
+            if args.command == "renew-agent":
+                print(f"Agent credential file: {state / 'data/client.token'}")
         elif args.command == "logs":
             configuration(state)
             path = state / "lifecycle.log"
@@ -115,7 +166,11 @@ def main() -> None:
                 platform.system() != "Darwin" or platform.machine() != "arm64"
             ):
                 raise LifecycleError("CoreML unsupported: requires native Apple Silicon macOS")
-            configuration(state)
+            settings = configuration(state)
+            if args.semantic is not None and args.semantic != settings["semantic"]:
+                raise LifecycleError(
+                    "Requested semantic backend is not prepared for this installation"
+                )
             configured = services(state)
             for service in configured:
                 if not Path(service.command[0]).is_file():

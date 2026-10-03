@@ -534,3 +534,31 @@ def test_optional_asset_missing_or_corrupt_is_not_ready(state):
     path.write_bytes(b"corrupt")
     with pytest.raises(LifecycleError, match="differs"):
         verify_assets(state, "standard")
+
+
+def test_control_protocol_handles_fragmentation_without_unbounded_wait():
+    from threading import Thread
+
+    from agentgate.lifecycle.processes import receive_json
+
+    left, right = socket.socketpair()
+
+    def fragmented_sender():
+        with right:
+            for part in (b'{"sta', b'tus": "rea', b'dy"}\n'):
+                right.sendall(part)
+                time.sleep(0.02)
+
+    thread = Thread(target=fragmented_sender, daemon=True)
+    thread.start()
+    with left:
+        assert receive_json(left, 100, 1) == {"status": "ready"}
+    thread.join(timeout=2)
+
+
+def test_linux_coreml_request_is_explicitly_unsupported(installation_fixture, monkeypatch):
+    installer, root, state, options = installation_fixture
+    monkeypatch.setattr(installer.platform, "system", lambda: "Linux")
+    with pytest.raises(LifecycleError, match="CoreML requires"):
+        installer.install(root, state, **(options | {"semantic": "coreml"}))
+    assert not state.exists()
