@@ -40,8 +40,8 @@ PR: #20
 ### Phase 1: Packaged application
 
 - [x] 1.1 Package static shell and verify routing — cc74e71
-- [ ] 1.2 Implement session and observation views
-- [ ] 1.3 Implement operator actions and editors
+- [x] 1.2 Implement session and observation views — f6b0227
+- [x] 1.3 Implement operator actions and editors — f6b0227
 
 ### Phase 2: Verify and publish
 
