@@ -8,7 +8,7 @@ from pathlib import Path
 
 from agentgate.admin import bootstrap_operator
 from agentgate.contracts import Identity
-from agentgate.lifecycle.state import private_dir, write_new
+from agentgate.lifecycle.state import LifecycleError, check_file, private_dir, save_json, write_new
 from agentgate.policy import load_policy
 from agentgate.storage import Store
 
@@ -65,8 +65,32 @@ def configure_semantic(directory: Path, semantic: str) -> None:
         controls.activate_policy(policy, snapshot.policy.version)
 
 
+def configure_telemetry(directory: Path, previous_port: int, port: int) -> None:
+    from agentgate.telemetry_contract import TelemetryConfig, read_config
+
+    token_file = directory / "collector.token"
+    if not token_file.exists() and not token_file.is_symlink():
+        write_new(token_file, secrets.token_urlsafe(32).encode())
+    check_file(token_file)
+    destination = directory / "telemetry.json"
+    config = TelemetryConfig(origin=f"http://127.0.0.1:{port}", tenant="tenant-a")
+    if destination.exists() or destination.is_symlink():
+        previous = read_config(destination)
+        if previous.tenant != "tenant-a" or previous.origin not in {
+            f"http://127.0.0.1:{previous_port}",
+            config.origin,
+        }:
+            raise LifecycleError(
+                "Custom telemetry target cannot be overwritten by the local lab installer"
+            )
+        config = previous.model_copy(update={"origin": config.origin})
+    save_json(destination, config.model_dump(mode="json"))
+
+
 if __name__ == "__main__":
-    if sys.argv[1] == "--configure-semantic":
+    if sys.argv[1] == "--configure-telemetry":
+        configure_telemetry(Path(sys.argv[2]), int(sys.argv[3]), int(sys.argv[4]))
+    elif sys.argv[1] == "--configure-semantic":
         configure_semantic(Path(sys.argv[2]), sys.argv[3])
     else:
         initialize(Path(sys.argv[1]), Path(sys.argv[2]), Path(sys.argv[3]), sys.argv[4])
