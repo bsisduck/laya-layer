@@ -137,3 +137,18 @@ zero skips; actual cycle report SHA-256 was independently verified. Docs33 was
 reviewed and merged into the release branch; diagrams, runbook, acceptance
 selectors and EN/PL slides now describe integrated code instead of pending PRs.
 ANE and same-user host-isolation gaps remain explicit.
+
+At b740c35 the source-prepared installed wheel passed the complete browser suite
+again with actual configured generation. Summary488 characters,118 tokens, one
+provider attempt,3450.325ms; secret input made no upstream attempt. Collector92
+records, zero lag and observed minimized mail outcome. Observed12-response
+P50/P95 8.944/3404.923ms includes generation; not isolated guard overhead.
+Reports are ignored under `.ai/qa/artifacts_fullstack_final/`. The common overview
+report's former fixed "no inference" wording was corrected to refer to the
+separate optional model evidence; the actual model report already records it.
+
+PR35 at54f3369 independently reviewed and merged ba2dae8 with both CI checks
+green; root separately ran60 model/fragment tests. T45 now has real chunked HTTP
+barriers and exact split-transport evidence, no partial headers/body release,
+retained one-dispatch usage and durable audit. No product code changed.
+Nine-page EN/PL PDFs rendered with pinned Marp4.5.1; changed slides inspected.

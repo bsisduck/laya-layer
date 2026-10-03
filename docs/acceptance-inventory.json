@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "source_snapshot": "c7e3a5f33243e85bec211b520c58608a7986f806",
+  "source_snapshot": "a6a90eb2bdff1031cfc9b3133ee4e5dedb926ca3",
   "architecture": "AgentGate_Full_Project_Architecture.md",
   "evaluation_fixture": "evaluation/semantic-heldout-v1.json",
   "evaluation_record": "docs/semantic-evaluation.md",
@@ -666,13 +666,14 @@
       "id": "T45",
       "case": "Secret split across candidate stream chunks",
       "expected": "No uninspected secret released",
-      "kind": "partial",
+      "kind": "control",
       "tests": [
         "tests/test_models.py::test_T27_T45_secret_output_is_never_released_but_usage_is_settled",
-        "tests/test_models.py::test_decoded_output_argument_secret_is_withheld_and_spent"
+        "tests/test_models.py::test_decoded_output_argument_secret_is_withheld_and_spent",
+        "tests/test_model_stream_boundary.py::test_T45_fragmented_upstream_is_inspected_before_any_client_output"
       ],
       "evaluation_cases": [],
-      "note": "Gateway buffers complete upstream output before client SSE; secret withheld and spent usage retained. No upstream token-stream chunk inspection implementation or exact split-chunk test."
+      "note": "Actual chunked upstream HTTP plus deterministic raw-fragment transport: no response headers/body before full inspection, split synthetic secret withheld, one dispatch, durable audit and all-scope usage settlement. Buffered output, not incremental token screening."
     },
     {
       "id": "T46",

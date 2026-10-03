@@ -199,7 +199,7 @@ def observe_delivery(page, state, action, artifacts):
                 "counts": overview["counts"],
                 "collector_records": len(records),
                 "mail_action_observed": True,
-                "browser_scope": "real installed product; no model inference in this suite",
+                "browser_scope": "real installed product; optional model evidence recorded separately",
             },
             indent=2,
         )
