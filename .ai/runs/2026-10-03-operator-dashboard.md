@@ -45,6 +45,6 @@ PR: #20
 
 ### Phase 2: Verify and publish
 
-- [ ] 2.1 Freeze API integration and test failure states
+- [x] 2.1 Freeze API integration and test failure states — cd02f05
 - [ ] 2.2 Validate, browser-test and review
 - [ ] 2.3 Publish ready PR and evidence
