@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from agentgate.agents.client import ClientFailure, decode, gateway_origin
-from agentgate.agents.direct import private_read
+from agentgate.agents.direct import private_read, scrub_process_environment
 
 HERMES_COMMIT = "f97608f178d1ffeca59860195ab7da295f7c8e5f"
 HERMES_VERSION = "0.21.5"
@@ -161,7 +161,9 @@ def run_hermes(
             "completed",
             "pending_approval",
         ):
-            raise ClientFailure("hermes_" + str(result.get("reason", "failed")))
+            raise ClientFailure(
+                "hermes_" + str(result.get("reason", "failed")), trace=result.get("trace", [])
+            )
         result["source_commit"] = HERMES_COMMIT
         result["version"] = HERMES_VERSION
         result["lock_sha256"] = hashlib.sha256((source / "uv.lock").read_bytes()).hexdigest()
@@ -190,6 +192,7 @@ def main() -> None:
             prepare(args.source.resolve())
             result = {"status": "prepared", "source_commit": HERMES_COMMIT}
         else:
+            scrub_process_environment()
             result = run_hermes(
                 args.source,
                 args.gateway,
@@ -204,7 +207,15 @@ def main() -> None:
             raise SystemExit(2)
     except (ClientFailure, OSError, subprocess.SubprocessError) as error:
         reason = str(error) if isinstance(error, ClientFailure) else "hermes_setup_failed"
-        print(json.dumps({"status": "failed", "reason": reason}))
+        print(
+            json.dumps(
+                {
+                    "status": "failed",
+                    "reason": reason,
+                    "trace": error.trace if isinstance(error, ClientFailure) else [],
+                }
+            )
+        )
         raise SystemExit(1) from None
 
 

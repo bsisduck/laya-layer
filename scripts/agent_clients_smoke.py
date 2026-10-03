@@ -21,6 +21,7 @@ from semantic_evaluate import EvaluationLock
 
 from agentgate.agents.client import decode
 from agentgate.cli import initialize_demo
+from agentgate.model_budgets import ModelLedger
 from agentgate.storage import Store
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -88,8 +89,18 @@ def main():
         "--upstream-token-file", type=Path, required=True, help="Read only by gateway child"
     )
     parser.add_argument("--hermes-source", type=Path, required=True)
+    parser.add_argument(
+        "--clients",
+        nargs="+",
+        choices=("direct-rest", "direct-mcp", "hermes-mcp"),
+        default=["direct-rest", "direct-mcp", "hermes-mcp"],
+        help="Explicit invocations to measure; never automatic retries",
+    )
     parser.add_argument("--report", type=Path, default=Path("reports/generated/agent-clients.json"))
     args = parser.parse_args()
+    args.report.parent.mkdir(parents=True, exist_ok=True)
+    # Reserve evidence before dispatch. Failed attempts must not be overwritten.
+    args.report.touch(exist_ok=False)
     state = args.state_dir.resolve()
     if not state.exists():
         initialize_demo(state)
@@ -127,7 +138,7 @@ def main():
                         if process.poll() is not None or time.monotonic() > deadline:
                             raise RuntimeError("Gateway unavailable")
                         time.sleep(0.1)
-                for client in ("direct-rest", "direct-mcp", "hermes-mcp"):
+                for client in args.clients:
                     before = {e.event_id for e in store.events()}
                     common = [
                         "--gateway",
@@ -206,7 +217,7 @@ def main():
                         break
                 report["status"] = (
                     "pass"
-                    if len(report["runs"]) == 3
+                    if len(report["runs"]) == len(args.clients)
                     and all(r["status"] == "pass" for r in report["runs"])
                     else "fail"
                 )
@@ -215,6 +226,7 @@ def main():
                         "SELECT count(*) FROM tool_outbox"
                     ).fetchone()[0]
                 report["tool_budget_counters"] = store.budget_counters()
+                report["model_budget_counters"] = ModelLedger(store).counters()
             finally:
                 process.terminate()
                 try:
@@ -222,7 +234,6 @@ def main():
                 except subprocess.TimeoutExpired:
                     process.kill()
                     process.wait(timeout=5)
-    args.report.parent.mkdir(parents=True, exist_ok=True)
     args.report.write_text(json.dumps(report, indent=2) + "\n")
     print(
         json.dumps(

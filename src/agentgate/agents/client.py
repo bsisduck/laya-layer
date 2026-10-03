@@ -1,7 +1,7 @@
 """Bounded loopback gateway transport and tools-only MCP discovery.
 
 The MCP wire subset is deliberately small: initialize, initialized, tools/list,
-tools/call and session deletion. JSON responses are required (the gateway's pinned
+tools/call. JSON responses are required (the gateway's pinned
 transport); no server-initiated sampling, prompts, resources or arbitrary URLs.
 """
 
@@ -24,6 +24,10 @@ MAX_BYTES = 262144
 
 class ClientFailure(Exception):
     """Safe, content-free failure; never render server exception bodies."""
+
+    def __init__(self, reason: str, *, trace: list[dict[str, Any]] | None = None) -> None:
+        super().__init__(reason)
+        self.trace = trace or []
 
 
 def object_pairs(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
@@ -52,7 +56,11 @@ def decode(raw: str | bytes) -> dict[str, Any]:
 
 
 def gateway_origin(value: str) -> str:
-    url = urlsplit(value)
+    try:
+        url = urlsplit(value)
+        port = url.port
+    except ValueError as error:
+        raise ClientFailure("gateway_requires_explicit_loopback_origin") from error
     if (
         url.scheme != "http"
         or url.hostname not in ("127.0.0.1", "::1")
@@ -61,7 +69,7 @@ def gateway_origin(value: str) -> str:
         or url.query
         or url.fragment
         or url.path not in ("", "/")
-        or not url.port
+        or not port
     ):
         raise ClientFailure("gateway_requires_explicit_loopback_origin")
     return value.rstrip("/")

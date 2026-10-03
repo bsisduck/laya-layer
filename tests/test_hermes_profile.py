@@ -132,6 +132,74 @@ assert checks == 3
     assert result.returncode == 0
 
 
+@pytest.mark.parametrize("failure", ["duplicate_id", "invalid_json", "redirect"])
+def test_model_protocol_failure_latches_without_replay(failure):
+    import json
+
+    import httpx
+
+    from agentgate.agents.hermes_runner import ModelTransport
+
+    sent = []
+
+    def provider(request):
+        body = json.loads(request.content)
+        assert body["temperature"] == 0 and body["max_tokens"] == 128
+        sent.append(body)
+        if failure == "redirect":
+            return httpx.Response(307, headers={"Location": "http://127.0.0.1:11434"})
+        return httpx.Response(
+            200,
+            json={
+                "choices": [
+                    {
+                        "finish_reason": "tool_calls",
+                        "message": {
+                            "tool_calls": [
+                                {
+                                    "id": "same-id",
+                                    "function": {
+                                        "name": "documents_read",
+                                        "arguments": "not json"
+                                        if failure == "invalid_json"
+                                        else '{"document_id":"notes"}',
+                                    },
+                                }
+                            ]
+                        },
+                    }
+                ]
+            },
+        )
+
+    transport = ModelTransport(
+        {
+            "gateway": "http://127.0.0.1:8080",
+            "token": "scoped-only",
+            "model": "local-demo",
+            "max_turns": 6,
+            "max_tokens": 128,
+        },
+        [],
+    )
+    transport.inner.close()
+    transport.inner = httpx.MockTransport(provider)
+    request = httpx.Request(
+        "POST",
+        "http://127.0.0.1:8080/v1/chat/completions",
+        json={"model": "local-demo", "messages": [], "temperature": 1, "max_tokens": 999},
+    )
+    if failure == "duplicate_id":
+        assert transport.handle_request(request).status_code == 200
+    with pytest.raises(RuntimeError, match="restricted profile stopped"):
+        transport.handle_request(request)
+    assert transport.failure
+    with pytest.raises(RuntimeError, match="restricted profile stopped"):
+        transport.handle_request(request)
+    assert len(sent) == (2 if failure == "duplicate_id" else 1)
+    transport.close()
+
+
 @pytest.mark.skipif(
     not os.environ.get("AGENTGATE_HERMES_SOURCE"),
     reason="Actual upstream Hermes runtime not configured; not an integration pass",

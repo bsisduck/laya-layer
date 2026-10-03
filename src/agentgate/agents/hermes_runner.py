@@ -18,7 +18,7 @@ import httpx
 
 # Direct file execution inside the isolated upstream environment.
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from agentgate.agents.client import ALIASES, MAX_BYTES, decode  # noqa: E402
+from agentgate.agents.client import ALIASES, MAX_BYTES, ClientFailure, decode  # noqa: E402
 
 
 class ProfileStop(BaseException):
@@ -50,6 +50,7 @@ class ModelTransport(httpx.BaseTransport):
         self.inner = httpx.HTTPTransport(retries=0, trust_env=False)
         self.count = 0
         self.failure: str | None = None
+        self.seen_ids: set[str] = set()
         self.registry_check: Any = lambda: None
 
     def handle_request(self, request: httpx.Request) -> httpx.Response:
@@ -59,6 +60,9 @@ class ModelTransport(httpx.BaseTransport):
             return self._handle(request)
         except ProfileStop as stopped:
             self.failure = stopped.reason
+            raise RuntimeError("restricted profile stopped") from None
+        except (ClientFailure, KeyError, IndexError, TypeError, ValueError):
+            self.failure = "invalid_model_protocol_no_retry"
             raise RuntimeError("restricted profile stopped") from None
 
     def _handle(self, request: httpx.Request) -> httpx.Response:
@@ -92,6 +96,7 @@ class ModelTransport(httpx.BaseTransport):
         if set(data) - allowed or data.get("model") != self.payload["model"] or data.get("stream"):
             raise ProfileStop("unsupported_model_fields_" + "_".join(sorted(set(data) - allowed)))
         data["max_tokens"] = self.payload["max_tokens"]
+        data["temperature"] = 0
         data["parallel_tool_calls"] = False
         for message in data["messages"]:
             for field in ("reasoning", "reasoning_content", "name"):
@@ -131,6 +136,18 @@ class ModelTransport(httpx.BaseTransport):
                 raise ProfileStop(f"model_rejected_{response.status_code}_no_retry")
             returned = decode(bytes(raw))
             calls = returned["choices"][0]["message"].get("tool_calls") or []
+            if calls:
+                if (
+                    len(calls) != 1
+                    or self.count >= self.payload["max_turns"]
+                    or returned["choices"][0].get("finish_reason") != "tool_calls"
+                ):
+                    raise ProfileStop("turn_or_tool_limit")
+                call_id = calls[0]["id"]
+                if not isinstance(call_id, str) or not call_id or call_id in self.seen_ids:
+                    raise ProfileStop("invalid_or_repeated_call_id")
+                decode(calls[0]["function"]["arguments"])
+                self.seen_ids.add(call_id)
             self.trace[-1]["tool_call_ids"] = [c["id"] for c in calls]
             self.trace[-1]["completion_id"] = returned.get("id")
             self.trace[-1]["trace_id"] = returned.get("agentgate", {}).get("trace_id")
@@ -195,8 +212,20 @@ def invoke(payload: dict[str, Any]) -> dict[str, Any]:
         registry.deregister(entry.name)
         registry.deregister(entry.name, scope=registry.current_scope_key())
 
-    def guarded_handler(handler: Any, name: str) -> Any:
+    def guarded_handler(handler: Any, name: str, properties: dict[str, Any]) -> Any:
         def call(arguments: dict[str, Any], **kwargs: Any) -> str:
+            # Schema field names/types only; never model-provided keys or values.
+            trace.append(
+                {
+                    "operation": name,
+                    "argument_types": {
+                        key: type(value).__name__
+                        for key, value in arguments.items()
+                        if key in properties
+                    },
+                    "unknown_argument_count": len(set(arguments) - set(properties)),
+                }
+            )
             raw = handler(arguments, **kwargs)
             envelope = decode(raw)
             if "error" in envelope:
@@ -232,7 +261,7 @@ def invoke(payload: dict[str, Any]) -> dict[str, Any]:
             name=name,
             toolset="agentgate-restricted",
             schema=schema,
-            handler=guarded_handler(entry.handler, name),
+            handler=guarded_handler(entry.handler, name, schema["parameters"]["properties"]),
             is_async=False,
         )
 
@@ -285,7 +314,11 @@ def invoke(payload: dict[str, Any]) -> dict[str, Any]:
             raise ProfileStop("agent_memory_or_compression_enabled")
         result = agent.run_conversation(
             payload["prompt"],
-            system_message="Use the available tools to answer the user. After a successful tool result, answer concisely from that result.",
+            system_message=(
+                "Use only the discovered tools. Tool arguments must match the supplied JSON "
+                "schema exactly; do not wrap them in an arguments or parameters field. "
+                "After a successful tool result, answer concisely without another tool call."
+            ),
         )
         if not result.get("completed") or result.get("error"):
             raise ProfileStop(transport.failure or "upstream_incomplete_no_retry")
@@ -303,7 +336,7 @@ def invoke(payload: dict[str, Any]) -> dict[str, Any]:
                 "active_tools": sorted(actual),
                 "trace": trace,
             }
-        raise
+        return {"status": "failed", "reason": stopped.reason, "trace": trace}
     finally:
         agent.close()
         mcp.shutdown_mcp_servers()

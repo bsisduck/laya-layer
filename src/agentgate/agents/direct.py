@@ -20,7 +20,7 @@ def private_read(path: Path) -> str:
             if not stat.S_ISREG(info.st_mode) or info.st_mode & 0o077 or info.st_size > MAX_BYTES:
                 raise ClientFailure("file_must_be_private_and_bounded")
             return stream.read(MAX_BYTES + 1)
-    except OSError as error:
+    except (OSError, UnicodeError) as error:
         raise ClientFailure("private_file_unavailable") from error
 
 
@@ -141,7 +141,11 @@ class DirectAgent:
                         "text": message["content"],
                         "turns": state["turns"],
                     }
-                if len(calls) != 1 or state["turns"] == self.max_turns:
+                if (
+                    len(calls) != 1
+                    or state["turns"] == self.max_turns
+                    or choice.get("finish_reason") != "tool_calls"
+                ):
                     raise ClientFailure("turn_or_tool_limit")
                 call = calls[0]
                 call_id, name = call["id"], call["function"]["name"]
