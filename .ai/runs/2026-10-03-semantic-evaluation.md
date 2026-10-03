@@ -40,11 +40,13 @@ broader gateway path. Existing HTTP worker deadlines and deterministic gates rem
 
 ## Progress
 
+PR: #23
+
 > Convention: `- [ ]` pending, `- [x]` done. Append ` — <commit sha>` when a step lands. Do not rename step titles.
 
 ### Phase 1: Freeze and measure
 
-- [ ] 1.1 Freeze labels and evaluation contract
+- [x] 1.1 Freeze labels and evaluation contract — b4922c4
 - [ ] 1.2 Implement real evaluation and minimized reporting
 - [ ] 1.3 Verify math and failure handling deterministically
 
