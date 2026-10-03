@@ -483,7 +483,18 @@ def attach_admin_routes(
         query(request, set())
         snapshot = controls.snapshot()
         events = service.store.events(1000)
-        terminal = [event for event in events if event.event_type != "dispatch_intent"]
+        terminal = [
+            event
+            for event in events
+            if event.event_type
+            in ("action_completed", "action_denied", "output_blocked", "execution_failed")
+        ]
+        with service.store.connection() as db:
+            pending = db.execute(
+                "SELECT COUNT(*) FROM tool_actions WHERE state='pending' AND expires_at>?",
+                (service.clock(),),
+            ).fetchone()[0]
+        mcp_enabled = getattr(app.state, "mcp_enabled", False) is True
         models = getattr(app.state, "models", None)
         model_enabled = isinstance(models, ModelService) and snapshot.policy.models is not None
         return {
@@ -502,13 +513,14 @@ def attach_admin_routes(
                     decision: sum(e.decision == decision for e in terminal)
                     for decision in ("allow", "redact", "deny")
                 },
-                "pending": None,
+                "pending": pending,
             },
             "count_window": {
                 "status": "measured",
                 "audit_rows": len(events),
                 "limit": 1000,
                 "scope": "latest audit rows; terminal events only",
+                "pending_scope": "all unexpired pending approval records",
             },
             "budgets": {
                 "status": "measured",
@@ -521,6 +533,8 @@ def attach_admin_routes(
             "services": {
                 "gateway": "ready" if service.store.ready() else "unavailable",
                 "model": "configured" if model_enabled else "not_configured",
+                "scoped_tools": "ready",
+                "mcp": "configured" if mcp_enabled else "not_configured",
                 "semantic": "not_configured"
                 if service.semantic is None
                 else "ready"
@@ -529,11 +543,14 @@ def attach_admin_routes(
             },
             "latency": {"status": "unknown", "reason": "Gateway latency is not recorded"},
             "coverage": {
-                "enforced": ["documents.read"] + (["chat.completions"] if model_enabled else []),
-                "not_implemented": ([] if model_enabled else ["models"])
-                + ["memory", "mail", "approvals", "mcp"],
+                "enforced": ["documents.read", "memory.query", "mail.send"]
+                + (["chat.completions"] if model_enabled else []),
+                "not_implemented": [],
+                "not_configured": ([] if model_enabled else ["models"])
+                + ([] if mcp_enabled else ["mcp"]),
+                "mail_delivery": "local_outbox_fixture",
                 "real_model_evaluation": "not_run",
-                "pending_approvals": "unknown",
+                "pending_approvals": pending,
             },
         }
 
