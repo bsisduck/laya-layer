@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Laya Sec Layer — Operator console</title>
+  <link rel="stylesheet" href="/static/styles.css">
+  <script type="module" src="/static/app.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#workspace">Skip to workspace</a>
+  <div id="lockscreen" class="lockscreen">
+    <section class="lock-art" aria-label="Laya Sec Layer">
+      <div class="wordmark"><span class="brand-symbol" aria-hidden="true">L/</span> LAYA<span class="muted">SEC LAYER</span></div>
+      <div class="lock-statement"><p class="eyebrow">CONTROL / OBSERVE / VERIFY</p><h1>Every action.<br>A visible<br><em>boundary.</em></h1><p>Policy, execution and evidence.<br>One operator workspace.</p></div>
+      <p class="mono muted">01 — GOVERNED AI OPERATIONS</p>
+    </section>
+    <section class="lock-form">
+      <p class="eyebrow">OPERATOR ACCESS</p><h2>Open your workspace</h2>
+      <p class="muted">Use the operator credential from your private local installation.</p>
+      <form id="login-form">
+        <label for="credential">Operator credential</label>
+        <input id="credential" type="password" autocomplete="off" required maxlength="512" spellcheck="false">
+        <button class="primary" type="submit">Unlock console <span aria-hidden="true">↗</span></button>
+      </form>
+      <p id="login-status" role="status" aria-live="polite">Checking session…</p>
+      <p class="footnote">A short-lived session keeps your credential out of browser storage. Loopback HTTP is for local use only.</p>
+      <noscript>This console requires JavaScript. No external scripts are loaded.</noscript>
+    </section>
+  </div>
+  <div id="console" class="console" hidden>
+    <aside class="rail">
+      <a class="wordmark" href="#overview" aria-label="Laya Sec Layer overview"><span class="brand-symbol" aria-hidden="true">L/</span><span>LAYA<small>SEC LAYER</small></span></a>
+      <div class="rail-caption">OPERATOR WORKSPACE</div>
+      <nav aria-label="Main navigation">
+        <a href="#overview"><span>01</span>Overview</a>
+        <a href="#timeline"><span>02</span>Security timeline</a>
+        <a href="#playground"><span>03</span>Playground</a>
+        <a href="#policy"><span>04</span>Policy studio</a>
+        <a href="#feed"><span>05</span>Threat feed</a>
+        <a href="#approvals"><span>06</span>Approvals</a>
+        <a href="#outbox"><span>07</span>Test outbox</a>
+        <a href="#export"><span>08</span>Audit export</a>
+      </nav>
+      <div class="rail-bottom"><p class="mono">AGENTGATE / LOCAL</p><p>Inspect the evidence.<br>Know the limits.</p><button id="logout" class="quiet">Lock &amp; sign out ↗</button></div>
+    </aside>
+    <div class="main-shell">
+      <header class="topbar"><span class="eyebrow">ENFORCEMENT CONTROL ROOM</span><span id="session-expiry" class="mono"></span></header>
+      <main id="workspace" tabindex="-1">
+        <div class="page-heading"><div><p class="eyebrow" id="page-kicker">LIVE OPERATIONS</p><h1 id="page-title">Overview</h1></div><button id="refresh" class="secondary">Refresh ↻</button></div>
+        <p id="notice" role="status" aria-live="polite"></p>
+        <div id="view"></div>
+      </main>
+      <footer><span>LAYA SEC LAYER</span><span>Reported state. Server-enforced decisions.</span></footer>
+    </div>
+  </div>
+</body>
+</html>

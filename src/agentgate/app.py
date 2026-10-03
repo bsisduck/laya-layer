@@ -14,6 +14,7 @@ from starlette.requests import ClientDisconnect
 from agentgate.contracts import ActionRequest, ActionResponse, Reason
 from agentgate.service import ActionService, GateError
 from agentgate.storage import StorageUnavailable
+from agentgate.web_routes import attach_web_routes
 
 if TYPE_CHECKING:
     from agentgate.models import ModelService
@@ -96,6 +97,7 @@ def create_app(
     app = FastAPI(
         title="AgentGate", version="0.1.0", docs_url=None, redoc_url=None, openapi_url=None
     )
+    attach_web_routes(app)
     bearer = HTTPBearer(auto_error=False)
 
     @app.get("/health/live")
