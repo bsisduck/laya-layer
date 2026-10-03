@@ -66,6 +66,14 @@ def configure_semantic(directory: Path, semantic: str, *, profile_changed: bool 
 
 
 def configure_telemetry(directory: Path, previous_port: int, port: int) -> None:
+    from agentgate.telemetry import (
+        binding,
+        load_state,
+        lock_source,
+        save_state,
+        source_position,
+        state_path,
+    )
     from agentgate.telemetry_contract import TelemetryConfig, read_config
 
     token_file = directory / "collector.token"
@@ -84,7 +92,25 @@ def configure_telemetry(directory: Path, previous_port: int, port: int) -> None:
                 "Custom telemetry target cannot be overwritten by the local lab installer"
             )
         config = previous.model_copy(update={"origin": config.origin})
-    save_json(destination, config.model_dump(mode="json"))
+    source = directory / "agentgate.sqlite3"
+    if previous_port != port and state_path(source).exists():
+        # Both endpoints are this installation's same private collector database,
+        # tenant and key. This is a port move, never a general destination reset.
+        check_file(directory / "collector.sqlite3")
+        check_file(state_path(source))
+        with lock_source(source):
+            old_config = config.model_copy(update={"origin": f"http://127.0.0.1:{previous_port}"})
+            try:
+                delivery = load_state(source, old_config)
+            except ValueError:
+                # A crash may have published the new binding before config/metadata.
+                # Accept only the exact new binding; unknown targets still fail closed.
+                delivery = load_state(source, config)
+            source_position(source, delivery)
+            save_state(source, delivery.model_copy(update={"binding": binding(source, config)}))
+            save_json(destination, config.model_dump(mode="json"))
+    else:
+        save_json(destination, config.model_dump(mode="json"))
 
 
 if __name__ == "__main__":

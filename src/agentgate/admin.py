@@ -312,6 +312,14 @@ def attach_admin_routes(
     ):
         raise ValueError("Admin origin requires HTTPS or explicit loopback HTTP")
     secure = parsed.scheme == "https"
+    # This adapter is also public for plain FastAPI hosts, without create_app().
+    # An empty window reports no observations; it does not imply middleware exists.
+    if not hasattr(app.state, "latency"):
+        from agentgate.metrics import LatencyWindow
+
+        app.state.latency = LatencyWindow()
+    if not hasattr(app.state, "telemetry_config"):
+        app.state.telemetry_config = None
     if service.controls is None:
         controls = ControlPlane(service.store, service.clock)
         controls.initialize(service.policy)
