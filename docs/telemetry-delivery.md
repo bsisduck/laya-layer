@@ -6,6 +6,17 @@ consumer of that projection, **not Splunk HEC, Elasticsearch, OpenSearch, or a
 bank deployment**. ECS and HEC file export remain unchanged. No vendor endpoint
 or bank was contacted. Delivery is asynchronous and does not authorize actions.
 
+## Installed release integration
+
+The [application launcher](local-app.md) now owns a loopback collector on 8095 by
+default and starts the durable sender with the gateway lifespan. Private
+`data/collector.token`, `data/collector.sqlite3` and `data/telemetry.json` belong to
+the installation. The standalone lab commands below remain supported.
+Root's installed receipt/lag observations are recorded separately in
+[release evidence](release-evidence.md). This does not add a vendor protocol or
+bank connection. The story-level root integration notes below describe the
+original PR boundary; later additive hooks do not change the delivery contract.
+
 ## Run locally
 
 Python 3.12 on macOS/Linux; run `make setup` once. Keep credentials and runtime

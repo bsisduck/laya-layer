@@ -143,3 +143,16 @@ Accessibility uses semantic headings/forms/tables, explicit labels, keyboard foc
 a skip link, scrollable table regions, live status announcements, reduced-motion
 support, local font fallbacks and mobile navigation. Screenshots do not substitute
 for independent release accessibility/security review.
+
+## Installed release QA update
+
+The lower-level baseline above is historical. Release integration `032bb77` now
+includes `tests/frontend/fullstack_flows.py` and the expanded
+`tests/frontend/browser_check.py` suite. Root reports actual installed memory/mail/
+policy/feed/renewal/export/session/layout checks, exact SQLite outbox effects and
+local collector receipt/lag assertions; optional `--model` exercises the actual
+configured provider with separately prepared Playwright. See
+[release evidence](release-evidence.md) for exact attribution and single-observation
+generation timing. Mocked UI consumer tests are still separate from these live
+checks and real semantic accuracy. No further browser/model inference ran in this
+documentation task.

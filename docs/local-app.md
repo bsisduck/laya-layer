@@ -1,7 +1,8 @@
 # Install and run Laya Sec Layer locally
 
 The installed application is the gateway, operator dashboard, scoped fixture tools
-and private LiteLLM adapter. It does not require Node, Cezar, a cloud API key or a
+and private LiteLLM adapter, plus the local telemetry sender/collector contract
+lab. See [release evidence](release-evidence.md) for source and merge/QA status. It does not require Node, Cezar, a cloud API key or a
 paid provider. The separate developer commands (`make setup`, `make validate`,
 `make harness`) still use Node for development checks and Cezar.
 
@@ -10,6 +11,9 @@ paid provider. The separate developer commands (`make setup`, `make validate`,
 Use a complete checkout on macOS or Linux, with [uv installed](https://docs.astral.sh/uv/getting-started/installation/).
 `./laya install` prepares Python 3.12 and the locked gateway environment from
 `uv.lock`, plus a separate proxy environment from `requirements/litellm.txt`.
+Source-only updates explicitly reinstall the `agentgate` package with
+`uv sync --reinstall-package agentgate`; this prevents a cached stale wheel from
+masquerading as the new source. Record the source head used to prepare runtimes.
 The gateway is installed as a wheel with its static HTML/CSS/JavaScript assets;
 there is no frontend build or CDN dependency at runtime.
 
@@ -42,6 +46,9 @@ Default private state is `~/.local/share/laya` on both supported systems:
 | `data/operator.token` | Operator login; not an agent/provider key |
 | `data/client.token` | 24-hour agent credential for documents, memory, mail and model calls |
 | `data/audit.key`, `worker.token`, `litellm.token` | Independent audit/service authority |
+| `data/collector.token` | Private local contract collector credential |
+| `data/collector.sqlite3` | Separate durable local receipt/deduplication database |
+| `data/telemetry.json` | Installed tenant-scoped sender configuration |
 | `data/agentgate.sqlite3` | Credentials, authoritative audit, live controls and budgets |
 | `data/semantic-quota.sqlite3` | Production worker's persistent shared daily quota when configured |
 | `data/policy.yaml`, `litellm.yaml` | Private installed configuration |
@@ -57,10 +64,17 @@ existing unowned directories are refused. The launcher never overwrites an older
 For another installation, use a new private directory and unused ports:
 
 ```sh
-./laya install --state-dir "$HOME/.local/share/laya-demo" --port 8082 --proxy-port 4002
+./laya install --state-dir "$HOME/.local/share/laya-demo" --port 8082 --proxy-port 4002 --collector-port 8096
 ```
 
-Default ports are gateway 8080, private LiteLLM 4000 and optional worker 8091.
+Default ports are gateway 8080, private LiteLLM 4000, local collector 8095 and
+optional worker 8091. Three services are owned by default: gateway, private
+LiteLLM and collector. The gateway lifespan runs the asynchronous durable sender;
+Ollama remains shared. The collector is **Laya local HTTP contract collector v1**,
+not a SIEM or bank endpoint; ECS/HEC envelopes remain separate export formats.
+Its private receipt database is separate from authoritative audit/budget state.
+The installed local lab configuration must not overwrite an operator-selected
+custom telemetry target. See [delivery semantics](telemetry-delivery.md).
 An occupied port is an error with a diagnostic; the launcher does not evict its
 owner. Existing gateways on 8000, a proxy on 4001, Cezar on 4322, and Ollama on
 11434 remain untouched. Use the printed `127.0.0.1` origin exactly: `localhost`
@@ -79,7 +93,9 @@ is a different origin for operator authentication.
 Repeat `--state-dir` for a nondefault installation. Start is idempotent; repeated
 install reuses matching prepared assets and preserves state, including revoked
 or expired credentials. Changed package inputs require a stopped installation.
-Port/profile options are remembered; repeat installation need not restate them.
+Port, semantic backend and question-set options are remembered; repeat
+installation need not restate them. A question-set change is a profile change,
+requiring the same explicit stopped-installation preparation.
 To change a port or backend, stop first, then run install with the new option and
 the same state directory. Changing the semantic profile updates its required flag
 through an audited, versioned policy activation; unrelated policy fields remain.
@@ -110,11 +126,29 @@ when preparing an installation:
 
 ```sh
 ./laya stop
-./laya install --semantic standard
+./laya install --semantic standard --question-set content-role-v2
 # To switch the same preserved state on native Apple Silicon macOS:
 ./laya stop
-./laya install --semantic coreml
+./laya install --semantic coreml --question-set content-role-v2
 ```
+
+`--question-set content-role-v2` is an explicit opt-in. Both backend and question
+set are remembered and passed as matching worker/gateway flags. Default installation
+remains semantic off; `content-role-v1` stays the compatibility/default question
+set. Changing a stopped installation's profile increments the audited policy
+revision while retaining credentials, live controls and budget history. Unknown
+or mismatched question sets fail closed. These options are root-reported release
+integration after merged PR32; see the ledger for final installed-head validation. Root's real installed CPU-v2
+CLI/browser check at `f6bccde` demonstrated four ready owned services, ordinary
+notes allowed, malicious result withheld after an executed read, tenant denial
+before execution, and quota 0→2/1000. The selected profile path is real evidence
+for these fixtures, not general detector quality. No CoreML rerun is implied.
+
+V1 first-pass quality was 7/26 correct per backend and CoreML's warm run failed.
+V2 was 15/28 standard and 16/28 CoreML, with false positives and missed indirect
+attacks. A real CPU gateway ordinary-allow/attack-deny smoke is narrower evidence.
+Standard is the preferred opt-in runtime; CoreML is experimental. Neither is an
+approved general detector. Keep [v1 results](semantic-evaluation.md) visible.
 
 These commands prepare the separately pinned requirements and download only the
 files/revisions listed in [the asset manifest](../manifests/model-assets.json).
@@ -212,6 +246,10 @@ flowchart LR
     Launcher[laya supervisor] --> Gateway
     Launcher --> Proxy[Private LiteLLM :4000]
     Launcher --> Worker[Optional one semantic worker]
+    Launcher --> Collector[Local contract collector :8095]
+    Gateway --> Sender[Durable async sender]
+    Sender --> Collector
+    Collector --> Receipts[(Separate local receipt database)]
     Gateway --> State[(Private persistent audit and budgets)]
     Gateway --> Proxy
     Gateway --> Worker
@@ -237,3 +275,19 @@ standard/CoreML profile preparation paths have fixture/manifest checks; an actua
 heavyweight profile installation was not part of this run. Native Linux launch
 is not claimed by the macOS smoke (Linux CI runs the deterministic suite). Root owns the final browser/delivery QA. Hermes, enterprise SSO, vendor
 certification, network isolation and real semantic evaluation are separate work.
+
+## Installed QA evidence and developer helper
+
+Root reports a real local QA cache/lifecycle check in ignored
+`.ai/qa/artifacts_fullstack/qa-cache-lifecycle.json`: warm reuse 0.244 seconds,
+source touch prevented reuse, repeated stop was idempotent, restart 7.406 seconds,
+and keys, credential epochs and tool/model ledgers were preserved. These single
+local observations are not portable startup targets or model-quality results.
+
+Executable `.ai/scripts/test-env-up.sh` / `test-env-down.sh` use the product
+launcher for an isolated QA installation. They are developer helpers, separate
+from `./laya install` for users. `tests/frontend/browser_check.py` exercises the
+installed operator UI; `--model` adds an actual configured-provider smoke and
+requires separately prepared Playwright/browser tooling. Keep reports/screenshots
+ignored and sanitized. Root owns the final current-head browser/collector gate;
+this documentation task does not run another model or alter its QA installation.
