@@ -7,7 +7,9 @@ the inspected Apple Silicon Mac. It does not certify the full proposed MVP.
 
 The REST document path now enforces scoped credentials, tenant/role/agent
 permissions, bounded requests, filtered output, and a durable minimized audit.
-`make validate` runs lockfile, lint/format, typing, 57 tests, and package builds.
+`make validate` runs lockfile, lint/format, typing, 84 tests, and package builds.
+Atomic tenant/day, principal/day, and root-run tool budgets are also implemented;
+see [tool budgets](budgets.md) for accounting semantics and schema migration.
 Live HTTP checks verified allowed, denied, redacted, blocked-output, and missing-
 credential cases. See [the implemented contract](document-slice.md).
 
@@ -30,8 +32,9 @@ runs are not connected to the gateway. See [the inference spike](inference-spike
   and may differ from the pinned Cezar catalog. The newly installed skill is
   available to Codex on the next turn.
 - GitHub and browser provider descriptors were copied from the installed
-  `om-setup-agent-pipeline` skill. GitHub is configured for future use; labels
-  remain disabled because no project remote exists.
+  `om-setup-agent-pipeline` skill. The public repository is
+  [bsisduck/laya-sec-agent](https://github.com/bsisduck/laya-sec-agent); labels remain
+  disabled. Hosted CI passed for the first published baseline.
 - `agentgate-local` implements one task, reviews it, and validates locally.
   Launch with `make harness`. The launcher disables automatic skill updates,
   background automations, and child-task dispatch.
@@ -71,16 +74,16 @@ The browser doctor launches a temporary headless browser to verify it works.
 
 ## Remaining prerequisites
 
-1. Creating/configuring a project remote and publishing still need explicit user
-   instruction. The local workflow is usable without a remote.
+1. Public source and deterministic CI are configured. Production release still
+   needs independent security review and the remaining integration evidence.
 2. Confirm the competition start-time ambiguity documented in architecture §2
    before competition implementation. Judging weights and cross-category eligibility
    also remain organizer questions.
 3. Implement authenticated semantic worker services around the verified loaders;
    enforce token/coverage/time limits and define handling for `unclear`. Dependencies
    and asset hashes are now pinned. Keep CoreML native, outside Linux containers.
-4. Add atomic resource budgets, approvals, policy reload, feeds, and the other
-   architecture controls. The current document fixture path does not claim these.
+4. Extend call budgets to inference/provider resources; add approvals, policy
+   reload, feeds, and the other architecture controls.
 5. Select and test a local tool-capable generation model. Existing Ollama models
    have not been validated for this workflow; generation is separate from Laya.
 6. Implement and verify LiteLLM, MCP, and Hermes integration. Available development
@@ -89,5 +92,5 @@ The browser doctor launches a temporary headless browser to verify it works.
 The initial task and next slices are recorded in
 [implementation-start.md](../.ai/specs/implementation-start.md). Follow the
 architecture's separate deterministic, real-semantic, and end-to-end suites.
-The 57 pytest cases include parametrizations of a subset of the architecture's
+The pytest cases include parametrizations of a subset of the architecture's
 48 planned scenarios; they are not a claim that all 48 scenarios are implemented.

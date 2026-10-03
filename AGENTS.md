@@ -3,7 +3,7 @@
 AgentGate is the policy-enforcement gateway specified in
 `AgentGate_Full_Project_Architecture.md`. This repository currently contains the
 specification, development harness, and a document-only REST enforcement slice.
-Model routing, deployed semantic workers, budgets, approvals, MCP, and Hermes
+Atomic document budgets are implemented. Model routing, semantic workers, approvals, MCP, and Hermes
 integration remain unimplemented. Cezar orchestrates development; it is not the
 AgentGate gateway or a security sandbox.
 

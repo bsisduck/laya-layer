@@ -8,8 +8,8 @@ working local commit. Keep security claims tied to demonstrated behavior.
 | Step | Deliverable | Acceptance evidence | Status |
 |---|---|---|---|
 | 1 | Document enforcement and audit | Auth, tenant, role, no execution on denial, output filtering | Implemented; 57 deterministic tests |
-| 2 | Public repository, docs, CI | Reproducible setup, architecture diagrams, hosted validation | Being published |
-| 3 | Atomic tool resource budgets | Tenant/day, principal/day, root-run limits; race tests; uncertain dispatch retains reservation | Next |
+| 2 | Public repository, docs, CI | Reproducible setup, architecture diagrams, hosted validation | Published; GitHub CI passed |
+| 3 | Atomic tool resource budgets | Tenant/day, principal/day, root-run limits; race tests; uncertain dispatch retains reservation | Implemented; deterministic suite now 84 tests |
 | 4 | Authenticated semantic workers | Both real backends; capacity and coverage validation; timeout/invalid-result denial | Loaders verified; services pending |
 | 5 | Model facade and private LiteLLM | Model allowlist, per-attempt reservations, bounded output, buffered SSE | Planned |
 | 6 | MCP and remaining fixture tools | Shared authorization; isolated memory; exact-payload approval and one outbox write under retry | Planned |

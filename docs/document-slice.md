@@ -81,7 +81,8 @@ audit records; there is no unauthenticated audit HTTP endpoint.
 
 ## Coverage limits
 
-No budgets, rate quotas, approvals, mail/memory tools, external effects, policy
+Atomic document call budgets were added in [the budget slice](budgets.md).
+No inference/provider budgets, rate quotas, approvals, mail/memory tools, external effects, policy
 reload, threat feeds, MCP sessions, model proxy, or semantic worker is implemented.
 `semantic_required: true` blocks readiness/dispatch instead of treating a stub as
 real inference. The separately run Laya loading spike does not enable enforcement.

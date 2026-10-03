@@ -11,7 +11,8 @@ permissions, filters output, and persists minimized audit events. The complete
 target design is in [the architecture](AgentGate_Full_Project_Architecture.md).
 
 **Status: document-only local demo.** Laya is not connected to enforcement yet.
-Model routing, budgets, approvals, MCP, Hermes, and the dashboard remain to build.
+Atomic document call budgets are implemented. Model routing, approvals, MCP,
+Hermes, semantic workers, and the dashboard remain to build.
 
 ## Run the document demo
 
@@ -29,6 +30,7 @@ uv run agentgate demo-read tenant-b-notes      # denied before execution
 uv run agentgate demo-read tenant-a-contact    # email redacted before release
 uv run agentgate demo-read tenant-a-leak       # synthetic secret withheld after read
 uv run agentgate audit                         # minimized local event records
+uv run agentgate budgets                       # reserved and spent tool attempts
 ```
 
 Denied reads exit with code 1. Credentials are written with mode 0600 and never
@@ -42,6 +44,8 @@ is implemented. The output scanner covers the explicit synthetic marker
 `AGENTGATE_SECRET[...]` and a bounded email pattern; it is not general DLP.
 The loopback demo assumes trusted host processes and registered fixture executors.
 See [the implemented contract](docs/document-slice.md) for precise boundaries.
+Existing schema-1 state needs the [budget migration](docs/budgets.md#upgrading-existing-local-state)
+before starting this version. Fresh demo initialization needs no migration.
 
 ## Development
 

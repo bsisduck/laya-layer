@@ -43,7 +43,10 @@ def test_invalid_policy_is_not_silently_accepted(tmp_path: Path, extra: str):
 
 
 def test_shipped_policy_loads():
-    assert load_policy(Path("config/policy.yaml")).version == "document-demo:1"
+    policy = load_policy(Path("config/policy.yaml"))
+    assert policy.version == "document-demo:2"
+    assert policy.tool_budgets is not None
+    assert policy.tool_budgets.root_run == 100
 
 
 def test_nonfinite_semantic_signal_is_invalid():

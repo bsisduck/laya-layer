@@ -3,9 +3,12 @@
 AgentGate is unreleased. Its first implemented contracts are documented in
 `docs/document-slice.md`: REST action execution and health endpoints, strict
 document arguments, the partial policy schema, minimized audit events, local CLI,
-and SQLite schema version 1. Other architecture examples remain proposals.
-There is no earlier schema to migrate; future schema changes need an explicit
-migration or a documented disposable-demo reset, never a silent reinterpretation.
+and SQLite schema version 2. Other architecture examples remain proposals.
+`agentgate migrate` upgrades schema 1 additively, preserving credentials and audit.
+See `docs/budgets.md` for backup/rollback limits. Old code cannot use schema 2.
+The optional `tool_budgets` policy block preserves old defaults when omitted;
+the shipped demo opts in with policy revision 2. HTTP 429/BUDGET_EXCEEDED is an
+additive denial reason. Existing response and audit field shapes are unchanged.
 
 The current operational contracts are `make setup`, `make validate`, `make doctor`,
 `make harness`, Python lint/type/test/build commands, local demo commands, and the

@@ -8,6 +8,7 @@ Start with the [visual architecture](architecture.md), then follow the
 | [Visual architecture](architecture.md) | Working path, trust boundaries, and target system |
 | [Full design](../AgentGate_Full_Project_Architecture.md) | Original requirements, decisions, protocols, and acceptance cases |
 | [Document API](document-slice.md) | Implemented authentication, authorization, filtering, and audit contract |
+| [Tool budgets](budgets.md) | Atomic scopes, uncertain usage, operator counters, and schema migration |
 | [Inference evidence](inference-spike.md) | Actual standard Laya and CoreML loading, predictions, and limitations |
 | [Delivery plan and skills](delivery.md) | Ordered milestones, acceptance evidence, and installed skill choices |
 | [Environment readiness](readiness.md) | Verified local tooling and remaining integration work |

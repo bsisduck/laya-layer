@@ -425,10 +425,10 @@ def test_health_has_no_identity_policy_or_credentials(harness: Harness, monkeypa
 
 def test_readiness_rejects_unknown_or_incomplete_database_schema(harness: Harness):
     with harness.store.connection() as connection:
-        connection.execute("PRAGMA user_version=2")
+        connection.execute("PRAGMA user_version=999")
     assert harness.client.get("/health/ready").status_code == 503
     with harness.store.connection() as connection:
-        connection.execute("PRAGMA user_version=1")
+        connection.execute("PRAGMA user_version=2")
         connection.execute("DROP TABLE audit_events")
     assert harness.client.get("/health/ready").status_code == 503
     assert harness.read().status_code == 503

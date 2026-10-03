@@ -10,6 +10,8 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
+from agentgate import budgets
+from agentgate.budgets import ToolBudgets
 from agentgate.contracts import AuditEvent, Identity
 
 
@@ -36,6 +38,7 @@ class Store:
         try:
             connection = sqlite3.connect(self.path, timeout=1, isolation_level=None)
             connection.row_factory = sqlite3.Row
+            connection.execute("PRAGMA foreign_keys=ON")
             connection.execute("PRAGMA synchronous=FULL")
             yield connection
         except (sqlite3.Error, ValidationError) as error:
@@ -47,10 +50,12 @@ class Store:
     def initialize(self) -> None:
         with self.connection() as connection:
             version = connection.execute("PRAGMA user_version").fetchone()[0]
-            if version not in (0, 1):
+            if version not in (0, 1, 2):
                 raise StorageUnavailable
             connection.execute("PRAGMA journal_mode=WAL")
-            connection.executescript("""
+            connection.executescript(
+                """
+                BEGIN IMMEDIATE;
                 CREATE TABLE IF NOT EXISTS credentials (
                     digest TEXT PRIMARY KEY,
                     identity TEXT NOT NULL,
@@ -65,8 +70,10 @@ class Store:
                 );
                 CREATE INDEX IF NOT EXISTS audit_action ON audit_events(action_id);
                 CREATE TABLE IF NOT EXISTS health_probe (id INTEGER PRIMARY KEY CHECK(id = 1));
-                PRAGMA user_version=1;
-            """)
+            """
+                + budgets.SCHEMA
+                + "PRAGMA user_version=2; COMMIT;"
+            )
         self.path.chmod(0o600)
 
     def issue(self, identity: Identity, expires_at: float) -> str:
@@ -109,28 +116,53 @@ class Store:
 
     def append(self, event: AuditEvent) -> None:
         with self.connection() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            if event.executed:
+                budgets.settle(
+                    connection, event.action_id, uncertain=event.event_type == "execution_failed"
+                )
             self._append(connection, event)
+            connection.execute("COMMIT")
 
     def dispatch_intent(
-        self, digest: str, identity: Identity, event: AuditEvent, clock: Callable[[], float]
+        self,
+        digest: str,
+        identity: Identity,
+        event: AuditEvent,
+        clock: Callable[[], float],
+        limits: ToolBudgets | None = None,
     ) -> None:
         with self.connection() as connection:
             connection.execute("BEGIN IMMEDIATE")
             # Lock acquisition can wait; never authorize using a timestamp sampled before it.
-            if self._resolve(connection, digest, clock()) != identity:
+            now = clock()
+            if self._resolve(connection, digest, now) != identity:
                 raise CredentialInvalid
+            if limits is not None:
+                budgets.reserve(
+                    connection, event.action_id, identity, limits, now, event.policy_version
+                )
             self._append(connection, event)
             connection.execute("COMMIT")
 
     def ready(self) -> bool:
         try:
             with self.connection() as connection:
-                if connection.execute("PRAGMA user_version").fetchone()[0] != 1:
+                if connection.execute("PRAGMA user_version").fetchone()[0] != 2:
                     return False
                 connection.execute(
                     "SELECT digest, identity, expires_at, revoked FROM credentials LIMIT 0"
                 )
                 connection.execute("SELECT event_id, action_id, event FROM audit_events LIMIT 0")
+                connection.execute(
+                    "SELECT scope, scope_key, reserved, spent FROM budget_counters LIMIT 0"
+                )
+                connection.execute(
+                    "SELECT action_id, state, created_at, policy_version FROM tool_reservations LIMIT 0"
+                )
+                connection.execute(
+                    "SELECT action_id, scope, scope_key FROM reservation_scopes LIMIT 0"
+                )
                 connection.execute("INSERT OR REPLACE INTO health_probe(id) VALUES (1)")
             return True
         except StorageUnavailable:
@@ -144,3 +176,14 @@ class Store:
                 "SELECT event FROM audit_events ORDER BY sequence DESC LIMIT ?", (limit,)
             ).fetchall()
         return [AuditEvent.model_validate_json(row["event"]) for row in reversed(rows)]
+
+    def budget_counters(self, limit: int = 100) -> list[dict[str, str | int]]:
+        if not 1 <= limit <= 1000:
+            raise ValueError("Counter limit must be between 1 and 1000")
+        with self.connection() as connection:
+            rows = connection.execute(
+                "SELECT scope, scope_key, reserved, spent FROM budget_counters "
+                "ORDER BY scope, scope_key LIMIT ?",
+                (limit,),
+            ).fetchall()
+        return [dict(row) for row in rows]

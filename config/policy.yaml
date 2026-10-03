@@ -1,7 +1,7 @@
 # Partial v1 schema for the implemented document-only slice, not the full proposal.
 schema_version: 1
 policy_id: document-demo
-revision: 1
+revision: 2
 ingress:
   max_body_bytes: 16384
   max_json_depth: 12
@@ -15,3 +15,7 @@ output:
   block_synthetic_secrets: true
 # Setting true makes readiness and document dispatch fail closed until a worker exists.
 semantic_required: false
+tool_budgets:
+  tenant_day: 1000
+  principal_day: 500
+  root_run: 100

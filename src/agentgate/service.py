@@ -12,6 +12,7 @@ from typing import Literal
 
 from pydantic import ValidationError
 
+from agentgate.budgets import BudgetExceeded
 from agentgate.contracts import (
     ActionRequest,
     ActionResponse,
@@ -167,9 +168,12 @@ class ActionService:
                 identity,
                 self.event(context, "dispatch_intent", Reason.ALLOWED, "allow"),
                 self.clock,
+                self.policy.tool_budgets,
             )
         except CredentialInvalid as error:
             raise GateError(401, Reason.INVALID_CREDENTIAL) from error
+        except BudgetExceeded as error:
+            raise GateError(429, Reason.BUDGET_EXCEEDED) from error
 
         context.executed = True
         try:

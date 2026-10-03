@@ -8,6 +8,7 @@ import yaml
 from pydantic import Field
 from yaml.nodes import MappingNode
 
+from agentgate.budgets import ToolBudgets
 from agentgate.contracts import Contract, DocumentMetadata, Identifier, Identity, Reason
 
 
@@ -39,6 +40,7 @@ class Policy(Contract):
     documents_read: DocumentPermission = DocumentPermission()
     output: OutputPolicy = OutputPolicy()
     semantic_required: bool = False
+    tool_budgets: ToolBudgets | None = None
 
     @property
     def version(self) -> str:

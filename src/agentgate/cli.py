@@ -60,6 +60,11 @@ def main() -> None:
     read.add_argument("--port", type=int, default=8000)
     audit = commands.add_parser("audit", help="Print minimized local audit events")
     audit.add_argument("--limit", type=int, default=20)
+    budgets = commands.add_parser("budgets", help="Print bounded local tool-budget counters")
+    budgets.add_argument("--limit", type=int, default=100)
+    commands.add_parser(
+        "migrate", help="Upgrade existing state after stopping and backing up the gateway"
+    )
     args = parser.parse_args()
     try:
         if args.command == "init-demo":
@@ -98,6 +103,15 @@ def main() -> None:
         elif args.command == "audit":
             for event in Store(args.state_dir / "agentgate.sqlite3").events(args.limit):
                 print(event.model_dump_json())
+        elif args.command == "budgets":
+            for counter in Store(args.state_dir / "agentgate.sqlite3").budget_counters(args.limit):
+                print(json.dumps(counter))
+        elif args.command == "migrate":
+            path = args.state_dir / "agentgate.sqlite3"
+            if not path.is_file():
+                raise StorageUnavailable
+            Store(path).initialize()
+            print("State upgraded to schema 2; credentials and audit retained.")
     except (OSError, ValueError, StorageUnavailable, httpx.HTTPError):
         parser.exit(
             1,

@@ -27,7 +27,8 @@ explicit instruction to proceed, not a claimed organizer confirmation.
 7. Extend to model facade/private LiteLLM, MCP, and Hermes only after the shared
    action path works. Keep application integrations separate from Cezar tooling.
 
-Next slices: atomic budgets and policy reload; semantic checks and output
+Atomic document call budgets are implemented in `tool-budgets.md`.
+Next slices: semantic workers; inference/provider budgets and policy reload; semantic checks and output
 filtering; exact-action approvals and outbox; feeds and failure/concurrency tests;
 Hermes end-to-end demo; dashboard and offline evidence. Map tests to §20's T01–T48.
 Do not create empty adapter directories or count planned tests as passed.

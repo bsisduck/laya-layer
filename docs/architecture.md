@@ -13,7 +13,8 @@ flowchart LR
         API --> Identity["Server-owned identity<br/>tenant, role, agent, root run"]
         Identity --> Policy["Strict schema and deterministic policy"]
         Policy --> Intent["Recheck credential<br/>persist dispatch intent"]
-        Intent --> Executor["Registered document executor"]
+        Intent --> Budget["Atomic tool-attempt reservation<br/>tenant, principal, root"]
+        Budget --> Executor["Registered document executor"]
         Executor --> Filter["Bounded output<br/>email redaction and synthetic-secret block"]
         Filter --> Outcome["Persist outcome before release"]
     end
@@ -39,7 +40,7 @@ flowchart TB
         Model["Model facade<br/>planned"]
         MCP["MCP adapter<br/>planned"]
         Core["Identity, policy, output filtering, audit<br/>working for documents"]
-        Budget["Atomic resource ledger<br/>next"]
+        Budget["Atomic document call budgets<br/>working; other resources planned"]
         Approval["Exact-action approvals<br/>planned"]
         Sem["Semantic adapter<br/>planned"]
     end
@@ -49,7 +50,7 @@ flowchart TB
     REST --> Core
     Model -.-> Core
     MCP -.-> Core
-    Core -.-> Budget
+    Core --> Budget
     Core -.-> Approval
     Core -.-> Sem
     Sem -.-> Laya["Standard Laya worker<br/>real loader tested; service planned"]
@@ -82,11 +83,11 @@ sequenceDiagram
         API->>DB: Persist denied outcome
         API-->>Agent: Deny; executed=false
     else Authorized document read
-        API->>DB: Recheck credential + durable dispatch intent
+        API->>DB: Recheck credential + reserve budget + durable intent
         API->>Tool: Read registered tenant document
         Tool-->>API: Untrusted result
         API->>API: Bound, inspect, redact or withhold
-        API->>DB: Persist outcome
+        API->>DB: Settle call + persist outcome atomically
         API-->>Agent: Decision; executed=true; result only if releasable
     end
 ```
