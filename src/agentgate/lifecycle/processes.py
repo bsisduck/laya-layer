@@ -15,6 +15,8 @@ import sys
 import time
 import urllib.error
 import urllib.request
+from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
@@ -66,7 +68,7 @@ def http_json(url: str, token: str | None = None, *, timeout: float = 1) -> dict
             return None
 
     opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect())
-    with opener.open(request, timeout=timeout) as response:
+    with deadline(timeout), opener.open(request, timeout=timeout) as response:
         data = response.read(65537)
         if len(data) > 65536:
             raise ValueError("Oversized health response")
@@ -74,6 +76,32 @@ def http_json(url: str, token: str | None = None, *, timeout: float = 1) -> dict
         if not isinstance(result, dict):
             raise ValueError("Invalid health response")
         return result
+
+
+@contextmanager
+def deadline(seconds: float) -> Iterator[None]:
+    """Wall-clock cap, including a peer that slowly drips headers or body bytes.
+
+    Lifecycle code runs on the main thread on POSIX hosts; inference runs elsewhere.
+    """
+
+    def expired(signum: int, frame: Any) -> None:
+        raise TimeoutError("Local health deadline exceeded")
+
+    previous = signal.signal(signal.SIGALRM, expired)
+    old_timer = signal.setitimer(signal.ITIMER_REAL, seconds)
+    started = time.monotonic()
+    try:
+        yield
+    finally:
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        signal.signal(signal.SIGALRM, previous)
+        if old_timer[0]:
+            signal.setitimer(
+                signal.ITIMER_REAL,
+                max(0.001, old_timer[0] - (time.monotonic() - started)),
+                old_timer[1],
+            )
 
 
 def healthy(service: Service) -> bool:
@@ -176,6 +204,7 @@ def stop_children(children: list[subprocess.Popen[bytes]]) -> None:
 def supervise(state: Path, services: list[Service], timeout: float) -> None:
     os.umask(0o077)
     children: list[subprocess.Popen[bytes]] = []
+    lifelines: list[int] = []
     stopping = False
 
     def request_stop(signum: int, frame: Any) -> None:
@@ -202,21 +231,32 @@ def supervise(state: Path, services: list[Service], timeout: float) -> None:
             try:
                 for service in services:
                     available_port(service.port)
-                env = clean_environment()
-                if (state / "data/litellm.token").exists():
-                    check_file(state / "data/litellm.token")
-                    env["LITELLM_MASTER_KEY"] = (state / "data/litellm.token").read_text().strip()
                 for service in services:
+                    env = clean_environment()
+                    if service.name == "litellm":
+                        check_file(state / "data/litellm.token")
+                        env["LITELLM_MASTER_KEY"] = (
+                            (state / "data/litellm.token").read_text().strip()
+                        )
                     if stopping:
                         raise LifecycleError("Startup interrupted")
+                    reader, writer = os.pipe()
+                    lifelines.append(writer)
                     child = subprocess.Popen(
-                        service.command,
+                        [
+                            sys.executable,
+                            str(Path(__file__).with_name("child.py")),
+                            str(reader),
+                            json.dumps(service.command),
+                        ],
+                        pass_fds=(reader,),
                         cwd=state,
                         env=env,
                         stdin=subprocess.DEVNULL,
                         stdout=subprocess.DEVNULL,
                         stderr=subprocess.DEVNULL,
                     )
+                    os.close(reader)
                     children.append(child)
                     record(state, f"{service.name} started")
                     deadline = time.monotonic() + timeout
@@ -268,9 +308,16 @@ def supervise(state: Path, services: list[Service], timeout: float) -> None:
                             client.sendall(json.dumps(result).encode() + b"\n")
                         except (OSError, ValueError, AttributeError):
                             continue
-            except LifecycleError as error:
-                record(state, str(error))
+            except (LifecycleError, OSError) as error:
+                record(
+                    state,
+                    str(error)
+                    if isinstance(error, LifecycleError)
+                    else "Service launch failed; owned children rolled back",
+                )
             finally:
+                for writer in lifelines:
+                    os.close(writer)
                 stop_children(children)
                 record(state, "Application stopped; shared services untouched")
                 address.unlink(missing_ok=True)

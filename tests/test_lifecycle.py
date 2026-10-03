@@ -224,3 +224,188 @@ def test_unavailable_or_wrong_ollama_fails_without_starting_services(monkeypatch
     )
     with pytest.raises(LifecycleError, match="digest differs"):
         verify_ollama()
+
+
+def test_supervisor_crash_does_not_orphan_owned_service(state, tmp_path):
+    service = fixture_service(tmp_path)
+    launch(state, [service], timeout=3)
+    pid = json.loads((state / "processes.json").read_text())["supervisor_pid"]
+    os.kill(pid, 9)  # actual supervisor death, not a graceful stop
+    wait_stopped(state)
+    deadline = time.monotonic() + 5
+    while time.monotonic() < deadline:
+        with socket.socket() as probe:
+            if probe.connect_ex(("127.0.0.1", service.port)) != 0:
+                break
+        time.sleep(0.05)
+    assert_no_listener(service.port)
+    # Stale socket/observations can be recovered only with the exclusive lock.
+    assert launch(state, [service], timeout=3)["status"] == "running"
+
+
+def test_fresh_provision_and_migration_keep_credentials_audit_and_spend(tmp_path):
+    from agentgate.contracts import ActionRequest
+    from agentgate.documents import DocumentRegistry, FixtureExecutor, demo_documents
+    from agentgate.lifecycle.provision import initialize
+    from agentgate.lifecycle.state import validate_data
+    from agentgate.policy import load_policy
+    from agentgate.service import ActionService
+    from agentgate.storage import Store, credential_digest
+
+    directory = tmp_path / "install"
+    policy = Path(__file__).resolve().parents[1] / "config/policy.yaml"
+    proxy = tmp_path / "proxy.yaml"
+    proxy.write_text("model_list: []\n")  # isolated lifecycle fixture, no inference
+    initialize(directory, policy, proxy, "off")
+    validate_data(directory)
+    keys = {p.name: p.read_bytes() for p in directory.glob("*.token")}
+    store = Store(directory / "agentgate.sqlite3")
+    token = keys["client.token"].decode()
+    identity = store.resolve(credential_digest(token), time.time())
+    assert identity.root_run_id == "run-demo"
+    assert set(identity.operations) == {
+        "documents.read",
+        "memory.query",
+        "mail.send",
+        "chat.completions",
+    }
+    documents = demo_documents()
+    service = ActionService(
+        store,
+        load_policy(policy),
+        DocumentRegistry(documents),
+        FixtureExecutor(documents),
+        (directory / "audit.key").read_bytes(),
+    )
+    # Observe real document execution and its persisted accounting before migration.
+    context = service.new_context()
+    service.authenticate(context, token)
+    response = service.execute(
+        context,
+        ActionRequest(operation="documents.read", arguments={"document_id": "tenant-a-notes"}),
+    )
+    assert response.executed
+    counters = store.budget_counters()
+    events = [e.model_dump() for e in store.events()]
+    store.initialize()
+    assert store.budget_counters() == counters
+    assert [e.model_dump() for e in store.events()] == events
+    assert store.resolve(credential_digest(token), time.time()) == identity
+    with pytest.raises(FileExistsError):
+        initialize(directory, policy, proxy, "off")
+    assert {p.name: p.read_bytes() for p in directory.glob("*.token")} == keys
+
+
+@pytest.fixture
+def installation_fixture(tmp_path, monkeypatch):
+    """Only dependency downloads/upstream discovery are fixtures; provisioning is real."""
+    from agentgate.lifecycle import install as installer
+
+    root = tmp_path / "checkout"
+    root.mkdir()
+    files = {
+        "pyproject.toml": "fixture",
+        "uv.lock": "fixture",
+        "requirements/litellm.txt": "fixture",
+        "src/agentgate/models.py": "fixture",
+        "src/agentgate/scoped_tools.py": "fixture",
+        "src/agentgate/web/index.html": "fixture",
+        "config/litellm-local.yaml": "model_list: []",
+        "config/policy-models.yaml": (
+            Path(__file__).resolve().parents[1] / "config/policy.yaml"
+        ).read_text(),
+    }
+    for name, content in files.items():
+        path = root / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(content)
+    state = tmp_path / "installed"
+    real_run = installer.run
+
+    def dependency_fixture(command, *, env=None):
+        if command[0] != "uv":
+            return real_run([sys.executable, *command[1:]], env=env)
+        if command[1] == "sync":
+            directory = Path(env["UV_PROJECT_ENVIRONMENT"])
+        elif command[1] == "venv":
+            directory = Path(command[-1])
+        else:
+            return
+        private_dir(directory, create=True)
+        private_dir(directory / "bin", create=True)
+        (directory / "bin/python").symlink_to(sys.executable)
+        cli = directory / "bin/agentgate"
+        write_new(cli, f"#!{sys.executable}\nfrom agentgate.cli import main\nmain()\n".encode())
+        cli.chmod(0o700)
+
+    monkeypatch.setattr(installer, "run", dependency_fixture)
+    monkeypatch.setattr(installer, "verify_ollama", lambda: None)
+    options = {
+        "port": free_port(),
+        "proxy_port": free_port(),
+        "worker_port": free_port(),
+        "semantic": "off",
+        "offline": True,
+    }
+    return installer, root, state, options
+
+
+def test_repeated_install_preserves_private_authority(installation_fixture):
+    installer, root, state, options = installation_fixture
+    installer.install(root, state, **options)
+    before = {p.name: p.read_bytes() for p in (state / "data").iterdir()}
+    installer.install(root, state, **options)
+    assert before == {p.name: p.read_bytes() for p in (state / "data").iterdir()}
+    assert configuration(state)["prepared"] is True
+    assert "sk-" not in (state / "installation.json").read_text()
+
+
+def test_install_refuses_unknown_state_without_writes(installation_fixture):
+    installer, root, state, options = installation_fixture
+    private_dir(state, create=True)
+    write_new(state / "existing.key", b"preserved-authority")
+    with pytest.raises(FileNotFoundError):
+        installer.install(root, state, **options)
+    assert list(state.iterdir()) == [state / "existing.key"]
+    assert (state / "existing.key").read_bytes() == b"preserved-authority"
+
+
+def test_installed_environment_symlink_cannot_overwrite_foreign_state(
+    installation_fixture, tmp_path
+):
+    installer, root, state, options = installation_fixture
+    installer.install(root, state, **options)
+    foreign = tmp_path / "foreign-packages"
+    private_dir(foreign, create=True)
+    write_new(foreign / "sentinel", b"untouched")
+    (state / "runtime/gateway/lib").symlink_to(foreign, target_is_directory=True)
+    with pytest.raises(LifecycleError, match="Unsafe symlink"):
+        installer.install(root, state, **options)
+    assert (foreign / "sentinel").read_bytes() == b"untouched"
+
+
+def test_slow_health_headers_have_an_absolute_deadline(tmp_path):
+    from threading import Thread
+
+    listener = socket.socket()
+    listener.bind(("127.0.0.1", 0))
+    listener.listen(1)
+    port = listener.getsockname()[1]
+
+    def slow_peer():
+        with listener, listener.accept()[0] as connection:
+            connection.recv(1024)
+            try:
+                for byte in b"HTTP/1.1 200 OK\r\nContent-Length: 100\r\n\r\n":
+                    connection.sendall(bytes([byte]))
+                    time.sleep(0.03)
+            except OSError:
+                pass
+
+    thread = Thread(target=slow_peer, daemon=True)
+    thread.start()
+    started = time.monotonic()
+    with pytest.raises((TimeoutError, OSError)):
+        http_json(f"http://127.0.0.1:{port}/", timeout=0.2)
+    assert time.monotonic() - started < 0.8
+    thread.join(timeout=2)

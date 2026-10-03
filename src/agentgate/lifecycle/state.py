@@ -101,3 +101,31 @@ def validate_data(directory: Path) -> None:
             validate_data(item)
         else:
             check_file(item)
+
+
+def validate_environment(directory: Path) -> None:
+    """Only interpreter links and Linux's lib64 alias are allowed in managed venvs."""
+    if not directory.exists() and not directory.is_symlink():
+        return
+    private_dir(directory)
+    for base, directories, files in os.walk(directory, followlinks=False):
+        for name in (*directories, *files):
+            path = Path(base) / name
+            if path.is_symlink():
+                relative = path.relative_to(directory)
+                interpreter = relative.parent == Path("bin") and name in (
+                    "python",
+                    "python3",
+                    "python3.12",
+                )
+                lib_alias = relative == Path("lib64") and os.readlink(path) == "lib"
+                if not interpreter and not lib_alias:
+                    raise LifecycleError(
+                        "Unsafe symlink in managed environment; refusing package overwrite"
+                    )
+            elif path.is_file() and path.stat().st_nlink > 1:
+                # uv normally hardlinks its immutable cache. Force copies on installation,
+                # and refuse foreign existing hardlinks before modifying an environment.
+                raise LifecycleError(
+                    "Hardlinked managed environment; reinstall into a fresh private directory"
+                )

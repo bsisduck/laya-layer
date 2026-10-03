@@ -10,7 +10,7 @@ import time
 from pathlib import Path
 from typing import Any
 
-from agentgate.lifecycle.processes import Service, clean_environment, http_json
+from agentgate.lifecycle.processes import Service, available_port, clean_environment, http_json
 from agentgate.lifecycle.state import (
     LifecycleError,
     check_file,
@@ -20,6 +20,7 @@ from agentgate.lifecycle.state import (
     read_json,
     save_json,
     validate_data,
+    validate_environment,
     write_new,
 )
 
@@ -142,11 +143,25 @@ def install(
                 "prepared": False,
             },
         )
+    settings = configuration(state)
+    fingerprint = source_fingerprint(root)
+    if settings.get("prepared") and settings.get("source_fingerprint") == fingerprint:
+        for profile in ("gateway", "litellm"):
+            validate_environment(state / "runtime" / profile)
+            if not (runtime(state, profile) / "python").is_file():
+                raise LifecycleError(
+                    "Prepared environment missing; preserve state and repair runtime"
+                )
+        return
     with ownership(state):
         settings = configuration(state)
+        for key in ("port", "proxy_port", "worker_port"):
+            available_port(settings[key])
         verify_ollama()
         private_dir(state / "runtime", create=True)
         env = clean_environment()
+        env["UV_LINK_MODE"] = "copy"
+        validate_environment(state / "runtime/gateway")
         env["UV_PROJECT_ENVIRONMENT"] = str(state / "runtime/gateway")
         flags = ["--offline"] if offline else []
         run(
@@ -169,7 +184,7 @@ def install(
         profiles = ["litellm"] + ([f"laya-{semantic}"] if semantic != "off" else [])
         for profile in profiles:
             directory = state / "runtime" / profile
-            check_path(directory)
+            validate_environment(directory)
             if not directory.exists():
                 run(["uv", "venv", "--python", "3.12", *flags, str(directory)])
             run(
@@ -181,6 +196,8 @@ def install(
                     str(runtime(state, profile) / "python"),
                     *flags,
                     str(root / "requirements" / f"{profile}.txt"),
+                    "--link-mode",
+                    "copy",
                 ]
             )
         data = state / "data"
@@ -191,18 +208,15 @@ def install(
                 raise LifecycleError(
                     "Interrupted initialization retained at initializing; inspect before recovery"
                 )
-            run([gateway, "--state-dir", str(staging), "init-demo"])
-            write_new(staging / "litellm.token", ("sk-" + secrets.token_urlsafe(32)).encode())
-            write_new(staging / "policy.yaml", (root / "config/policy-models.yaml").read_bytes())
-            write_new(staging / "litellm.yaml", (root / "config/litellm-local.yaml").read_bytes())
             run(
                 [
-                    gateway,
-                    "--state-dir",
+                    str(runtime(state, "gateway") / "python"),
+                    "-m",
+                    "agentgate.lifecycle.provision",
                     str(staging),
-                    "init-operator",
-                    "--policy",
-                    str(staging / "policy.yaml"),
+                    str(root / "config/policy-models.yaml"),
+                    str(root / "config/litellm-local.yaml"),
+                    semantic,
                 ]
             )
             os.rename(staging, data)
@@ -221,7 +235,9 @@ def install(
             run([gateway, "--state-dir", str(data), "migrate"])
         if semantic != "off":
             prepare_assets(root, state, semantic, offline=offline)
-        settings.update(prepared=True, root=str(root), installed_at=time.time())
+        settings.update(
+            prepared=True, root=str(root), installed_at=time.time(), source_fingerprint=fingerprint
+        )
         save_json(state / "installation.json", settings)
 
 
@@ -340,3 +356,18 @@ def services(state: Path) -> list[Service]:
         )
     result.append(Service("gateway", command, port, "/health/ready"))
     return result
+
+
+def source_fingerprint(root: Path) -> str:
+    digest = hashlib.sha256()
+    paths = [root / "pyproject.toml", root / "uv.lock"]
+    for directory in ("src/agentgate", "config", "requirements", "manifests"):
+        paths.extend(
+            path
+            for path in (root / directory).rglob("*")
+            if path.is_file() and "__pycache__" not in path.parts
+        )
+    for path in sorted(paths):
+        digest.update(str(path.relative_to(root)).encode())
+        digest.update(path.read_bytes())
+    return digest.hexdigest()
