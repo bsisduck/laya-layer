@@ -146,3 +146,70 @@ def test_corrupt_state_and_replaced_source_fail_closed(harness: Harness, tmp_pat
         src.backup(dest)
     os.replace(replacement, harness.store.path)
     assert telemetry_status(harness.store.path, cfg)["status"] == "unavailable"
+
+
+def test_batch_byte_bound_and_fixed_crash_scratch_slot(harness: Harness, tmp_path, monkeypatch):
+    from agentgate.telemetry import state_path
+
+    for _ in range(10):
+        harness.read()
+    cfg = config(batch_bytes=4096)
+
+    async def failed(*args):
+        raise ValueError("offline")
+
+    monkeypatch.setattr("agentgate.telemetry.post_batch", failed)
+    with Sender(harness.store.path, cfg, token_file(tmp_path)) as sender:
+        state = asyncio.run(sender.once())
+    assert len(state.pending.model_dump_json().encode()) <= 4096
+    assert len(state.pending.events) < 20 and state.cursor == 0
+    # Repeated writes/crashes reuse one scratch slot, never an unbounded temp spool.
+    scratch = state_path(harness.store.path).with_suffix(".tmp")
+    scratch.write_text("interrupted write")
+    scratch.chmod(0o644)
+    from agentgate.telemetry import save_state
+
+    save_state(harness.store.path, state)
+    assert not scratch.exists() and not list(tmp_path.glob(".telemetry-*"))
+    assert state_path(harness.store.path).stat().st_mode & 0o077 == 0
+
+
+def test_invalid_stored_event_blocks_without_network(harness: Harness, tmp_path, monkeypatch):
+    harness.read()
+    with sqlite3.connect(harness.store.path) as db:
+        db.execute(
+            "UPDATE audit_events SET event=? WHERE sequence=1", ('{"raw":"' + "x" * 65536 + '"}',)
+        )
+
+    async def forbidden(*args):
+        pytest.fail("Malformed source must not be delivered")
+
+    monkeypatch.setattr("agentgate.telemetry.post_batch", forbidden)
+    with Sender(harness.store.path, config(), token_file(tmp_path)) as sender:
+        state = asyncio.run(sender.once())
+    assert state.cursor == 0 and state.last_error == "source_invalid"
+
+
+def test_same_sender_rejects_overlapping_iterations(harness: Harness, tmp_path, monkeypatch):
+    harness.read()
+
+    async def exercise(sender):
+        entered = asyncio.Event()
+        release = asyncio.Event()
+
+        async def waiting(*args):
+            entered.set()
+            await release.wait()
+
+        monkeypatch.setattr("agentgate.telemetry.post_batch", waiting)
+        task = asyncio.create_task(sender.once())
+        await entered.wait()
+        try:
+            with pytest.raises(SenderBusy):
+                await sender.once()
+        finally:
+            release.set()
+            await task
+
+    with Sender(harness.store.path, config(), token_file(tmp_path)) as sender:
+        asyncio.run(exercise(sender))

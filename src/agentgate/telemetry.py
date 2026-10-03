@@ -8,11 +8,11 @@ import hashlib
 import json
 import os
 import sqlite3
-import tempfile
 import time
 from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
+from threading import Lock
 from types import TracebackType
 from typing import Annotated, BinaryIO, Literal
 
@@ -27,6 +27,7 @@ from agentgate.telemetry_contract import (
     Acknowledgment,
     Batch,
     ProjectedEvent,
+    ProtocolVersion,
     TelemetryConfig,
     batch_digest,
     decode_json,
@@ -37,7 +38,7 @@ ErrorCode = Literal["delivery_failed", "source_invalid"]
 
 
 class DeliveryState(Contract):
-    version: Literal[1] = 1
+    version: ProtocolVersion = 1
     binding: str
     cursor: Annotated[int, Field(ge=0)] = 0
     anchor: str | None = None
@@ -97,22 +98,25 @@ def load_state(source: Path, config: TelemetryConfig) -> DeliveryState:
 
 
 def save_state(source: Path, state: DeliveryState) -> None:
-    # Replace + fsync directory makes batch/cursor atomic across process/power loss.
+    # Replace + fsync avoids exposing a partially written batch/cursor checkpoint.
     path = state_path(source)
-    descriptor, name = tempfile.mkstemp(prefix=".telemetry-", dir=path.parent)
+    # A fixed scratch slot stays bounded even after repeated SIGKILLs; the source
+    # ownership lock prevents concurrent writers. Never accumulate crash orphans.
+    scratch = path.with_suffix(".tmp")
     try:
-        with os.fdopen(descriptor, "wb") as stream:
+        with open(scratch, "wb", opener=lambda name, flags: os.open(name, flags, 0o600)) as stream:
+            os.fchmod(stream.fileno(), 0o600)
             stream.write(state.model_dump_json().encode())
             stream.flush()
             os.fsync(stream.fileno())
-        os.replace(name, path)
+        os.replace(scratch, path)
         directory = os.open(path.parent, os.O_RDONLY)
         try:
             os.fsync(directory)
         finally:
             os.close(directory)
     finally:
-        Path(name).unlink(missing_ok=True)
+        scratch.unlink(missing_ok=True)
 
 
 def source_position(source: Path, state: DeliveryState) -> tuple[int, str | None]:
@@ -189,6 +193,7 @@ class Sender:
         self.token_file = token_file
         self.clock = clock
         self._lock: BinaryIO | None = None
+        self._iteration = Lock()
 
     def __enter__(self) -> Sender:
         self._lock = lock_source(self.source)
@@ -205,6 +210,8 @@ class Sender:
             self._lock = None
 
     def stage(self, state: DeliveryState) -> DeliveryState:
+        if self._lock is None:
+            raise RuntimeError("Sender must own the source lock")
         source_position(self.source, state)
         if state.pending:
             if len(state.pending.model_dump_json().encode()) > self.config.batch_bytes:
@@ -252,6 +259,14 @@ class Sender:
         return state
 
     async def once(self) -> DeliveryState:
+        if not self._iteration.acquire(blocking=False):
+            raise SenderBusy
+        try:
+            return await self._once()
+        finally:
+            self._iteration.release()
+
+    async def _once(self) -> DeliveryState:
         if self._lock is None:
             raise RuntimeError("Sender must own the source lock")
         state = load_state(self.source, self.config)

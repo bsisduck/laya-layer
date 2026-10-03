@@ -53,10 +53,10 @@ PR: #21
 
 ### Phase 2: Collector and operator commands
 
-- [x] 2.1 Add contract collector and CLI lifecycle
+- [x] 2.1 Add contract collector and CLI lifecycle — c0b4ec5
 
 ### Phase 3: Evidence and handoff
 
-- [ ] 3.1 Verify live HTTP recovery, privacy and measured performance
-- [ ] 3.2 Document contracts and root integration
+- [x] 3.1 Verify live HTTP recovery, privacy and measured performance
+- [x] 3.2 Document contracts and root integration
 - [ ] 3.3 Complete validation, code review and ready PR

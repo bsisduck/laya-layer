@@ -62,10 +62,11 @@ work. Stored event bodies above 64 KiB or invalid rows fail the page.
 Keep checkpoints bound to the same database, tenant selection and consumer.
 They are not portable across a restored/replaced database. This command does not
 persist a cursor or certify downstream receipt. After a pipe failure, replay the
-page using stable event IDs; a future shipper must advance its durable checkpoint
+page using stable event IDs; the separate [durable sender](telemetry-delivery.md) advances its durable checkpoint
 only after the required downstream acknowledgment. No exactly-once claim is made.
 
 The current tests exercise the gateway, persisted audit, projection and CLI.
 No Splunk, Elastic, OpenSearch, Kafka or bank endpoint was contacted by this
-exporter. The [integration design](enterprise-integrations.md) lists the remaining
-transport and acceptance work.
+exporter. The [local contract lab](telemetry-delivery.md) now implements durable HTTP delivery
+with exact acknowledgment and restart/replay tests. It is not a vendor deployment.
+The [integration design](enterprise-integrations.md) lists vendor acceptance work.

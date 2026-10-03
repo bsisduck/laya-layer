@@ -88,6 +88,7 @@ def test_live_gateway_to_collector_correlates_privacy_and_scope(harness: Harness
 @pytest.mark.parametrize(
     "mode",
     [
+        "version_type",
         "partial",
         "unknown",
         "extra_error",
@@ -126,7 +127,9 @@ def test_live_invalid_ack_never_advances_and_duplicate_replay_dedupes(
             ack = collector.accept(batch).model_dump()
         if not fault[0]:
             return JSONResponse(ack)
-        if mode == "unknown":
+        if mode == "version_type":
+            ack["version"] = True
+        elif mode == "unknown":
             ack["batch_id"] = "a" * 64
         elif mode == "extra_error":
             ack["errors"] = ["untrusted-secret-must-not-be-persisted"]
@@ -316,6 +319,12 @@ def test_live_collector_rejects_payload_overrides_and_id_conflicts(harness: Harn
         assert pending is not None
         headers = {"Authorization": "Bearer " + read_token(token)}
         with httpx.Client(trust_env=False, timeout=2) as client:
+            oversized = client.post(
+                origin + "/v1/events",
+                headers={**headers, "Content-Type": "application/json"},
+                content=b"x" * 262145,
+            )
+            assert oversized.status_code == 413 and received(db) == []
             data = pending.model_dump(mode="json")
             data["events"][0]["prompt"] = "synthetic-private-prompt"
             response = client.post(origin + "/v1/events", headers=headers, json=data)
@@ -341,3 +350,87 @@ def test_live_collector_rejects_payload_overrides_and_id_conflicts(harness: Harn
             assert response.status_code == 409 and received(db)[0]["decision"] == "deny"
     with pytest.raises(ValueError, match="scope"):
         Collector(db, "tenant-b")
+
+
+def test_collector_cli_daemon_and_graceful_stop(harness: Harness, tmp_path):
+    import socket
+    import time
+
+    token = token_file(tmp_path)
+    db = tmp_path / "collector.sqlite3"
+    with socket.socket() as reservation:
+        reservation.bind(("127.0.0.1", 0))
+        port = reservation.getsockname()[1]
+    cfg = TelemetryConfig(origin=f"http://127.0.0.1:{port}", tenant="tenant-a", poll_seconds=0.05)
+    config_path = tmp_path / "sender.json"
+    config_path.write_text(cfg.model_dump_json())
+    collector = subprocess.Popen(
+        [
+            sys.executable,
+            "-m",
+            "agentgate.telemetry_cli",
+            "collector",
+            "--database",
+            str(db),
+            "--token-file",
+            str(token),
+            "--tenant",
+            "tenant-a",
+            "--port",
+            str(port),
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    sender = None
+    try:
+        deadline = time.monotonic() + 10
+        with httpx.Client(trust_env=False, timeout=0.2) as client:
+            while True:
+                try:
+                    if client.get(cfg.origin + "/health/live").status_code == 200:
+                        break
+                except httpx.HTTPError:
+                    pass
+                assert time.monotonic() < deadline and collector.poll() is None
+                time.sleep(0.01)
+        harness.read("tenant-b-notes")
+        sender = subprocess.Popen(
+            [
+                sys.executable,
+                "-m",
+                "agentgate.telemetry_cli",
+                "send",
+                "--source",
+                str(harness.store.path),
+                "--config",
+                str(config_path),
+                "--token-file",
+                str(token),
+                "--daemon",
+            ],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        while telemetry_status(harness.store.path, cfg)["acknowledged_through_sequence"] != 1:
+            assert time.monotonic() < deadline and sender.poll() is None
+            time.sleep(0.01)
+        assert telemetry_status(harness.store.path, cfg)["sender_running"] is True
+        sender.terminate()
+        stdout, stderr = sender.communicate(timeout=5)
+        assert sender.returncode == 0 and stderr == b""
+        assert json.loads(stdout)["acknowledged_through_sequence"] == 1
+        assert len(received(db)) == 1
+        assert telemetry_status(harness.store.path, cfg)["sender_running"] is False
+    finally:
+        for process in (sender, collector):
+            if process is not None and process.poll() is None:
+                process.terminate()
+                process.communicate(timeout=5)
+
+
+def test_collector_cannot_initialize_over_the_authoritative_audit(harness: Harness):
+    with pytest.raises(ValueError, match="collector database"):
+        Collector(harness.store.path, "tenant-a")
+    with sqlite3.connect(harness.store.path) as db:
+        assert db.execute("SELECT name FROM sqlite_master WHERE name='received'").fetchall() == []

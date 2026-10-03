@@ -44,6 +44,17 @@ class Collector:
             pass
         connection = sqlite3.connect(path, timeout=1)
         try:
+            version = connection.execute("PRAGMA user_version").fetchone()[0]
+            tables = {
+                row[0]
+                for row in connection.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' LIMIT 4"
+                )
+            }
+            if version not in (0, 1) or (
+                tables and (version != 1 or tables != {"received", "scope"})
+            ):
+                raise ValueError("Not a supported collector database")
             connection.execute("PRAGMA journal_mode=WAL")
             connection.execute("PRAGMA synchronous=FULL")
             connection.execute(
@@ -56,6 +67,7 @@ class Collector:
             connection.execute("INSERT OR IGNORE INTO scope VALUES (1, ?)", (tenant,))
             if connection.execute("SELECT tenant FROM scope WHERE id=1").fetchone()[0] != tenant:
                 raise ValueError("Collector scope changed")
+            connection.execute("PRAGMA user_version=1")
             connection.commit()
         finally:
             connection.close()

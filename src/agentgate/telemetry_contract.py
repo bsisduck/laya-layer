@@ -22,6 +22,7 @@ MAX_ACK_BYTES = 32768
 MAX_EVENTS = 100
 Text = Annotated[str, Field(min_length=1, max_length=128)]
 Digest = Annotated[str, Field(pattern=r"^[a-f0-9]{64}$")]
+ProtocolVersion = Annotated[int, Field(ge=1, le=1)]
 
 
 def decode_json(body: bytes) -> object:
@@ -66,7 +67,7 @@ class TelemetryConfig(Contract):
 
 
 class ProjectedEvent(Contract):
-    schema_version: Literal[1]
+    schema_version: ProtocolVersion
     event_id: Text
     sequence: Annotated[int, Field(ge=1, le=2**63 - 1)]
     timestamp: Annotated[str, Field(min_length=20, max_length=40)]
@@ -92,7 +93,7 @@ class ProjectedEvent(Contract):
 
 
 class Batch(Contract):
-    version: Literal[1] = 1
+    version: ProtocolVersion = 1
     batch_id: Digest
     events: Annotated[list[ProjectedEvent], Field(min_length=1, max_length=MAX_EVENTS)]
 
@@ -117,7 +118,7 @@ def batch_digest(events: list[ProjectedEvent]) -> str:
 
 
 class Acknowledgment(Contract):
-    version: Literal[1]
+    version: ProtocolVersion
     batch_id: Digest
     accepted_event_ids: Annotated[list[Text], Field(min_length=1, max_length=MAX_EVENTS)]
 
@@ -136,6 +137,7 @@ def read_token(path: Path) -> str:
         metadata = os.fstat(stream.fileno())
         if (
             not stat.S_ISREG(metadata.st_mode)
+            or metadata.st_size > 257
             or metadata.st_uid != os.getuid()
             or stat.S_IMODE(metadata.st_mode) & 0o077
         ):
