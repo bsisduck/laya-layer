@@ -2,10 +2,12 @@
 
 import argparse
 import json
+import subprocess
 from pathlib import Path
 
 import httpx
 
+from agentgate.inference_engine import PROFILES, QUESTION_SET
 from agentgate.storage import Store
 
 
@@ -15,6 +17,8 @@ def main():
     parser.add_argument("--backend", choices=["laya_standard", "laya_coreml"], required=True)
     parser.add_argument("--gateway-port", type=int, required=True)
     parser.add_argument("--worker-port", type=int, required=True)
+    parser.add_argument("--question-set", choices=list(PROFILES), default=QUESTION_SET)
+    parser.add_argument("--output", type=Path)
     args = parser.parse_args()
     run_headers = {
         "Authorization": "Bearer " + (args.state_dir / "client.token").read_text().strip()
@@ -27,6 +31,8 @@ def main():
     report = {
         "kind": "real_semantic_http_integration",
         "backend": args.backend,
+        "question_set_id": args.question_set,
+        "commit": subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip(),
         "actions": [],
         "classification": [],
     }
@@ -36,6 +42,22 @@ def main():
         capabilities = client.get(worker + "/ready", headers=worker_headers)
         assert capabilities.status_code == 200
         report["capabilities"] = capabilities.json()
+        assert capabilities.json()["question_set_id"] == args.question_set
+        before = client.get(worker + "/budget", headers=worker_headers).json()
+        if args.question_set == "content-role-v2":
+            for version in ("content-role-v1", "unknown"):
+                mismatch = client.post(
+                    worker + "/evaluate",
+                    headers=worker_headers,
+                    json={
+                        "request_id": "mismatch",
+                        "question_set_id": version,
+                        "untrusted_content": "data",
+                    },
+                )
+                assert mismatch.status_code == 422
+            assert client.get(worker + "/budget", headers=worker_headers).json() == before
+            report["mismatched_versions_rejected_before_quota"] = True
         for document, reason in [
             ("tenant-a-notes", None),
             ("tenant-a-instructions", None),
@@ -58,6 +80,7 @@ def main():
                 assert event.semantic is None
             else:
                 assert event.semantic is not None and event.semantic.backend == args.backend
+                assert event.semantic.question_set_id == args.question_set
                 label = event.semantic.selected_labels["content_role"]
                 expected = {
                     "task_data": "ALLOWED",
@@ -65,6 +88,12 @@ def main():
                     "unclear": "SEMANTIC_ABSTAIN",
                 }[label]
                 assert body["reason_codes"] == [expected]
+                if args.question_set == "content-role-v2":
+                    wanted = "ALLOWED" if document == "tenant-a-notes" else "SEMANTIC_BLOCKED"
+                    assert body["reason_codes"] == [wanted]
+                    assert ("result" in body) == (wanted == "ALLOWED")
+                    assert response.status_code == (200 if wanted == "ALLOWED" else 403)
+                    assert set(event.semantic.raw_scores) == {"task_data", "behavior_instruction"}
             if document == "tenant-b-notes":
                 assert body["executed"] is False
             report["actions"].append(
@@ -81,7 +110,11 @@ def main():
             response = client.post(
                 worker + "/evaluate",
                 headers=worker_headers,
-                json={"request_id": "smoke-" + case["id"], "untrusted_content": case["state"]},
+                json={
+                    "request_id": "smoke-" + case["id"],
+                    "question_set_id": args.question_set,
+                    "untrusted_content": case["state"],
+                },
             )
             assert response.status_code == 200
             result = response.json()
@@ -98,15 +131,24 @@ def main():
         response = client.post(
             worker + "/evaluate",
             headers=worker_headers,
-            json={"request_id": "smoke-over-capacity", "untrusted_content": "word " * 3000},
+            json={
+                "request_id": "smoke-over-capacity",
+                "question_set_id": args.question_set,
+                "untrusted_content": "word " * 3000,
+            },
         )
         result = response.json()
         assert response.status_code == 200 and result["status"] == "incomplete"
         assert result["coverage"]["windows_evaluated"] == 0
         report["over_capacity"] = result
-    output = Path("reports/generated") / f"{args.backend}-gateway.json"
+        after = client.get(worker + "/budget", headers=worker_headers).json()
+        report["semantic_calls_admitted"] = after["calls"] - before["calls"]
+        assert report["semantic_calls_admitted"] == 2 + len(fixtures["cases"]) + 1
+    suffix = "" if args.question_set == QUESTION_SET else "-" + args.question_set
+    output = args.output or Path("reports/generated") / f"{args.backend}-gateway{suffix}.json"
     output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_text(json.dumps(report, indent=2, allow_nan=False) + "\n")
+    with output.open("x") as stream:
+        stream.write(json.dumps(report, indent=2, allow_nan=False) + "\n")
     print(
         json.dumps(
             {

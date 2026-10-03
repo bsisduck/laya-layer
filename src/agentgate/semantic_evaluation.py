@@ -10,10 +10,11 @@ from typing import Annotated, Any, Literal
 from pydantic import Field, model_validator
 
 from agentgate.contracts import Contract, SemanticResult
-from agentgate.inference_engine import QUESTIONS
+from agentgate.inference_engine import QUESTION_SET, QuestionSet, question_profile
 from agentgate.semantics import Backend, validate_result
 
 Label = Literal["task_data", "behavior_instruction"]
+EvaluationVersion = Literal["v1", "v2"]
 Status = Literal["ok", "abstain", "incomplete", "invalid_output", "unavailable"]
 FiniteNonnegative = Annotated[float, Field(ge=0, allow_inf_nan=False)]
 
@@ -41,7 +42,7 @@ class Case(Contract):
 
 class Dataset(Contract):
     schema_version: Literal[1]
-    dataset_id: Literal["semantic-heldout-v1"]
+    dataset_id: Literal["semantic-heldout-v1", "semantic-heldout-v2"]
     purpose: str
     cases: Annotated[list[Case], Field(min_length=2, max_length=200)]
 
@@ -78,6 +79,7 @@ class Observation(Contract):
     repetition: Annotated[int, Field(ge=0, le=3)]
     backend: Backend
     status: Status
+    question_set_id: QuestionSet = QUESTION_SET
     attempted: bool = True
     elapsed_ms: FiniteNonnegative
     result: SemanticResult | None = None
@@ -91,7 +93,9 @@ class Observation(Contract):
                 raise ValueError("Missing inference evidence")
             return self
         result = self.result
-        validate_result(result, f"{self.case_id}-p{self.repetition}", self.backend)
+        validate_result(
+            result, f"{self.case_id}-p{self.repetition}", self.backend, self.question_set_id
+        )
         if self.status != result.status or self.diagnostics is None:
             raise ValueError("Result status or diagnostics mismatch")
         diag = self.diagnostics
@@ -107,25 +111,46 @@ class Observation(Contract):
         return self
 
 
-def load_frozen(root: Path) -> tuple[Dataset, dict[str, Any], dict[str, str]]:
+def load_frozen(
+    root: Path, version: EvaluationVersion = "v1"
+) -> tuple[Dataset, dict[str, Any], dict[str, str]]:
     """Reject local changes to the pre-inference corpus, engine and protocol."""
-    frozen = json.loads((root / "evaluation/freeze-v1.json").read_bytes())["files"]
+    if version not in ("v1", "v2"):
+        raise ValueError("Unknown evaluation version")
+    frozen = json.loads((root / f"evaluation/freeze-{version}.json").read_bytes())["files"]
     required = {
-        "evaluation/semantic-heldout-v1.json",
-        "evaluation/protocol-v1.json",
+        f"evaluation/semantic-heldout-{version}.json",
+        f"evaluation/protocol-{version}.json",
         "src/agentgate/inference_engine.py",
         "manifests/model-assets.json",
         "requirements/laya-standard.txt",
         "requirements/laya-coreml.txt",
     }
+    if version == "v2":
+        required.add("evaluation/development-v2.json")
     if set(frozen) != required or any(digest(root / p) != h for p, h in frozen.items()):
-        raise ValueError("Frozen input changed; a new evaluation version is required")
-    protocol = json.loads((root / "evaluation/protocol-v1.json").read_bytes())
-    if protocol["questions"] != QUESTIONS:
+        raise ValueError(
+            "Frozen input changed; use a new evaluation version. "
+            "Original v1 requires pinned PR23 checkout 639ea1fdb4651894db03eb2a6edefaf8c8a3865a; "
+            "see docs/semantic-evaluation.md"
+        )
+    protocol = json.loads((root / f"evaluation/protocol-{version}.json").read_bytes())
+    profile = question_profile(protocol["question_set_id"])
+    if (
+        protocol["question_set_id"] != f"content-role-{version}"
+        or protocol["questions"] != profile.questions
+    ):
         raise ValueError("Question differs from the production engine")
+    if version == "v2" and (
+        protocol["state_content_key"] != profile.state_key
+        or protocol["label_mapping"] != profile.labels
+    ):
+        raise ValueError("Protocol differs from production adapter")
     dataset = Dataset.model_validate_json(
-        (root / "evaluation/semantic-heldout-v1.json").read_bytes()
+        (root / f"evaluation/semantic-heldout-{version}.json").read_bytes()
     )
+    if dataset.dataset_id != f"semantic-heldout-{version}":
+        raise ValueError("Dataset version mismatch")
     return dataset, protocol, frozen
 
 

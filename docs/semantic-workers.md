@@ -50,12 +50,20 @@ The smoke script exercises real HTTP workers and gateway execution, checks
 persisted semantic evidence, and writes minimized reports under ignored
 `reports/generated/`. Its integration pass is separate from label accuracy.
 
+V1 remains the CLI/API default and keeps its original observed results below.
+For an explicit two-choice profile, add `--question-set content-role-v2` to the
+worker and `--semantic-question-set content-role-v2` to the gateway; both must
+match. Add `--question-set content-role-v2` to the smoke script as well. See
+[the versioned contract](semantic-question-v2.md) and
+[real v2 evidence and limits](semantic-v2-evidence.md). V2 has two actual mapped
+scores and no unclear label; existing strict failure handling remains intact.
+
 ## Contract and lifecycle
 
 All three loopback worker routes require the dedicated bearer service credential:
 `GET /internal/v1/semantic/ready`, `GET /internal/v1/semantic/capabilities`, and
 `POST /internal/v1/semantic/evaluate`. Agent credentials cannot replace it.
-Requests allow only request ID, the fixed `content-role-v1` question set,
+Requests allow only request ID, the operator-selected versioned question set,
 `documents.read`, and bounded untrusted text. No caller-selected model, question,
 checkpoint URL, or executable configuration is accepted.
 
@@ -67,7 +75,7 @@ killing its child. Model downloads are disabled during serving.
 
 Admission is one job per worker, with no waiting queue. Startup is capped at 45
 seconds. Jobs have a five-second deadline; a timeout, malformed response, or
-protocol mismatch kills and reaps the child and makes readiness fail. Restart the
+child response/handshake mismatch kills and reaps the child and makes readiness fail. Restart the
 worker service to recover; no ambiguous call is retried. OS-level termination is
 not a claim of exact device preemption. A child the OS cannot promptly reap stays
 unhealthy and its scratch files are retained.
@@ -99,7 +107,7 @@ them. It still enforces permissions, budgets, DLP, and operational failure handl
 The label is selected by model argmax; the scores are not calibrated security
 probabilities, and behavior instruction is not synonymous with malicious intent.
 
-Observed through both real gateway profiles: `tenant-a-instructions` was blocked,
+Original v1 observations through both real gateway backends: `tenant-a-instructions` was blocked,
 `tenant-a-notes` was withheld as unclear, tenant B was denied before execution or
 classification, and the synthetic secret was blocked before classification.
 A separate simple report sentence was classified as task data, but with a narrow
