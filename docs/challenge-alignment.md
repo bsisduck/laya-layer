@@ -1,81 +1,59 @@
-# Laya Sec Layer: alignment with the AI Control Layer challenge
+# Laya Sec Layer: AI Control Layer challenge alignment
 
-Assessment dated 2026-10-03. The product the user calls **laya-sec-layer** is the
-AI control layer being implemented here as AgentGate. This assessment concerns
-that product. The implementation is a document-enforcement prototype, not a
-complete competition submission or an enterprise deployment.
+Assessment updated **2026-10-03** for release integration `09a7c73`, with root's
+later QA observations separately attributed in [release evidence](release-evidence.md).
+The product is Laya Sec Layer, implemented by AgentGate. Cezar task completion
+and setup validation do not prove challenge delivery. No challenge-completion
+percentage or judging score is inferred from this map.
 
-The supplied `AI Control Layer.pdf` (4 pages, B1) and `TaC AI Control Layer.pdf`
-(3 pages, B2) were read in full. The scoring pages were also rendered and checked
-visually. Original PDFs are not republished in this repository. Their SHA-256s:
+User-supplied **B1** `AI Control Layer.pdf` (4 pages) and **B2**
+`TaC AI Control Layer.pdf` (3 pages) were reread from the supplied originals.
+SHA-256s match the earlier assessment; originals and extracted copies are not
+republished:
 
 - B1: `786a9bb4a858f98dd178085dc27ad5fb81d599a523d9318901ef2a0ff6aaf11c`
 - B2: `31a3fb1537ac1d02d3f4c8e22989b2a377d82c1f7ff2df749f461de695784924`
 
-The baseline reviewed was `ed49820`; the accompanying security-event-export
-change adds the reporting capability explicitly marked below. A count of tests
-or completed development tasks is not a percentage of challenge completion.
-
 ## Requirement-to-evidence map
 
-| Requirement in B1 | Observed implementation | Remaining evidence needed |
+| B1 requirement | Current code / concrete evidence | Limits and remaining acceptance |
 |---|---|---|
-| Intercept agent/model/MCP/API interactions; simple architecture diagram (§§2–3, p. 2) | Authenticated REST `documents.read` path and Mermaid diagrams | Actual model facade and a real agent integration; MCP is a chosen project adapter, not a separately mandated brand/protocol demo |
-| Central policy with strictness, allowed models, resource/financial budgets (§4.1, p. 3) | Validated policy file, roles/classifications, output controls, tool limits; optional semantic enforce/observe mode | Model allowlist, per-model/provider controls, token/money limits, audited atomic activation; current changes require restart |
-| Deterministic controls (§4.2, p. 3) | Server-owned identity, tenant and role authorization, strict request parsing, email redaction, synthetic-secret marker blocking | Broader data classifications and realistic held-out leakage cases; the marker scanner is not general DLP |
-| Semantic controls (§4.2, p. 3) | Authenticated standard Laya and native CoreML workers inspect document results; complete-input check and fail-closed deadlines | Model-input/output/tool-argument stages; held-out quality evaluation. Initial label smoke was 2/4 and benign notes abstained |
-| External and local resource governance (§2, p. 2; §4.3, p. 3) | Atomic tenant/day, principal/day, root-run document-call budgets; worker concurrency, input cap and deadline | Provider-attempt reservations, money/tokens, cumulative per-scope local inference quotas and reconciliation of uncertain consumption |
-| Historical exploit patterns; externally managed signatures (§2, p. 2; §4.4, p. 3) | Narrow executor registry and pinned model-file hashes provide limited preventive boundaries | Data-only threat feed, validation/version/expiry/activation, named safe exploit fixtures and assertions showing mitigation; no generic CVE coverage claim |
-| Interactive dashboard, security posture, resource/cost metrics (§3.3 and §4.5, p. 3) | Local audit and budget CLI; this change adds scoped JSONL/ECS-oriented/HEC-envelope export | Authenticated product UI, event-derived metrics, live updates, latency telemetry, accurate cost display and collector delivery evidence |
-| Positive and negative executable tests (§4.6, p. 3; §6, p. 4) | Gateway, policy, budget race/failure and worker-lifecycle tests; export tests use real gateway-generated records | Full implemented-control acceptance matrix, actual generation/agent integration, held-out semantic evaluation, deployment and performance tests |
-| Spontaneous prompts and config/feed changes (§6, p. 4) | Document-ID demo is callable; limits are configurable at startup | A running agent/model demo, prompt entry, safe policy/feed changes without partial activation, visible decision/effect changes |
-| Own setup without supplied paid services (§7, p. 4) | Gateway and both local classifiers have run on own hardware | Validated local generation model, predictable resource footprint, offline end-to-end startup and recovery |
+| Intercept agent/model/MCP/API interactions; simple diagram (§§2–3, p. 2) | Authenticated model facade, REST registered execution and official-SDK MCP; [diagrams](architecture.md); real local model/tool cycle recorded in [model gateway](model-gateway.md) | PR30 genuine restricted Hermes/direct clients pending; root installed QA separate; no universal SDK/native-tool coverage |
+| Central policy, strictness, allowed models and budgets (§4.1, p. 3) | Validated live policy/feed snapshots, atomic CAS activation, `local-demo` allowlist, deterministic enforcement and optional semantic enforce/observe; `test_control_plane.py`, `test_models.py` | Root reports browser activation/stale conflict; no calibrated safety threshold or enterprise IAM; invalid edits keep last good state |
+| Deterministic controls (§4.2, p. 3) | Server-owned identity/ACL, tenant memory queries, schema parsing, recipient policy, exact approvals, bounded email/marker DLP; T01–T27 | Supported synthetic formats only; outbox fixture, no SMTP or general DLP |
+| Semantic controls (§4.2, p. 3) | Actual standard/native CoreML workers; supported model input/output, tool-action/result inspection; frozen [v1](semantic-evaluation.md) and pending v2 [evidence](release-evidence.md) | V1 7/26 correct each and failed CoreML warm run retained; v2 15/28 CPU,16/28 CoreML, false positives/negatives; not approved detector; optional/off by default, CoreML experimental |
+| External/local resource governance (§2, p. 2; §4.3, p. 3) | Atomic tool/model call/token/micro-USD ledgers, delegated root scopes, retained unknown usage, native concurrency/deadlines, persistent installation-wide UTC-day semantic quota; T21–T30 | Local tariff simulated zero; nonzero tariffs only deterministic simulations; no commercial invoice cap or full cumulative semantic token/time scopes |
+| Historical attacks and managed signatures (§2, p. 2; §4.4, p. 3) | Typed bounded literal/domain/digest/serializer feed, validate/CAS activation, pinned actual asset files; T31–T34, current partial T36 | PR28 exact metadata registry simulation pending re-review; no hostile model download/execution/CVE reproduction; external signed feed refresh and production intake proposed |
+| Interactive dashboard, security/resource/cost reporting (§3.3, §4.5, p. 3) | Packaged authenticated operator UI, event-derived states/counters, approvals, live controls, ledgers, scoped exports and local sender/collector; root reports installed browser suite +51 collector records/zero lag | Export envelopes are not vendor delivery; UI timings include configured scope, no security posture certification; global local operator authority |
+| Executable positive/negative controls (§4.6, p. 3; §6, p. 4) | [T01–T48 inventory](acceptance.md) maps concrete tests/fixtures, effects and gaps; full deterministic `make validate`; real loopback MCP/telemetry | Classifier process/math fixtures are not real accuracy; measured labels not all passes; ANE gap; independent review/root current-head gate separate |
+| Spontaneous prompts and config/feed changes (§6, p. 4) | Operator model/document/memory/mail playground, versioned live policy/feed; root browser checks and actual local model smoke | Do not promise a correct semantic label for spontaneous prompts; approval revalidation, audit/ledger effects must accompany UI claims |
+| Own setup without paid services (§7, p. 4) | `./laya` installed gateway/UI/private proxy/local collector, prepared local Ollama; optional isolated standard/native CoreML; [runbook](demo-runbook.md) | Dependencies/assets must be preloaded for offline restart; trusted host/shared Ollama is not an egress sandbox; fresh-host install and each final runtime head need evidence |
 
-Implementation evidence: [document contract](document-slice.md),
-[tool budgets](budgets.md), [semantic evidence](semantic-workers.md),
-[new export contract](audit-export.md), and the corresponding `tests/` suites.
-Passing classifier process/coverage checks does not establish classifier accuracy.
+No particular SIEM, bank credentials or Goldman Sachs deployment is mandated by
+these PDFs. [Bank capabilities](enterprise-integrations.md) describe proposed
+interfaces, not access or validated compatibility. The brief allows pre-existing
+agents/tools and judges the control layer; do not attribute Laya, LiteLLM, Hermes
+or Cezar as original team product work.
 
-## Delivery focus
-
-The current architecture points toward the requested product. The most important
-completion work is an end-to-end AI interaction, resource accounting, and reporting:
-
-1. Model facade plus one local generation model. Prove allowed/blocked/redacted
-   inputs and outputs, bounded results, per-attempt budgets and non-bypassable routing
-   within the documented deployment boundary.
-2. Product dashboard and policy activation. Show controls, decisions, semantic
-   coverage, budget usage and measured latency. Distinguish executed-but-withheld
-   results from operations prevented before dispatch.
-3. Threat-feed update and safe exploit fixtures, with malformed/stale feed cases.
-   Neither feed content nor model output may grant authorization.
-4. Complete one telemetry delivery route in a local lab, using the new export
-   format. Test actual ingestion, retries, partial failures, duplicate handling,
-   restart and secret exclusion before claiming a connector works.
-5. Run the full offline judge scenario and prepare the submission. Additional
-   bank-specific adapters should not displace the core AI-control demonstration.
-
-These are recommendations for finishing this product, not requirements to deploy
-inside a bank. The brief does not require Goldman Sachs credentials or a named
-SIEM. Vendor integration can strengthen practical applicability and reporting.
-
-## Submission details and discrepancies
+## Submission and discrepancies
 
 | Criterion | B1 §8, p. 4 | B2 §11, p. 2 |
 |---|---:|---:|
-| Robustness and guardrails | 30% | 30% |
-| Architecture and performance | 20% | 20% |
+| Robustness / guardrails | 30% | 30% |
+| Architecture / performance | 20% | 20% |
 | Security reporting | 20% | 20% |
 | Self-testing | 15% | 20% |
-| Implementability and scalability | 15% | 10% |
+| Implementability / scalability | 15% | 10% |
 
-The documents disagree on the last two weights; no scoring precedence is inferred.
-Both make reporting a substantial part of the assessment.
+The final two weights disagree. No precedence is inferred. B2 §5, p. 1 specifies
+project title, team name, 1–6 members, description, a **maximum ten-slide PDF**,
+and HackTribe submission in **English or Polish**. Its literal earliest start is
+23:00 October 3 and cutoff 23:00 October 4, with no timezone in that clause.
+Record organizer clarification; do not silently repair the hours or declare
+eligibility. B2 §13, p. 3 says later changes are not considered. Cross-category
+eligibility is unresolved by these files.
 
-B2 §5, p. 1 requires a title, team name, 1–6 team members, description and PDF
-presentation of at most ten slides; submission is through HackTribe in English
-or Polish. These assets are not delivered by passing the code tests. The same
-clause states 23:00 on October 3 as the earliest start and 23:00 on October 4 as
-the submission cutoff, without a timezone. These hours and the weighting
-discrepancy need organizer clarification; no eligibility decision is made here.
-See also the original architecture §2 for the previously recorded discrepancies.
+Reviewable [English/Polish presentation sources](presentation/README.md) and
+[submission template](submission-template.md) are supplied. Team identity, dates,
+eligibility, repository/demo URLs and actual HackTribe submission are user-owned.
+Template fields are deliberate, not invented team facts or a blocking question.

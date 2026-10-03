@@ -1,0 +1,656 @@
+{
+  "schema_version": 1,
+  "source_snapshot": "09a7c737f32efb30ce3fbae28e781a27b404da43",
+  "architecture": "AgentGate_Full_Project_Architecture.md",
+  "evaluation_fixture": "evaluation/semantic-heldout-v1.json",
+  "evaluation_record": "docs/semantic-evaluation.md",
+  "claims": "Inventory is mapping, not 48 passes. Measured labels and pending/gap rows never become passed from pytest results.",
+  "cases": [
+    {
+      "id": "T01",
+      "case": "Authorized document read",
+      "expected": "Permitted content returned",
+      "kind": "control",
+      "tests": [
+        "tests/test_gateway.py::test_T01_allowed_read_has_durable_intent_and_private_audit"
+      ],
+      "evaluation_cases": [],
+      "note": "Deterministic control evidence on synthetic resources; no real inference."
+    },
+    {
+      "id": "T02",
+      "case": "Missing credential",
+      "expected": "No model/tool dispatch",
+      "kind": "control",
+      "tests": [
+        "tests/test_gateway.py::test_T02_invalid_authentication_never_dispatches"
+      ],
+      "evaluation_cases": [],
+      "note": "Deterministic control evidence on synthetic resources; no real inference."
+    },
+    {
+      "id": "T03",
+      "case": "Expired credential",
+      "expected": "No dispatch",
+      "kind": "control",
+      "tests": [
+        "tests/test_gateway.py::test_T03_credential_expires_at_boundary"
+      ],
+      "evaluation_cases": [],
+      "note": "Deterministic control evidence on synthetic resources; no real inference."
+    },
+    {
+      "id": "T04",
+      "case": "Revoked credential after initial decision",
+      "expected": "Dispatch denied",
+      "kind": "control",
+      "tests": [
+        "tests/test_gateway.py::test_T04_revocation_between_admission_and_dispatch",
+        "tests/test_scoped_tools.py::test_late_credential_revocation_and_lock_wait_expiry"
+      ],
+      "evaluation_cases": [],
+      "note": "Deterministic control evidence on synthetic resources; no real inference."
+    },
+    {
+      "id": "T05",
+      "case": "Caller claims another tenant",
+      "expected": "Claim rejected; no cross-tenant results",
+      "kind": "control",
+      "tests": [
+        "tests/test_gateway.py::test_T05_body_identity_cannot_override_credential",
+        "tests/test_gateway.py::test_T05_identity_headers_query_and_duplicate_credentials_are_rejected",
+        "tests/test_scoped_tools.py::test_memory_scopes_authorization_before_query_and_output"
+      ],
+      "evaluation_cases": [],
+      "note": "Deterministic control evidence on synthetic resources; no real inference."
+    },
+    {
+      "id": "T06",
+      "case": "Same-tenant memory query",
+      "expected": "Only authorized fixture rows returned",
+      "kind": "control",
+      "tests": [
+        "tests/test_scoped_tools.py::test_memory_scopes_authorization_before_query_and_output"
+      ],
+      "evaluation_cases": [],
+      "note": "Deterministic control evidence on synthetic resources; no real inference."
+    },
+    {
+      "id": "T07",
+      "case": "Unknown tool",
+      "expected": "No executor invocation",
+      "kind": "control",
+      "tests": [
+        "tests/test_gateway.py::test_T07_unknown_operations_are_not_executed_or_copied_to_audit"
+      ],
+      "evaluation_cases": [],
+      "note": "Deterministic control evidence on synthetic resources; no real inference."
+    },
+    {
+      "id": "T08",
+      "case": "Malformed tool arguments",
+      "expected": "Schema rejection",
+      "kind": "control",
+      "tests": [
+        "tests/test_gateway.py::test_T08_malformed_arguments_fail_without_input_echo",
+        "tests/test_scoped_tools.py::test_malformed_recipient_never_rewritten"
+      ],
+      "evaluation_cases": [],
+      "note": "Deterministic control evidence on synthetic resources; no real inference."
+    },
+    {
+      "id": "T09",
+      "case": "Unknown model alias",
+      "expected": "No provider invocation",
+      "kind": "control",
+      "tests": [
+        "tests/test_models.py::test_T09_T10_forbidden_routing_has_no_upstream_attempt"
+      ],
+      "evaluation_cases": [],
+      "note": "Deterministic control evidence on synthetic resources; no real inference."
+    },
+    {
+      "id": "T10",
+      "case": "Caller supplies arbitrary API base",
+      "expected": "Rejected",
+      "kind": "control",
+      "tests": [
+        "tests/test_models.py::test_T09_T10_forbidden_routing_has_no_upstream_attempt"
+      ],
+      "evaluation_cases": [],
+      "note": "Deterministic control evidence on synthetic resources; no real inference."
+    },
+    {
+      "id": "T11",
+      "case": "Synthetic secret in model input",
+      "expected": "Upstream sees no secret",
+      "kind": "control",
+      "tests": [
+        "tests/test_models.py::test_T11_input_secret_is_not_dispatched"
+      ],
+      "evaluation_cases": [],
+      "note": "Deterministic control evidence on synthetic resources; no real inference."
+    },
+    {
+      "id": "T12",
+      "case": "Supported email redaction",
+      "expected": "Upstream sees sanitized text",
+      "kind": "control",
+      "tests": [
+        "tests/test_models.py::test_T12_input_and_output_emails_are_redacted",
+        "tests/test_gateway.py::test_email_is_redacted_before_release"
+      ],
+      "evaluation_cases": [],
+      "note": "Deterministic control evidence on synthetic resources; no real inference."
+    },
+    {
+      "id": "T13",
+      "case": "Similar benign text",
+      "expected": "Allowed; no unnecessary mutation",
+      "kind": "partial",
+      "tests": [
+        "tests/test_gateway.py::test_T01_allowed_read_has_durable_intent_and_private_audit",
+        "tests/test_models.py::test_model_intent_settlement_and_minimized_audit"
+      ],
+      "evaluation_cases": [],
+      "note": "Ordinary text is allowed by bounded deterministic controls. No broad benign-lookalike DLP corpus or semantic benign-pass guarantee; v1 benign withholding remains."
+    },
+    {
+      "id": "T14",
+      "case": "Forbidden recipient",
+      "expected": "No outbox row",
+      "kind": "control",
+      "tests": [
+        "tests/test_scoped_tools.py::test_forbidden_mail_has_no_action_budget_or_outbox"
+      ],
+      "evaluation_cases": [],
+      "note": "Deterministic control evidence on synthetic resources; no real inference."
+    },
+    {
+      "id": "T15",
+      "case": "Allowed recipient, approval pending",
+      "expected": "No outbox row before approval",
+      "kind": "control",
+      "tests": [
+        "tests/test_scoped_tools.py::test_pending_approval_exact_payload_and_private_audit"
+      ],
+      "evaluation_cases": [],
+      "note": "Deterministic control evidence on synthetic resources; no real inference."
+    },
+    {
+      "id": "T16",
+      "case": "Approved exact mail action",
+      "expected": "One outbox row",
+      "kind": "control",
+      "tests": [
+        "tests/test_scoped_tools.py::test_approval_resume_and_replay_commit_one_actual_outbox_row",
+        "tests/test_full_stack.py::test_operator_exact_approval_consumes_once_and_reports_current_state"
+      ],
+      "evaluation_cases": [],
+      "note": "One SQLite fixture outbox row; no SMTP or external delivery."
+    },
+    {
+      "id": "T17",
+      "case": "Recipient changed after approval",
+      "expected": "Old approval unusable",
+      "kind": "control",
+      "tests": [
+        "tests/test_scoped_tools.py::test_payload_mutation_conflicts_and_snapshot_is_immutable"
+      ],
+      "evaluation_cases": [],
+      "note": "Deterministic control evidence on synthetic resources; no real inference."
+    },
+    {
+      "id": "T18",
+      "case": "Approval replay",
+      "expected": "No duplicate outbox row",
+      "kind": "control",
+      "tests": [
+        "tests/test_scoped_tools.py::test_approval_resume_and_replay_commit_one_actual_outbox_row"
+      ],
+      "evaluation_cases": [],
+      "note": "Deterministic control evidence on synthetic resources; no real inference."
+    },
+    {
+      "id": "T19",
+      "case": "Agent credential attempts approval",
+      "expected": "Rejected",
+      "kind": "control",
+      "tests": [
+        "tests/test_admin.py::test_agent_credentials_cannot_access_any_admin_route",
+        "tests/test_admin.py::test_agent_token_cannot_login_and_operator_token_cannot_execute"
+      ],
+      "evaluation_cases": [],
+      "note": "Deterministic control evidence on synthetic resources; no real inference."
+    },
+    {
+      "id": "T20",
+      "case": "Expired approval",
+      "expected": "No execution",
+      "kind": "control",
+      "tests": [
+        "tests/test_scoped_tools.py::test_expiry_and_denial_cannot_be_reapproved",
+        "tests/test_scoped_tools.py::test_approval_expiry_during_semantic_check_denies"
+      ],
+      "evaluation_cases": [],
+      "note": "Deterministic control evidence on synthetic resources; no real inference."
+    },
+    {
+      "id": "T21",
+      "case": "Budget below boundary",
+      "expected": "One checked dispatch and settlement",
+      "kind": "control",
+      "tests": [
+        "tests/test_budgets.py::test_reservation_is_durable_before_executor",
+        "tests/test_models.py::test_model_intent_settlement_and_minimized_audit"
+      ],
+      "evaluation_cases": [],
+      "note": "Deterministic control evidence on synthetic resources; no real inference."
+    },
+    {
+      "id": "T22",
+      "case": "Budget at/over boundary",
+      "expected": "No new dispatch",
+      "kind": "control",
+      "tests": [
+        "tests/test_budgets.py::test_each_exhausted_scope_rolls_back_all_reservations"
+      ],
+      "evaluation_cases": [],
+      "note": "Deterministic control evidence on synthetic resources; no real inference."
+    },
+    {
+      "id": "T23",
+      "case": "Parallel requests compete for final capacity",
+      "expected": "Only reservable calls dispatch",
+      "kind": "control",
+      "tests": [
+        "tests/test_budgets.py::test_concurrent_admission_cannot_overspend_any_scope",
+        "tests/test_models.py::test_T23_atomic_final_call_capacity"
+      ],
+      "evaluation_cases": [],
+      "note": "Deterministic control evidence on synthetic resources; no real inference."
+    },
+    {
+      "id": "T24",
+      "case": "Retry with same key and payload",
+      "expected": "Stable result; no duplicate side effect",
+      "kind": "control",
+      "tests": [
+        "tests/test_scoped_tools.py::test_approval_resume_and_replay_commit_one_actual_outbox_row",
+        "tests/test_scoped_tools.py::test_lost_ack_after_commit_reconciles_by_outbox_after_restart"
+      ],
+      "evaluation_cases": [],
+      "note": "Mail uses the exact stable key/payload and local effect reconciliation; no global idempotency guarantee for arbitrary providers."
+    },
+    {
+      "id": "T25",
+      "case": "Same key, different payload",
+      "expected": "Conflict",
+      "kind": "control",
+      "tests": [
+        "tests/test_scoped_tools.py::test_payload_mutation_conflicts_and_snapshot_is_immutable"
+      ],
+      "evaluation_cases": [],
+      "note": "Deterministic control evidence on synthetic resources; no real inference."
+    },
+    {
+      "id": "T26",
+      "case": "Provider timeout after dispatch",
+      "expected": "Unresolved reservation retained",
+      "kind": "control",
+      "tests": [
+        "tests/test_models.py::test_T26_timeout_retains_reservation_and_admission_slot_after_restart"
+      ],
+      "evaluation_cases": [],
+      "note": "Deterministic control evidence on synthetic resources; no real inference."
+    },
+    {
+      "id": "T27",
+      "case": "Blocked provider output",
+      "expected": "Usage still recorded",
+      "kind": "control",
+      "tests": [
+        "tests/test_models.py::test_T27_T45_secret_output_is_never_released_but_usage_is_settled"
+      ],
+      "evaluation_cases": [],
+      "note": "Deterministic control evidence on synthetic resources; no real inference."
+    },
+    {
+      "id": "T28",
+      "case": "Local semantic-call limit exceeded",
+      "expected": "New inference not admitted",
+      "kind": "control",
+      "tests": [
+        "tests/test_semantic_quota.py::test_worker_rejects_exhaustion_without_native_call_across_backend_restart",
+        "tests/test_semantic_quota.py::test_last_capacity_is_atomic_across_independent_processes",
+        "tests/test_semantic_quota.py::test_gateway_returns_budget_denial_with_zero_generation_dispatch"
+      ],
+      "evaluation_cases": [],
+      "note": "Persistent installation-wide UTC-day semantic call limit. Observable Python child fixture, not Laya quality; cumulative semantic token/wall-time scopes remain incomplete."
+    },
+    {
+      "id": "T29",
+      "case": "Local worker timeout",
+      "expected": "Unhealthy/degraded status and accounted work",
+      "kind": "control",
+      "tests": [
+        "tests/test_semantics.py::test_deadline_kills_and_reaps_a_real_child_process",
+        "tests/test_semantic_quota.py::test_timeout_consumes_quota_before_native_work_and_is_not_refunded"
+      ],
+      "evaluation_cases": [],
+      "note": "Owned child killed/reaped; conservative call debit retained. No measured GPU preemption or cumulative wall-time budget."
+    },
+    {
+      "id": "T30",
+      "case": "New child run",
+      "expected": "Root budget inherited",
+      "kind": "partial",
+      "tests": [
+        "tests/test_scoped_tools.py::test_all_tools_share_root_across_delegated_principals",
+        "tests/test_models.py::test_T30_delegated_principal_cannot_reset_root_budget"
+      ],
+      "evaluation_cases": [],
+      "note": "Server-issued synthetic delegated identities share root accounting. No public child-run issuance API or universal framework delegation coverage."
+    },
+    {
+      "id": "T31",
+      "case": "Invalid policy reload",
+      "expected": "Last good version remains active",
+      "kind": "control",
+      "tests": [
+        "tests/test_control_plane.py::test_invalid_policy_and_failed_audit_keep_last_good",
+        "tests/test_admin.py::test_policy_validation_activation_replay_and_last_good"
+      ],
+      "evaluation_cases": [],
+      "note": "Deterministic control evidence on synthetic resources; no real inference."
+    },
+    {
+      "id": "T32",
+      "case": "Valid policy change before dispatch",
+      "expected": "New rule applied at dispatch boundary",
+      "kind": "control",
+      "tests": [
+        "tests/test_control_plane.py::test_policy_reload_between_decision_and_intent_reauthorizes",
+        "tests/test_models.py::test_T32_model_rechecks_policy_inside_reservation_transaction"
+      ],
+      "evaluation_cases": [],
+      "note": "Deterministic control evidence on synthetic resources; no real inference."
+    },
+    {
+      "id": "T33",
+      "case": "Feed gains a blocked indicator",
+      "expected": "Next applicable request uses new version",
+      "kind": "control",
+      "tests": [
+        "tests/test_control_plane.py::test_feed_blocks_document_before_executor_and_budget",
+        "tests/test_control_plane.py::test_feed_reload_between_decision_and_intent_rechecks",
+        "tests/test_models.py::test_T33_model_rechecks_feed_when_policy_version_is_unchanged"
+      ],
+      "evaluation_cases": [],
+      "note": "Deterministic control evidence on synthetic resources; no real inference."
+    },
+    {
+      "id": "T34",
+      "case": "Malformed/oversized feed",
+      "expected": "Rejected without partial activation",
+      "kind": "control",
+      "tests": [
+        "tests/test_control_plane.py::test_feed_limits_duplicate_ids_and_stage_validation",
+        "tests/test_admin.py::test_feed_http_validation_enforcement_and_restart"
+      ],
+      "evaluation_cases": [],
+      "note": "Deterministic control evidence on synthetic resources; no real inference."
+    },
+    {
+      "id": "T35",
+      "case": "Approved artifact manifest",
+      "expected": "Intake simulator accepts",
+      "kind": "pending",
+      "tests": [],
+      "evaluation_cases": [],
+      "note": "Exact approved-registry metadata simulator is pending PR28; no bytes fetched, verified, deserialized or executed.",
+      "pending": {
+        "pr": 28,
+        "head": "90d42fb1c720fc61b24e3c72c6ff259cac3257da",
+        "path": "tests/test_artifacts.py",
+        "state": "open_at_snapshot",
+        "tests": [
+          "test_exact_manifest_passes_without_download_deserialization_or_execution"
+        ]
+      }
+    },
+    {
+      "id": "T36",
+      "case": "Changed digest or unapproved source",
+      "expected": "Intake rejected; no artifact execution",
+      "kind": "partial",
+      "tests": [
+        "tests/test_control_plane.py::test_unsafe_serialization_never_executes_or_loads",
+        "tests/test_control_plane.py::test_domain_source_digest_and_safe_artifact_metadata"
+      ],
+      "evaluation_cases": [],
+      "note": "Current feed metadata/serializer checks are bounded control-class evidence. Exact changed-digest/source registry simulator remains PR28; no exploit reproduction or verified model bytes.",
+      "pending": {
+        "pr": 28,
+        "head": "90d42fb1c720fc61b24e3c72c6ff259cac3257da",
+        "path": "tests/test_artifacts.py",
+        "state": "open_at_snapshot",
+        "tests": [
+          "test_changed_manifest_component_denies",
+          "test_executable_serializers_cannot_be_approved"
+        ]
+      }
+    },
+    {
+      "id": "T37",
+      "case": "Explicit instruction-injection fixture",
+      "expected": "Record actual Laya outcome against fixed label",
+      "kind": "measured",
+      "tests": [],
+      "evaluation_cases": [
+        "override-en",
+        "override-pl",
+        "authority-en",
+        "authority-pl"
+      ],
+      "note": "Frozen v1 actual predictions include abstention; report fixed expected labels and actual outcomes. Pending v2 is a different corpus/question, not automatic success."
+    },
+    {
+      "id": "T38",
+      "case": "Benign quoted security discussion",
+      "expected": "Record false-positive behavior",
+      "kind": "measured",
+      "tests": [],
+      "evaluation_cases": [
+        "training-en",
+        "training-pl",
+        "incident-en",
+        "incident-pl"
+      ],
+      "note": "Frozen v1 quotations expose two false positives and two abstentions; v2 four quotations are false positives on both backends."
+    },
+    {
+      "id": "T39",
+      "case": "Negation/paraphrase fixture",
+      "expected": "Record actual semantic outcome",
+      "kind": "measured",
+      "tests": [],
+      "evaluation_cases": [
+        "denial-en",
+        "denial-pl",
+        "absence-en",
+        "absence-pl",
+        "workflow-en",
+        "workflow-pl",
+        "quiet-en",
+        "quiet-pl"
+      ],
+      "note": "Record nondecisive and actual answers; pending v2 misses all four indirect malicious paraphrases. No promised label pass."
+    },
+    {
+      "id": "T40",
+      "case": "Polish and English matched cases",
+      "expected": "Separate language-slice metrics",
+      "kind": "measured",
+      "tests": [],
+      "evaluation_cases": [
+        "report-en",
+        "report-pl",
+        "schedule-en",
+        "schedule-pl",
+        "training-en",
+        "training-pl",
+        "incident-en",
+        "incident-pl",
+        "denial-en",
+        "denial-pl",
+        "absence-en",
+        "absence-pl",
+        "override-en",
+        "override-pl",
+        "authority-en",
+        "authority-pl",
+        "workflow-en",
+        "workflow-pl",
+        "quiet-en",
+        "quiet-pl",
+        "medium-en",
+        "medium-pl",
+        "long-en",
+        "long-pl",
+        "overflow-en",
+        "overflow-pl"
+      ],
+      "note": "13 EN/PL v1 pairs; language denominators retained. Pending v2 has 14 fresh pairs; do not pool warm repeats as independent cases."
+    },
+    {
+      "id": "T41",
+      "case": "Oversized or truncated semantic input",
+      "expected": "Never reported fully analyzed",
+      "kind": "control",
+      "tests": [
+        "tests/test_semantics.py::test_complete_claim_requires_full_single_window",
+        "tests/test_semantics.py::test_usage_requires_bounded_finite_evidence"
+      ],
+      "evaluation_cases": [
+        "overflow-en",
+        "overflow-pl"
+      ],
+      "note": "Full-input contract checks plus actual v1 over-capacity evidence. No multi-window or near-capacity guarantee."
+    },
+    {
+      "id": "T42",
+      "case": "ANE request over capacity",
+      "expected": "Rejected or explicitly routed; no silent truncation",
+      "kind": "gap",
+      "tests": [],
+      "evaluation_cases": [],
+      "note": "ANE profile is disabled/unimplemented. General 1024-token CoreML preflight is not evidence for the 96-token ANE profile; no ANE test run."
+    },
+    {
+      "id": "T43",
+      "case": "CoreML versus standard same fixture",
+      "expected": "Record disagreement and backend metadata",
+      "kind": "measured",
+      "tests": [],
+      "evaluation_cases": [
+        "report-en",
+        "report-pl",
+        "schedule-en",
+        "schedule-pl",
+        "training-en",
+        "training-pl",
+        "incident-en",
+        "incident-pl",
+        "denial-en",
+        "denial-pl",
+        "absence-en",
+        "absence-pl",
+        "override-en",
+        "override-pl",
+        "authority-en",
+        "authority-pl",
+        "workflow-en",
+        "workflow-pl",
+        "quiet-en",
+        "quiet-pl",
+        "medium-en",
+        "medium-pl",
+        "long-en",
+        "long-pl",
+        "overflow-en",
+        "overflow-pl"
+      ],
+      "note": "V1 first-pass status/labels agree 26/26 including failures/abstentions; CoreML warm run failed. Pending v2 has one decisive label disagreement. Agreement is not accuracy."
+    },
+    {
+      "id": "T44",
+      "case": "Invalid/NaN semantic result",
+      "expected": "No permissive decision from invalid score",
+      "kind": "control",
+      "tests": [
+        "tests/test_semantics.py::test_wrong_identity_labels_and_probabilities_are_rejected",
+        "tests/test_policy.py::test_nonfinite_semantic_signal_is_invalid"
+      ],
+      "evaluation_cases": [],
+      "note": "Deterministic control evidence on synthetic resources; no real inference."
+    },
+    {
+      "id": "T45",
+      "case": "Secret split across candidate stream chunks",
+      "expected": "No uninspected secret released",
+      "kind": "partial",
+      "tests": [
+        "tests/test_models.py::test_T27_T45_secret_output_is_never_released_but_usage_is_settled",
+        "tests/test_models.py::test_decoded_output_argument_secret_is_withheld_and_spent"
+      ],
+      "evaluation_cases": [],
+      "note": "Gateway buffers complete upstream output before client SSE; secret withheld and spent usage retained. No upstream token-stream chunk inspection implementation or exact split-chunk test."
+    },
+    {
+      "id": "T46",
+      "case": "MCP session reused by another principal",
+      "expected": "Rejected",
+      "kind": "control",
+      "tests": [
+        "tests/test_mcp.py::test_mcp_sessions_require_original_live_run_credential",
+        "tests/test_mcp.py::test_modern_envelope_cannot_bypass_bound_session"
+      ],
+      "evaluation_cases": [],
+      "note": "Deterministic control evidence on synthetic resources; no real inference."
+    },
+    {
+      "id": "T47",
+      "case": "Budget/audit store fails",
+      "expected": "Protected dispatch blocked",
+      "kind": "control",
+      "tests": [
+        "tests/test_gateway.py::test_T47_failed_dispatch_audit_blocks_executor",
+        "tests/test_gateway.py::test_T47_failed_outcome_audit_withholds_already_executed_result",
+        "tests/test_budgets.py::test_dispatch_audit_failure_rolls_back_capacity",
+        "tests/test_semantic_quota.py::test_storage_failure_prevents_native_dispatch"
+      ],
+      "evaluation_cases": [],
+      "note": "Deterministic control evidence on synthetic resources; no real inference."
+    },
+    {
+      "id": "T48",
+      "case": "Hermes alternative route or native tool",
+      "expected": "Demonstrate isolation or expose coverage gap",
+      "kind": "pending",
+      "tests": [],
+      "evaluation_cases": [],
+      "note": "Pinned genuine Hermes restricted-profile/fixture-provider tests exist only on PR30 at snapshot. Actual local-model cycles and final integration not claimed; native same-user host authority remains outside coverage.",
+      "pending": {
+        "pr": 30,
+        "head": "dfe67c87ff51457699e9500b51956947a0388fa9",
+        "path": "tests/test_hermes_profile.py",
+        "state": "open_at_snapshot",
+        "tests": [
+          "test_actual_pinned_hermes_cycle_with_fixture_provider",
+          "test_profile_rejects_host_process_and_non_gateway_network"
+        ]
+      }
+    }
+  ]
+}

@@ -38,7 +38,7 @@ where their code is already integrated into PR31.
 | [21 telemetry](https://github.com/bsisduck/laya-sec-agent/pull/21) | `9ba757e` | Merged (`0b8af56`) | Local contract sender/collector, not vendor delivery |
 | [24 credential renewal](https://github.com/bsisduck/laya-sec-agent/pull/24) | `5b982a6` | Merged (`4e82729`) | Integrated explicit operator authority |
 | [26 semantic quota](https://github.com/bsisduck/laya-sec-agent/pull/26) | `a81d86b` | Merged (`4fe26c4`) | Integrated installation-wide call quota |
-| [22 installer](https://github.com/bsisduck/laya-sec-agent/pull/22) | `a3b31b6` | Open | Installer code present in release snapshot; not a merged release |
+| [22 installer](https://github.com/bsisduck/laya-sec-agent/pull/22) | `a3b31b6` | Merged (`b15eb65`) | Root reports independent 504-test merged-head gate and both Linux CI green; source-only wheel fix uses `--reinstall-package agentgate` |
 | [28 artifact simulator](https://github.com/bsisduck/laya-sec-agent/pull/28) | `90d42fb` | Open | Pending; metadata policy simulation, no byte verification/download/execution |
 | [30 restricted clients](https://github.com/bsisduck/laya-sec-agent/pull/30) | `dfe67c8` | Open | Pending; actual pinned Hermes code/profile with provider-fixture tests; real local cycles pending in that inspected ref |
 | [32 semantic v2](https://github.com/bsisduck/laya-sec-agent/pull/32) | `43ea6e6` | Open | Pending contract integration; fresh measured evidence below, no approved detector |
@@ -78,6 +78,37 @@ Standard is the preferred explicit opt-in runtime; CoreML remains experimental.
 V1 stays the compatibility default and semantic inspection is off in the default
 installer. The corpora and question meanings differ, so this is not a controlled
 v1/v2 improvement estimate. No inference ran during documentation authoring.
+
+## Root-reported installed QA updates
+
+Supplied by root during documentation work, separate from the `09a7c73` code
+snapshot and this branch's execution. Root owns these reports and final runtime
+preparation; no browser/model run was repeated by this documentation task.
+
+- Collector lifecycle integration `5896766`, model selection `09a7c73`: root
+  reports 508 deterministic tests and actual installed browser allow/redact/tenant
+  denial, tenant-scoped memory, immutable mail approval/changed-payload conflict/
+  exact execution/retry with one SQLite outbox row, explicit tools credential
+  renewal preserving identity/budget rows, policy CAS conflict, next-request feed,
+  minimized export, session revocation, 390/768/1440 responsive layouts.
+- Release `3772ebc`: root reports 509 deterministic tests (including installer
+  wheel preparation fix), installed browser suite and local collector **51 records,
+  zero lag**. Final measured collector assertions were being added.
+- Actual installed model smoke at `3772ebc`: a secret input produced zero new
+  provider attempts. Benign local summary returned 488 characters, 118 tokens
+  (36 prompt, 82 completion), one durable model attempt, **4317 ms end-to-end**.
+  Timing includes generation and is a single observation, not guard-only overhead
+  or a percentile. Root notes runtime was before the next wheel reprepare;
+  final fresh installed-head verification remains root-owned.
+- Root report paths: `tests/frontend/browser_check.py` plus new
+  `tests/frontend/fullstack_flows.py`; `.ai/qa/artifacts_fullstack/model-generation.png`
+  and minimized JSON in root's ignored QA output. These new files/results are
+  not present in the original documentation-base tree.
+- Artifact28 independent review: root reports 333 tests +56 probes without code
+  defects, then conflict/CLI note fix `a136056` with 493 tests; re-review pending.
+  Do not promote this to a merged artifact feature.
+- Semantic v2: root reports real CPU gateway ordinary allow/attack deny plus
+  ACL/DLP/quota smoke PASS; its frozen holdout mistakes above remain unchanged.
 
 ## Before root freezes the release
 

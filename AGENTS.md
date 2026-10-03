@@ -7,7 +7,7 @@ and official-SDK MCP enforcement, exact approvals/local fixture outbox, model
 routing through private LiteLLM, packaged operator UI, live controls, persistent
 budgets and a local telemetry contract lab. Optional standard/CoreML semantic
 inspection is experimental; keep frozen poor/failed results visible. Consult
-`docs/release-evidence.md` for exact commits and pending installer, artifact,
+`docs/release-evidence.md` for exact commits and pending artifact,
 restricted-Hermes, semantic-v2 and final release review states.
 Cezar orchestrates development; it is not the
 AgentGate gateway or a security sandbox.
