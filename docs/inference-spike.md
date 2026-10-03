@@ -1,6 +1,7 @@
 # Laya loading spike
 
-The gateway does not yet call a semantic worker. This separate spike establishes
+At the time of this loading spike, the gateway did not call a semantic worker.
+This historical spike establishes
 whether actual inference can load on the development Mac, with model files kept
 outside version control. It is not a security-accuracy benchmark or an implemented
 worker service.
@@ -63,3 +64,7 @@ not transport or authentication evidence for an AgentGate MCP endpoint.
 Sources: [standard Laya](https://github.com/NandhaKishorM/laya),
 [CoreML usage](https://github.com/mizorewww/laya-coreml/blob/main/docs/USAGE.md),
 [official MCP SDK](https://github.com/modelcontextprotocol/python-sdk).
+
+The subsequent [frozen v1 evaluation](semantic-evaluation.md) reports 26 paired
+EN/PL cases through the actual engine, including poor benign handling and a
+CoreML warm-call timeout. Its labels and protocol were committed before inference.
