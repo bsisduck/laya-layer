@@ -113,3 +113,8 @@ pushes, PRs, tags, remote changes and messages require explicit user instruction
 [Open Mercato skills](https://github.com/open-mercato/skills) support development
 review and QA. Their installation, setup checks and Cezar task counts are not
 AgentGate delivery or real-model evaluation.
+
+Restricted direct and pinned upstream Hermes clients are included; see
+[commands, approval handling and measured evidence](docs/restricted-agents.md).
+Their recorded local generation cycles used semantic inspection off; native host
+access remains outside the client profile boundary.

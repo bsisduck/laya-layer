@@ -144,3 +144,11 @@ both semantic endpoints; switching the profile versions the live policy without
 resetting credentials or usage. `--collector-port` is remembered alongside other
 ports. The dashboard adds bounded process-local response timings and actual
 local-lab delivery state; neither implies a vendor connection or classifier accuracy.
+
+E03-S02 adds `agentgate-agent` and `agentgate-hermes`; no gateway/identity/schema
+contract is changed. Direct pending-state files bind endpoint, credential digest,
+model, transport and run limits; they are private client state, never authority.
+Hermes support is deliberately pinned to source f97608f (0.21.5) and its MCP extra
+lock; different versions fail closed until reviewed. REST/MCP aliases, upstream
+adaptations, exit codes and explicit approval resumption are documented in
+`docs/restricted-agents.md`. Native host access is outside the profile boundary.
