@@ -12,6 +12,7 @@ import time
 from datetime import UTC, datetime
 from pathlib import Path
 
+from agentgate.app import reject_constant, unique_object
 from agentgate.contracts import SemanticResult
 from agentgate.semantic_evaluation import (
     Diagnostics,
@@ -103,7 +104,10 @@ async def frame(process, timeout):
         line = await process.stdout.readline()
         if not line:
             raise EOFError("Inference child exited")
-        return json.loads(line)
+        value = json.loads(line, object_pairs_hook=unique_object, parse_constant=reject_constant)
+        if not isinstance(value, dict):
+            raise ValueError("Inference frame must be an object")
+        return value
 
 
 async def stop(process):

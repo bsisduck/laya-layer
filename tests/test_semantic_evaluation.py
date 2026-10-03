@@ -206,7 +206,8 @@ def test_lock_never_kills_external_workers(tmp_path, monkeypatch):
         pytest.fail("Ignored an existing worker")
 
 
-def test_malformed_child_is_reaped_and_no_case_is_dropped(tmp_path, monkeypatch):
+@pytest.mark.parametrize("bad_frame", ["{}", "[]", "null", "NaN", '{"a":1,"a":2}'])
+def test_malformed_child_is_reaped_and_no_case_is_dropped(tmp_path, monkeypatch, bad_frame):
     """Actual subprocess; deliberately invalid deterministic output, never model evidence."""
     monkeypatch.setattr(runner, "active_workers", lambda: [])
     dataset, protocol, _ = load_frozen(ROOT)
@@ -215,7 +216,7 @@ def test_malformed_child_is_reaped_and_no_case_is_dropped(tmp_path, monkeypatch)
     ready = dict(
         status="ready", backend="laya_standard", checkpoint_revision=REVISIONS["laya_standard"]
     )
-    fixture = f'import json,sys,time; print({json.dumps(json.dumps(ready))},flush=True); sys.stdin.readline(); print("{{}}",flush=True); time.sleep(30)'
+    fixture = f"import json,sys,time; print({json.dumps(json.dumps(ready))},flush=True); sys.stdin.readline(); print({json.dumps(bad_frame)},flush=True); time.sleep(30)"
 
     async def spawn(*args, **kwargs):
         process = await original_spawn(sys.executable, "-c", fixture, **kwargs)
