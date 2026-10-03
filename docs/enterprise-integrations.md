@@ -4,7 +4,7 @@ Laya Sec Layer can govern supported model/tool paths and produce minimized
 security evidence for an organization's existing systems. There is **no verified
 bank deployment, vendor collector integration, SOC accreditation or certification**.
 A bank's public technology reference is not access, approval or compatibility.
-See [release evidence](release-evidence.md) for current integrated and pending refs.
+See [release evidence](release-evidence.md) for integrated components and unverified enterprise adapters.
 
 ## Actual local delivery versus proposed adapters
 

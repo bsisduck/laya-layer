@@ -1,58 +1,49 @@
 # Release evidence and claim boundaries
 
-Documentation snapshot: **2026-10-03**, release integration
-[`032bb77c50443279d653263fb3600102e80d55a6`](https://github.com/bsisduck/laya-sec-agent/commit/032bb77c50443279d653263fb3600102e80d55a6).
-Documentation initially branched from `09a7c73` and was rebased to this published
-release ref after root reported installer/semantic integration and installed QA.
-Laya Sec Layer is the product; AgentGate is its gateway. Cezar is development
-orchestration. A Cezar task, passing setup check or rendered screenshot does not
-prove product completion. This is a local prototype, not a production release.
+Updated **2026-10-03**, integrated source `c7e3a5f` (PR31). Laya Sec Layer is the
+product; AgentGate is its gateway. Cezar orchestrates development. This is a
+working local prototype on a trusted host, not an enterprise production release.
 
-## What exists in this release branch
+## Integrated capabilities
 
 | Boundary | Implementation and evidence | Limit |
 |---|---|---|
-| Model | Authenticated `local-demo` Chat Completions via private LiteLLM/Ollama; input/output and decoded tool-argument inspection; atomic call/token/micro-USD reservations | Buffered responses, one proposed tool call; local tariff is zero/simulated, no external invoice guarantee |
-| Tools | Credential-owned tenant/role/agent/root, registered document and memory operations, REST and official-SDK MCP | Synthetic registered resources; no arbitrary shell/URL executor or general host sandbox |
-| Mail | Exact stored payload/fingerprint, separate operator approval, revalidation, one local outbox effect under replay | `delivery_state=fixture`; no SMTP delivery |
-| Controls and UI | Packaged local dashboard, separate operator sessions/CSRF, policy/feed validation and compare-and-swap activation, explicit expired-credential renewal | Global local operator, no enterprise tenant RBAC/SSO; root owns final browser QA |
-| Resources | Tool/model ledgers, shared-root accounting, conservative uncertain reservations, persistent installation-wide daily semantic-call quota | No full cumulative per-tenant semantic token/time ledger or measured hardware preemption |
-| Evidence | Minimized audit, JSONL/ECS-oriented/HEC-envelope downloads, async durable sender and authenticated local collector | Local protocol v1 with at-least-once delivery and event-ID deduplication; no tested SIEM/bank adapter |
-| Installation | `./laya` lifecycle, private state, separate environments, owned children, prepared offline restart | Ollama is shared and preloaded; initial installation needs dependencies/cache; optional native CoreML is Apple-only |
+| Model | Authenticated `local-demo` Chat Completions through private LiteLLM/Ollama; input/output and tool-argument inspection; atomic call/token/micro-USD reservations | Buffered output, one proposed tool call; local tariff zero/simulated |
+| Tools | Credential-owned tenant/role/agent/root; document and memory operations over REST and official-SDK MCP | Synthetic resources, no arbitrary shell or URL executor |
+| Mail | Stored immutable payload, separate operator approval, revalidation and one effect under replay | SQLite fixture outbox, no SMTP delivery |
+| Agents | Bounded direct REST/MCP and pinned upstream Hermes clients; actual two-model-call/one-document cycles | Restricted profile, no isolation from privileged same-user host authority |
+| Controls/UI | Packaged dashboard, sessions/CSRF, policy/feed validation and CAS activation, explicit expired-credential renewal | Global local operator; enterprise tenant RBAC/SSO absent |
+| Budgets | Shared-root tool/model ledgers, conservative unknown consumption and persistent installation-wide semantic call quota | No full cumulative per-tenant semantic token/time or physical-resource accounting |
+| Evidence | Minimized audit, scoped JSONL/ECS-oriented/HEC-envelope downloads, durable sender and owned local collector | Local protocol v1, at-least-once with event-ID deduplication; no tested bank/SIEM adapter |
+| Artifacts | Exact approved metadata tuple and active-feed checks; executable serializers rejected | No artifact download, byte verification, deserialization or execution |
+| Installation | `./laya` lifecycle, private state, isolated runtimes, owned children, prepared offline restart | Initial dependencies/assets required; shared pinned Ollama; CoreML Apple-only |
 
-Evidence in the integrated tree: `tests/test_gateway.py`, `test_models.py`,
-`test_scoped_tools.py`, `test_mcp.py`, `test_full_stack.py`, `test_control_plane.py`,
-`test_credential_renewal.py`, `test_semantic_quota.py`, `test_lifecycle.py`,
-`test_observability_integration.py`, `test_telemetry_http.py`. These names are
-references to deterministic/integration checks, not a claim they all ran in this
-documentation session. Current execution results belong in the ignored review
-report and CI for the exact documentation head. See [acceptance](acceptance.md).
+The [T01–T48 inventory](acceptance.md) maps concrete control tests, measured
+semantic cases and gaps. A passing control suite does not imply all 48 outcomes
+or reliable semantic detection.
 
-## Integration and publication ledger
+## Review and integration ledger
 
-The GitHub state below was read on 2026-10-03. Presence in the release branch and
-merge to `main` are separate facts. Open PRs remain pending release review even
-where their code is already integrated into PR31.
+| PR | Reviewed head | Integrated result |
+|---|---|---|
+| [19 tools/MCP](https://github.com/bsisduck/laya-sec-agent/pull/19) | `0ab2672` | `255a17e`; scoped effects and approvals |
+| [21 telemetry](https://github.com/bsisduck/laya-sec-agent/pull/21) | `9ba757e` | `0b8af56`; local delivery contract |
+| [24 renewal](https://github.com/bsisduck/laya-sec-agent/pull/24) | `5b982a6` | `4e82729`; explicit operator authority |
+| [26 semantic quota](https://github.com/bsisduck/laya-sec-agent/pull/26) | `a81d86b` | `4fe26c4`; persistent call limit |
+| [22 installer](https://github.com/bsisduck/laya-sec-agent/pull/22) | `a3b31b6` | `b15eb65`; independent merged-head 504-test gate, green CI; source-only wheel upgrade regression |
+| [28 artifact intake](https://github.com/bsisduck/laya-sec-agent/pull/28) | `703a33e` | `798bab1`; independent GPT-6.1-Sol 548-test gate and 56 negative probes, green CI |
+| [30 restricted clients](https://github.com/bsisduck/laya-sec-agent/pull/30) | `08d6e7b` | `0010602`; independent 584-test gate with all pinned upstream fixtures enabled, green CI |
+| [32 semantic v2](https://github.com/bsisduck/laya-sec-agent/pull/32) | `3ec6ec5` | `4a1fe3d`; reviewed frozen measurements and version binding, green CI |
+| [33 documentation](https://github.com/bsisduck/laya-sec-agent/pull/33) | `4586f40` | `aaaa0e0` into PR31; reviewed mapping runner and EN/PL deck sources |
+| [31 full-stack release](https://github.com/bsisduck/laya-sec-agent/pull/31) | Initial `032bb77`, fixes `9e1cfec` | Independent installed browser review found two defects; fixes and final integration review tracked on PR |
 
-| PR | Observed head | GitHub state | Presence/claim at snapshot |
-|---|---|---|---|
-| [19 scoped tools](https://github.com/bsisduck/laya-sec-agent/pull/19) | `0ab2672` | Merged (`255a17e`) | Integrated tools/MCP/approvals; fixture outbox |
-| [21 telemetry](https://github.com/bsisduck/laya-sec-agent/pull/21) | `9ba757e` | Merged (`0b8af56`) | Local contract sender/collector, not vendor delivery |
-| [24 credential renewal](https://github.com/bsisduck/laya-sec-agent/pull/24) | `5b982a6` | Merged (`4e82729`) | Integrated explicit operator authority |
-| [26 semantic quota](https://github.com/bsisduck/laya-sec-agent/pull/26) | `a81d86b` | Merged (`4fe26c4`) | Integrated installation-wide call quota |
-| [22 installer](https://github.com/bsisduck/laya-sec-agent/pull/22) | `a3b31b6` | Merged (`b15eb65`) | Root reports independent 504-test merged-head gate and both Linux CI green; source-only wheel fix uses `--reinstall-package agentgate` |
-| [28 artifact simulator](https://github.com/bsisduck/laya-sec-agent/pull/28) | `703a33e` | Merged main (`798bab1`) | Root reports independent exact-head 548 tests +56 negative probes and green CI; absent from release snapshot `032bb77`, integration pending |
-| [30 restricted clients](https://github.com/bsisduck/laya-sec-agent/pull/30) | `dfe67c8` published; `f07add0` author run | Open | Actual pinned Hermes code/profile inspected; author reports real cycles; final gate/root review/merge pending |
-| [32 semantic v2](https://github.com/bsisduck/laya-sec-agent/pull/32) | `3ec6ec5` | Merged (`4a1fe3d`) | Integrated version binding and remembered installer profile at `6495842`; fresh measured evidence, no approved detector |
-| [31 full-stack integration](https://github.com/bsisduck/laya-sec-agent/pull/31) | `032bb77` | Open | Root owns review, browser QA, final integration and merge |
-
-Pinned source references (artifact merged-main/pending integration; agent open; semantic merged): [artifact contract at 703a33e](https://github.com/bsisduck/laya-sec-agent/blob/703a33e2c6786b51beeb1200c5b7c4f43974ced9/docs/artifact-intake.md),
-[Hermes launcher at dfe67c8](https://github.com/bsisduck/laya-sec-agent/blob/dfe67c87ff51457699e9500b51956947a0388fa9/src/agentgate/agents/hermes.py),
-[v2 contract at 43ea6e6](https://github.com/bsisduck/laya-sec-agent/blob/43ea6e6efd4c442662465af9e9e971e28d8b1356/docs/semantic-question-v2.md).
-The Hermes source pin is `f97608f178d1ffeca59860195ab7da295f7c8e5f`
-(version 0.21.5); source inspection/profile fixtures do not verify an actual
-local-model cycle or isolation from a privileged same-user host process. The later actual-cycle
-observation below is separately attributed to its author.
+PR31's initial review reproduced a plain-FastAPI overview failure and a stranded
+sender after a collector-port change. Fix `9e1cfec` supplies honest unconfigured
+adapter defaults and migrates the same owned collector's binding under the sender
+lock while retaining pending work. Two regressions failed before the fixes and
+passed afterward. The independent follow-up reproduced both fixes, real installed
+port migration, deduplication/new delivery, interrupted publication recovery and
+seven negative probes; its exact-SHA verdict remains on the PR.
 
 ## Real semantic evidence remains imperfect
 
@@ -82,43 +73,46 @@ V1 stays the compatibility default and semantic inspection is off in the default
 installer. The corpora and question meanings differ, so this is not a controlled
 v1/v2 improvement estimate. No inference ran during documentation authoring.
 
-## Root-reported installed QA
+## Installed runtime observations
 
-These results are supplied by root, separately from this documentation task's own
-control run. Root owns final runtime preparation/current-head review. The
-committed [full-stack QA record](../.ai/runs/2026-10-03-full-stack-release.md)
-is in release snapshot `032bb77`; later observations below identify their refs.
+The committed [full-stack QA record](../.ai/runs/2026-10-03-full-stack-release.md)
+identifies source and ignored reports. Historical measurements are observations,
+not portable performance targets; final validation results belong to their exact
+commit and CI run.
 
-| Scope and ref | Reported observation | Evidence limit |
+| Scope | Observed evidence | Limit |
 |---|---|---|
-| Installer22 main `b15eb65` | Independent 504-test merged-head gate, both Linux CI green; stale source-only wheel fixed via `--reinstall-package agentgate` | Runtime source preparation still must match the tested installed head |
-| Installed UI through `032bb77` / semantic wiring `6495842` | 536 deterministic checks; real browser document allow/redact/tenant deny, memory isolation, immutable mail approval/changed-payload conflict/exact execution/retry with one SQLite outbox row, explicit renewal preserving identity/budgets, policy CAS/feed/export/session, 390/768/1440 layouts | Synthetic tool resources; root evidence, not this docs task's browser run |
-| Installed collector through `032bb77` | 51 minimized receipt records, zero source lag; tested mail action without payload leak | Local protocol lab, no vendor indexing proof |
-| Operator timings | P50/P95 19.286/39.985 ms, 28 playground responses | Includes tool time; bounded process-local window resets on restart, not isolated security overhead |
-| Actual model smoke `3772ebc` | Secret denied with zero new provider attempts; benign summary 488 characters, 118 tokens (36 prompt,82 output), one durable attempt, 4317.436 ms | Single end-to-end timing including generation; not a percentile/semantic benchmark; root notes subsequent runtime reprepare |
-| QA cache/lifecycle | Warm reuse 0.244 s; source touch invalidated reuse; double stop idempotent; restart 7.406 s; tokens/epochs/tool/model ledgers preserved | Single local observations, not portable startup targets |
-| Installed standard-v2 `f6bccde` | Explicit `--semantic standard --question-set content-role-v2 --no-start`, offline reprepare/start, four owned services ready; ordinary notes allowed/executed; malicious result withheld after executed read; tenant denial before read; quota 0→2/1000 | Proves selected CPU profile for those fixtures, not general detection; no CoreML reinference |
-| Artifact28 main `798bab1`, reviewed `703a33e` | Independent GPT-6.1-Sol full548-test gate +56 negative probes and green CI | Exact metadata policy simulation; release integration still pending in `032bb77` |
-| PR30 author run `f07add0` | REST 4.46 s, MCP 3.32 s, genuine Hermes 6.46 s; each two model calls and one document cycle | Individual end-to-end observations; published inspected head `dfe67c8`; final gate/root review/merge pending |
+| Installed browser through `f6bccde` | Document allow/redact/tenant deny; memory isolation; immutable mail approval/changed-payload conflict/one effect and replay; renewal retains identity/budgets; policy CAS/feed/export/session; 390/768/1440 layouts | Synthetic tool resources; actual packaged wheel, not a dev server |
+| Installed local model | 488-character summary; 36 prompt +82 output tokens; one provider attempt; 3.747 s in full browser run; secret-input denial with zero new attempts | One end-to-end observation including generation, not guard-only latency |
+| Installed collector | 51 minimized receipt records, zero source lag; no mail payload in exported records | Local receipt, no vendor indexing proof |
+| Operator timings | P50/P95 19.286/39.985 ms over 28 playground responses | Includes tool time; bounded process-local window resets on restart |
+| Lifecycle | Warm QA reuse 0.244 s; source change invalidates cache; double stop idempotent; restart 7.406 s; keys/epochs/ledgers retained | One local lifecycle observation |
+| Installed standard-v2 `f6bccde` | Explicit standard/v2 installation and prepared offline restart; all four services ready; ordinary document allowed, injected instructions withheld, tenant denial before read; quota 0→2/1000 | Selected CPU profile and those fixtures only; no new CoreML inference |
+| Genuine agents `f07add0`, final reviewed `08d6e7b` | REST 4.46 s, MCP 3.32 s, pinned Hermes 6.46 s; each two model calls and one document cycle with exact call-ID/root correlation | Semantic off; single-cycle timings. Five failed developmental Hermes invocations retained and charged with zero tool effects |
 
 The installed semantic denial is **`SEMANTIC_BLOCKED`, `executed=true`, result
-withheld**. The cross-tenant denial is **`RESOURCE_NOT_ALLOWED`, `executed=false`**.
-An output denial does not undo an executed read. All owned semantic QA children
-were stopped by root. The earlier failed CoreML run remains retained.
+withheld**. Cross-tenant denial is **`RESOURCE_NOT_ALLOWED`, `executed=false`**.
+Output denial does not undo an executed read. Isolated semantic and agent QA
+children were stopped; shared Ollama was left untouched.
 
-Root report paths in its ignored `.ai/qa/artifacts_fullstack/`:
-`model-generation.png`, `qa-cache-lifecycle.json`, `installed-semantic-v2.json`,
-`semantic-output-blocked.png`, `semantic-overview.png` and minimized browser/model
-JSON. The current browser suite includes `tests/frontend/browser_check.py` and
-`fullstack_flows.py`; optional actual-model mode requires prepared Playwright.
-This task neither reruns their inference nor republishes their private artifacts.
-Independent PR31 QA and PR30's final gate/review were pending at this cutoff.
+Pinned upstream Hermes: version 0.21.5, commit
+`f97608f178d1ffeca59860195ab7da295f7c8e5f`. Its final actual-cycle report was
+independently checked: SHA-256
+`a2761469f02b9029dd591f4d3b472b0bb94862caec114a2951907ec8fbd68a85`.
+Native upstream fixtures ran in the separate pinned source/runtime; setting
+`AGENTGATE_HERMES_SOURCE` enables them in the gateway gate. They do not run
+heavyweight inference.
 
-## Before root freezes the release
+Ignored browser evidence includes `installed-semantic-v2.json`,
+`semantic-output-blocked.png`, `semantic-overview.png`, `model-generation.png`
+and `qa-cache-lifecycle.json` under `.ai/qa/artifacts_fullstack/`.
+The executable browser suite is `tests/frontend/browser_check.py`, with `--model`
+for the actual configured local provider.
 
-Refresh this ledger from final merged artifact/agent/release commits, then update acceptance pending
-references, diagram labels, demo steps and slides together. Record root's exact
-installed source/head, browser/API/effect evidence and CI links. Do not relabel an
-open PR as delivered from task status or copy someone else's tests as this run.
-The presentation and submission template are reviewable assets; team details,
-organizer clarification and HackTribe submission remain user-owned.
+## Acceptance still outside the local product
+
+Live vendor/bank endpoints, enterprise IAM, SMTP delivery, signed external feed
+refresh, generalized DLP, ANE, production scale/retention and physical-resource
+accounting need separate implementation and acceptance. Team details, organizer
+clarification and HackTribe submission remain user-owned. Neither test success
+nor a rendered deck claims a submission, eligibility decision or certification.

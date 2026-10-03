@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "source_snapshot": "032bb77c50443279d653263fb3600102e80d55a6",
+  "source_snapshot": "c7e3a5f33243e85bec211b520c58608a7986f806",
   "architecture": "AgentGate_Full_Project_Architecture.md",
   "evaluation_fixture": "evaluation/semantic-heldout-v1.json",
   "evaluation_record": "docs/semantic-evaluation.md",
@@ -405,41 +405,26 @@
       "id": "T35",
       "case": "Approved artifact manifest",
       "expected": "Intake simulator accepts",
-      "kind": "pending",
-      "tests": [],
+      "kind": "control",
+      "tests": [
+        "tests/test_artifacts.py::test_exact_manifest_passes_without_download_deserialization_or_execution"
+      ],
       "evaluation_cases": [],
-      "note": "Exact approved-registry metadata simulator is merged-main PR28, pending release integration; no bytes fetched, verified, deserialized or executed.",
-      "pending": {
-        "pr": 28,
-        "head": "703a33e2c6786b51beeb1200c5b7c4f43974ced9",
-        "path": "tests/test_artifacts.py",
-        "state": "merged_main_pending_release_integration",
-        "tests": [
-          "test_exact_manifest_passes_without_download_deserialization_or_execution"
-        ]
-      }
+      "note": "Exact approved metadata tuple accepted without fetching, verifying, deserializing or executing artifact bytes."
     },
     {
       "id": "T36",
       "case": "Changed digest or unapproved source",
       "expected": "Intake rejected; no artifact execution",
-      "kind": "partial",
+      "kind": "control",
       "tests": [
         "tests/test_control_plane.py::test_unsafe_serialization_never_executes_or_loads",
-        "tests/test_control_plane.py::test_domain_source_digest_and_safe_artifact_metadata"
+        "tests/test_control_plane.py::test_domain_source_digest_and_safe_artifact_metadata",
+        "tests/test_artifacts.py::test_changed_manifest_component_denies",
+        "tests/test_artifacts.py::test_executable_serializers_cannot_be_approved"
       ],
       "evaluation_cases": [],
-      "note": "Current feed metadata/serializer checks are bounded control-class evidence. Exact changed-digest/source registry simulator is merged on main via PR28 but pending release integration; no exploit reproduction or verified model bytes.",
-      "pending": {
-        "pr": 28,
-        "head": "703a33e2c6786b51beeb1200c5b7c4f43974ced9",
-        "path": "tests/test_artifacts.py",
-        "state": "merged_main_pending_release_integration",
-        "tests": [
-          "test_changed_manifest_component_denies",
-          "test_executable_serializers_cannot_be_approved"
-        ]
-      }
+      "note": "Exact source/digest/serialization registry and active-feed checks deny changed metadata. No exploit reproduction or artifact-byte verification."
     },
     {
       "id": "T37",
@@ -719,20 +704,13 @@
       "id": "T48",
       "case": "Hermes alternative route or native tool",
       "expected": "Demonstrate isolation or expose coverage gap",
-      "kind": "pending",
-      "tests": [],
+      "kind": "partial",
+      "tests": [
+        "tests/test_hermes_profile.py::test_profile_rejects_host_process_and_non_gateway_network",
+        "tests/test_hermes_profile.py::test_profile_disables_builtin_memory_compression_and_sampling"
+      ],
       "evaluation_cases": [],
-      "note": "PR30 is open and outside this release snapshot. Author reports actual REST/MCP/genuine Hermes cycles at f07add0; final gate/root review/merge pending. Native same-user host authority remains outside coverage.",
-      "pending": {
-        "pr": 30,
-        "head": "dfe67c87ff51457699e9500b51956947a0388fa9",
-        "path": "tests/test_hermes_profile.py",
-        "state": "open_at_snapshot",
-        "tests": [
-          "test_actual_pinned_hermes_cycle_with_fixture_provider",
-          "test_profile_rejects_host_process_and_non_gateway_network"
-        ]
-      }
+      "note": "Restricted profile rejects host process/non-gateway network and disables native tools, memory, compression and sampling. Real pinned Hermes cycle recorded separately; native same-user host authority is not an OS sandbox."
     }
   ],
   "evaluation_records": {

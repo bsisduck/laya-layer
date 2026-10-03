@@ -21,11 +21,11 @@ providers/native child protocols and real SQLite/loopback transport. It does not
 load Laya, certify semantic accuracy or substitute for installed browser/local
 model QA. No empty proposed `make test-e2e`/`eval-*` target is claimed.
 
-Root reports installer PR22 merged at `b15eb65` after an independent 504-test
-merged-head gate and green Linux CI. Root later reports release `3772ebc` with
-509 deterministic checks, installed browser/model/collector observations; see
-[runbook](demo-runbook.md). Those are supplied results, not this docs session's
-executed gate. Current execution belongs to this branch's ignored review report.
+Reviewed installer, artifact intake and restricted-agent clients are integrated.
+PR31's independent follow-up at `9e1cfec` passed 557 tests, six JavaScript checks
+and installed browser/collector-port migration QA. The final integrated gate and
+CI are tracked in [release evidence](release-evidence.md) and PR31; historical
+component counts are not the final integrated count.
 
 ## Runtime preparation
 
@@ -38,15 +38,16 @@ runtime source head. A healthy old wheel cannot validate new source.
 
 Default semantic mode is off. Optional standard Laya and native CoreML use
 separate environments/assets. Choose one and run actual evaluation only in an
-exclusive, explicitly scheduled slot. No heavyweight inference ran here. Keep
+exclusive, explicitly scheduled slot. Actual installed standard-v2 and local-generation observations are recorded in
+the release ledger; deterministic validation does not repeat that inference. Keep
 v1 frozen evidence and the CoreML warm failure. V2's opt-in real standard gateway
 smoke does not turn 15/28 standard or 16/28 CoreML holdout into an approved
 security detector. CoreML remains experimental.
 
 ## Remaining release and deployment gates
 
-1. Root integrates merged-main artifact28 and reviews/merges restricted-agent30
-   (semantic32 is merged); refresh mappings and claims from exact integrated refs.
+1. Artifact28, restricted-agent30 and semantic32 are integrated after review.
+   Complete the final integration review and retain its exact commit reference.
 2. Root records final installed source/runtime, browser/effect and collector
    assertions after wheel preparation and verifies required CI at that head.
 3. Preserve permission, root budgets, live controls and all private state on

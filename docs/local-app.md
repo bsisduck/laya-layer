@@ -291,3 +291,15 @@ installed operator UI; `--model` adds an actual configured-provider smoke and
 requires separately prepared Playwright/browser tooling. Keep reports/screenshots
 ignored and sanitized. Root owns the final current-head browser/collector gate;
 this documentation task does not run another model or alter its QA installation.
+
+## Changing the owned collector port
+
+Re-run `./laya install --collector-port <unused-port>` with the same state path.
+The stopped installation retains the same collector database/key and source
+ledger. Under an exclusive sender lock it migrates the checkpoint binding while
+preserving cursor, acknowledged counts, pending batch and retry state. An already
+ingested batch can replay safely through event-ID deduplication. Interrupted
+checkpoint/config publication can be retried without resetting delivery history.
+A busy sender, unknown origin/tenant, invalid source anchor or missing private
+collector database is rejected. This operation does not authorize migration to an
+arbitrary remote destination.

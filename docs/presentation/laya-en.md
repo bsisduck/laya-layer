@@ -4,7 +4,7 @@ theme: laya
 size: 16:9
 paginate: true
 header: LAYA SEC LAYER / AGENTGATE
-footer: Evidence snapshot 032bb77 · Local prototype · docs/release-evidence.md
+footer: Integrated evidence · 2026-10-03 · Local prototype · docs/release-evidence.md
 ---
 <!-- _class: lead -->
 <div class="kicker">AI Control Layer / HackYeah</div>
@@ -73,13 +73,13 @@ Changed payload conflicts. Credential renewal preserves identity and root spend.
 ---
 ## Reproducible tests, bounded live evidence
 
-<div class="grid"><div class="card"><h3>T01–T48 inventory</h3><p>Concrete tests, frozen semantic cases, partial coverage, pending PRs and an ANE gap.</p></div><div class="card"><h3>Installed browser QA</h3><p>Root reports document/memory isolation, exact mail, live controls, export and session checks.</p></div></div>
+<div class="grid"><div class="card"><h3>T01–T48 inventory</h3><p>Concrete tests, frozen semantic cases, explicit coverage limits and an ANE gap.</p></div><div class="card"><h3>Installed browser QA</h3><p>Root reports document/memory isolation, exact mail, live controls, export and session checks.</p></div></div>
 
 `make validate` · `scripts/acceptance_matrix.py --run`
 
 <div class="warn">Actual local summary: 118 tokens, one provider attempt, 4317 ms end-to-end including generation. One observation, not guard-only latency.</div>
 
-<div class="note">Fixtures are control evidence, not real-model accuracy. Artifact28 merged main; release integration pending. Hermes30 awaits review/merge.</div>
+<div class="note">Control fixtures and model accuracy are separate. Metadata intake and restricted REST/MCP/Hermes clients are integrated and reviewed.</div>
 
 ---
 <!-- _class: lead -->
@@ -89,7 +89,7 @@ Changed payload conflicts. Credential renewal preserves identity and root spend.
 
 Laya, LiteLLM, Ollama and Hermes are dependencies; Cezar is development tooling.
 
-Artifact/agent integration, final installed-head review/CI and enterprise acceptance remain separate gates.
+Final installed-head review/CI and enterprise acceptance remain separate gates. Measured semantic errors stay visible.
 
 <div class="node"><strong>Submission fields — user owned</strong>Team: [TEAM NAME] · Members (1–6): [MEMBERS]<br>Repository/demo: [URLS] · Organizer clarification: [CONFIRMED DETAILS]</div>
 

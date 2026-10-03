@@ -4,7 +4,7 @@ theme: laya
 size: 16:9
 paginate: true
 header: LAYA SEC LAYER / AGENTGATE
-footer: Stan dowodów 032bb77 · Lokalny prototyp · docs/release-evidence.md
+footer: Dowody integracji · 2026-10-03 · Lokalny prototyp · docs/release-evidence.md
 ---
 <!-- _class: lead -->
 <div class="kicker">AI Control Layer / HackYeah</div>
@@ -73,13 +73,13 @@ Zmieniona treść daje konflikt. Odnowienie zachowuje tożsamość i zużyty bud
 ---
 ## Odtwarzalne testy i dowody z aplikacji
 
-<div class="grid"><div class="card"><h3>Inwentarz T01–T48</h3><p>Realne testy, zamrożone przykłady, węższy zakres, oczekujące PR-y i brak profilu ANE.</p></div><div class="card"><h3>QA w przeglądarce</h3><p>Root raportuje izolację danych, dokładne zgody pocztowe, reguły, eksport i sesje.</p></div></div>
+<div class="grid"><div class="card"><h3>Inwentarz T01–T48</h3><p>Realne testy, zamrożone przykłady, jawne ograniczenia zakresu i brak profilu ANE.</p></div><div class="card"><h3>QA w przeglądarce</h3><p>Root raportuje izolację danych, dokładne zgody pocztowe, reguły, eksport i sesje.</p></div></div>
 
 `make validate` · `scripts/acceptance_matrix.py --run`
 
 <div class="warn">Lokalne podsumowanie: 118 tokenów, jedno wywołanie, 4317 ms z generacją. Jeden pomiar, nie narzut samej kontroli.</div>
 
-<div class="note">Fixture potwierdza reguły, nie jakość modelu. Artifact28 scalony na main; integracja oczekuje. Hermes30 czeka na przegląd/scalenie.</div>
+<div class="note">Testy reguł i jakość modelu to osobne dowody. Kontrola manifestów i klienci REST/MCP/Hermes są zintegrowani po przeglądzie.</div>
 
 ---
 <!-- _class: lead -->
@@ -89,7 +89,7 @@ Zmieniona treść daje konflikt. Odnowienie zachowuje tożsamość i zużyty bud
 
 Laya, LiteLLM, Ollama i Hermes to zależności; Cezar jest narzędziem pracy.
 
-Integracja artefaktów/agentów, końcowy przegląd instalacji/CI i akceptacja przedsiębiorstwa pozostają osobne.
+Końcowy przegląd instalacji/CI i akceptacja przedsiębiorstwa pozostają osobne. Zmierzone błędy semantyczne są jawne.
 
 <div class="node"><strong>Dane zgłoszenia — uzupełnia użytkownik</strong>Zespół: [TEAM NAME] · Członkowie (1–6): [MEMBERS]<br>Repozytorium/demo: [URLS] · Ustalenia organizatora: [CONFIRMED DETAILS]</div>
 

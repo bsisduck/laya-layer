@@ -24,7 +24,7 @@ English description draft:
 > experimental semantic signals. A local operator dashboard and minimized audit
 > provide decision and consumption evidence. The prototype uses synthetic data,
 > a local mail outbox, simulated zero tariffs and a local telemetry collector.
-> Frozen semantic errors and pending integration work remain disclosed.
+> Frozen semantic errors and enterprise acceptance limits remain disclosed.
 
 Polish description draft:
 

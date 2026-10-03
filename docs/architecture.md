@@ -3,8 +3,8 @@
 Snapshot and publication status: [release evidence](release-evidence.md).
 The [original architecture](../AgentGate_Full_Project_Architecture.md) describes
 the complete target; these diagrams describe the local integration prototype.
-Solid arrows are code paths in release `032bb77`; dashed arrows are pending or
-proposed. This is a trusted-host boundary, not an OS sandbox.
+Solid arrows are integrated code paths; dashed arrows are proposed adapters.
+This is a trusted-host boundary, not an OS sandbox.
 
 ## Two enforcement paths, one authority
 
@@ -17,8 +17,8 @@ local-demo alias; buffered output"]
     Client --> MCP["Official-SDK MCP
 explicit operation aliases"]
     Hermes["Pinned restricted Hermes / direct agent
-PR30 pending integration"] -.-> Model
-    Hermes -.-> MCP
+REST/MCP tool cycles"] --> Model
+    Hermes --> MCP
     subgraph Gate["Laya Sec Layer / AgentGate — trusted gateway"]
         Model --> Rules["Identity + tenant/role/model ACL
 strict parsing, DLP and live feed"]
@@ -80,9 +80,9 @@ one bounded retained batch"]
 JSONL / ECS-oriented / HEC envelope"]
     Files -. "future authenticated adapter" .-> SIEM["Splunk / Elastic / OpenSearch / SOC
 vendor and bank acceptance unverified"]
-    Intake["PR28 metadata intake simulator
-merged main, release integration pending
-no download or artifact execution"] -.-> Rules["Approved registry + typed feed"]
+    Intake["Metadata intake simulator
+exact approved manifest
+no download or artifact execution"] --> Rules["Approved registry + typed feed"]
 ```
 
 The real collector wire protocol is **Laya local HTTP contract collector v1**,

@@ -121,3 +121,19 @@ replace the held-out quality evaluation or claim that all attacks are detected.
 PR28 artifact intake merged after GPT-6.1-Sol independent exact-head review:
 548 deterministic tests plus 56 negative probes, both CI checks green. Its
 metadata-only simulator adds no artifact execution/download permission.
+
+Independent GPT-6.1-Sol re-review at 9e1cfec resolved both original findings:
+plain FastAPI embedding now reports unconfigured telemetry/latency honestly, and
+changing the owned collector port retains checkpoint, pending batch and retry
+state across partial publication. Two regressions failed before the fixes; 33
+focused checks passed afterward. Independent full557-test gate, six JS contracts,
+real CLI port migration/deduplication/new delivery, seven negative probes and
+installed browser rerun passed; review5402768489 reports no blockers/majors.
+The reviewer's owned QA was stopped; no inference ran.
+
+Reviewed artifact28 and restricted-agent30 are integrated at c7e3a5f. PR30's
+independent full gate ran all584 checks with pinned upstream Hermes fixtures,
+zero skips; actual cycle report SHA-256 was independently verified. Docs33 was
+reviewed and merged into the release branch; diagrams, runbook, acceptance
+selectors and EN/PL slides now describe integrated code instead of pending PRs.
+ANE and same-user host-isolation gaps remain explicit.

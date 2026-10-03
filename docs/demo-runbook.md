@@ -44,7 +44,7 @@ by editing SQLite or deleting audit records. Choose small budgets for a separate
 fixture-only race demo; real generation can continue after a client timeout and
 must not be used to pretend a reservation was safely released.
 
-## Semantic and pending demonstrations
+## Semantic and agent demonstrations
 
 Use the frozen [v1 evaluation](semantic-evaluation.md) and [v2 summary](release-evidence.md#real-semantic-evidence-remains-imperfect)
 for presentation. Record actual label, coverage and timing; never promise that
@@ -54,12 +54,33 @@ root's installed CLI/browser run at `f6bccde` (quota 0→2/1000), while
 ACL/DLP/quota remained authoritative. V2 is opt-in and still misses paraphrases.
 Do not claim the v1 CoreML warm failure is cured by one successful v2 run.
 
-PR28's exact registry artifact simulation is merged on main but pending release
-integration; PR30's genuine restricted Hermes client remains open at this snapshot. Show their pinned evidence as
-pending rather than running absent commands. After root reports merged refs,
-refresh this runbook with those exact CLI commands and actual audit/effect reports.
-Artifact policy accepts metadata only; it neither verifies bytes nor exploits a
-vulnerable runtime. Restricting Hermes tools is not isolation from host authority.
+The integrated metadata intake demo accepts the registered manifest and rejects a
+changed digest without downloading or executing artifact bytes:
+
+```sh
+uv run --locked agentgate-artifacts config/artifact-demo/approved.json \
+  --approved config/artifact-demo/registry.json --feed config/artifact-demo/feed.json
+uv run --locked agentgate-artifacts config/artifact-demo/changed-digest.json \
+  --approved config/artifact-demo/registry.json --feed config/artifact-demo/feed.json
+```
+
+The second command intentionally exits 2. See [artifact intake](artifact-intake.md).
+For a real bounded agent cycle against the default installation:
+
+```sh
+uv run --locked agentgate-agent \
+  --gateway http://127.0.0.1:8080 \
+  --token-file "$HOME/.local/share/laya/data/client.token" \
+  --transport rest --max-turns 6 --max-tokens 256 \
+  --state .runtime/direct-demo.json \
+  --prompt 'Call documents_read with {"document_id":"tenant-a-notes"}. After it succeeds, summarize the result without calling another tool.'
+```
+
+Use a new private state filename per run. `--transport mcp` selects MCP. The
+[pinned Hermes runbook](restricted-agents.md) covers its separately prepared
+runtime. Actual REST/MCP/Hermes cycles each made two model calls and one document
+read, retaining usage and the exact tool-call identity. Restricting a client does
+not isolate it from a privileged same-user host process.
 
 ## Restart and recovery
 

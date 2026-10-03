@@ -15,8 +15,9 @@ semantic signal; its predictions never grant permissions.
 **Status: local full-stack prototype in release integration, not a production
 release.** The release branch contains the gateway, packaged operator dashboard,
 live policy/feed controls, scoped REST/MCP tools, private LiteLLM/Ollama model
-routing, persistent budgets and local telemetry delivery. Artifact28 is merged on main and awaits release integration; restricted-agent30
-and release31 remain open, with separate integration/review states; see the [commit/PR evidence ledger](docs/release-evidence.md).
+routing, persistent budgets, local telemetry delivery, metadata intake checks and
+restricted REST/MCP/Hermes agents. These components are integrated; final release
+review is tracked in the [commit/PR evidence ledger](docs/release-evidence.md).
 Cezar is development orchestration, separate from the product.
 
 ## Run the local application
@@ -100,8 +101,7 @@ make harness      # optional Cezar cockpit on 4322; does not start product tasks
 ```
 
 `--run` executes mapped control checks and writes ignored evidence. It does not
-run heavyweight inference, pretend semantic fixtures prove accuracy, or execute
-unmerged agent/artifact code. Real semantic, local-generation and browser
+run heavyweight inference or reinterpret measured semantic errors as passes. Real semantic, local-generation and browser
 integration reports must name the tested commit separately.
 
 The lower-level document demo remains available through `make demo-init`,

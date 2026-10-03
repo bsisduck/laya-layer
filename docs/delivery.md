@@ -2,7 +2,8 @@
 
 ## Current product milestones
 
-Status as of published release integration `032bb77` plus attributed root updates.
+Status after integration of reviewed installer, semantic profiles, artifact intake
+and restricted-agent clients.
 See [the evidence ledger](release-evidence.md) for exact commits and [acceptance](acceptance.md)
 for T01–T48 mappings; test counts are not completion percentages.
 
@@ -15,8 +16,8 @@ for T01–T48 mappings; test counts are not completion percentages.
 | Resource accounting | Shared-root tool/model budgets and persistent worker call quota | Integrated; full cumulative physical-resource governance incomplete |
 | Evidence delivery | Scoped exports, durable sender and installed local collector | Local contract lab only; vendor/bank acceptance unverified |
 | Install/offline restart | Owned gateway/proxy/collector, prepared runtime reuse, preserved authority/ledgers | Installer22 merged; final installed source/runtime provenance required |
-| Artifact intake | Exact approved metadata tuple and no-download/execution probes | Artifact28 merged main `798bab1`; release integration pending in `032bb77` |
-| Restricted direct/Hermes clients | Author reports actual REST/MCP/Hermes two-model/one-document cycles | PR30 open; final gate/root review and merge pending |
+| Artifact intake | Exact approved metadata tuple and no-download/execution probes | Integrated from reviewed PR28; metadata simulation only |
+| Restricted direct/Hermes clients | Actual REST/MCP/Hermes two-model/one-document cycles; independently reviewed source and 584 checks | Integrated from reviewed PR30; trusted host, restricted profile |
 | Documentation/submission assets | Truthful quickstart, diagrams, requirement map, inventory, nine-slide EN/PL sources/PDFs | Reviewable docs package; user fills team/submission facts; root final status refresh |
 
 No organizer confirmation, enterprise deployment, certification or submission
