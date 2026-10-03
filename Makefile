@@ -1,4 +1,4 @@
-.PHONY: setup validate lint typecheck test build doctor harness demo-init serve
+.PHONY: setup validate lint typecheck test build doctor harness harness-verify demo-init serve
 
 setup:
 	npm ci --ignore-scripts
@@ -34,3 +34,6 @@ doctor:
 
 harness:
 	npm run harness
+
+harness-verify:
+	python3 .ai/scripts/cezar_verify.py

@@ -66,6 +66,10 @@ the ignored `.ai/cezar/home/`. If that port is in use, run
 `npm run harness -- --port 4323`. The runner is Codex using its existing login and
 native model configuration. The launcher disables background automations and
 child-task dispatch. No coding task starts merely by opening the cockpit.
+Work done directly in a Codex chat is not automatically a Cezar task. Use
+`make harness-verify` to record a real validation run in its Tasks view; see
+[where progress appears](docs/cezar.md). Local task history is intentionally
+excluded from Git; a fresh checkout starts with an empty cockpit.
 
 The private `package.json` and npm lockfile belong to development tooling.
 `pyproject.toml` and `uv.lock` define the gateway. Real Laya loading checks use

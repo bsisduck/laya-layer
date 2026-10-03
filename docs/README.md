@@ -13,6 +13,7 @@ Start with the [visual architecture](architecture.md), then follow the
 | [Inference evidence](inference-spike.md) | Actual standard Laya and CoreML loading, predictions, and limitations |
 | [Delivery plan and skills](delivery.md) | Ordered milestones, acceptance evidence, and installed skill choices |
 | [Environment readiness](readiness.md) | Verified local tooling and remaining integration work |
+| [Cezar task visibility](cezar.md) | Where implementation and validation progress appear |
 | [Development workflow](../SDLC.md) | Implementation, review, QA, and publication rules |
 | [Compatibility](../BACKWARD_COMPATIBILITY.md) | Public contracts and storage changes |
 | [Third-party notices](../THIRD_PARTY_NOTICES.md) | Dependency and model provenance |

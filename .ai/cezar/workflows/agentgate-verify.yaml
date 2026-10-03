@@ -1,0 +1,6 @@
+name: agentgate-verify
+description: Record the real validation gate in Cezar without launching a coding agent.
+steps:
+  - id: validate
+    name: Validate the current AgentGate prototype
+    command: make validate
