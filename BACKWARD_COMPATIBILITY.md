@@ -119,6 +119,12 @@ classification fails after successful input classification, the terminal event
 reports unavailable/invalid output and no stale semantic result; the input result
 remains on dispatch_intent. Enforcement and settled usage are unchanged.
 
+The additive `agentgate-artifacts` local operator CLI accepts bounded JSON metadata,
+an exact approved registry and an active or supplied threat feed. Exit 0 means
+metadata accepted, 2 means policy denial, and 1 means invalid input. JSON output
+explicitly reports simulation and unverified/unexecuted artifact bytes. It adds no
+agent tool authority or download path; see [artifact intake](docs/artifact-intake.md).
+
 `content-role-v2` is an explicit optional two-choice question profile. All existing
 production constructor/CLI and omitted request/capability versions default to v1.
 New flags: `semantic-worker --question-set` and `serve --semantic-question-set`;
