@@ -38,6 +38,14 @@ def initialize(directory: Path, policy_path: Path, proxy_path: Path, semantic: s
         time.time() + 86400,
     )
     write_new(directory / "client.token", token.encode())
+    with store.connection() as connection:
+        connection.executemany(
+            "INSERT INTO memory_entries VALUES (?, ?, 'internal', ?)",
+            [
+                ("tenant-a", "demo-notes", "Quarterly memory notes for tenant A."),
+                ("tenant-b", "demo-notes", "Quarterly private memory notes for tenant B."),
+            ],
+        )
     bootstrap_operator(directory, policy)
 
 
