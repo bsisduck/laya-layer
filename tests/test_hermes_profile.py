@@ -33,6 +33,11 @@ def test_missing_upstream_is_unavailable_not_success(tmp_path):
     reason="Actual upstream Hermes runtime not configured; not an integration pass",
 )
 def test_actual_pinned_hermes_cycle_with_fixture_provider(live_agent_gateway):
+    import json
+
+    from agentgate.contracts import ActionResponse
+    from agentgate.documents import demo_documents
+
     tools, provider, _, origin = live_agent_gateway
     result = run_hermes(
         Path(os.environ["AGENTGATE_HERMES_SOURCE"]), origin, tools.token, "Read the notes"
@@ -41,6 +46,19 @@ def test_actual_pinned_hermes_cycle_with_fixture_provider(live_agent_gateway):
     assert result["active_tools"] == ["documents_read", "mail_send", "memory_query"]
     assert len(provider.calls) == 2 and len(tools.executor.calls) == 1
     assert provider.calls[-1]["messages"][-1]["tool_call_id"] == "provider-call-7"
+    envelope = json.loads(provider.calls[-1]["messages"][-1]["content"])
+    response = ActionResponse.model_validate_json(envelope["result"])
+    assert response.status == "completed" and response.executed
+    assert response.result == {
+        "document_id": "tenant-a-notes",
+        "content": demo_documents()[0].content,
+    }
+    event = next(
+        e
+        for e in tools.store.events()
+        if e.event_type == "action_completed" and e.operation == "documents.read"
+    )
+    assert response.action_id == event.action_id and response.trace_id == event.trace_id
 
 
 @pytest.mark.skipif(

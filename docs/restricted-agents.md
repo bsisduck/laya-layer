@@ -107,15 +107,15 @@ The restricted launcher makes these explicit adaptations to the pinned source:
   is enabled. Tool Search's indirect dispatch bridge, resources, prompts, sampling
   and elicitation are disabled; the actual tool list is checked before dispatch.
 - Memory/user-profile stores, context files, identity loading, compression,
-  background review, checkpoints and trajectories are disabled. An explicit short
-  system prompt replaces Hermes' general-purpose prompt, which exceeds the default
-  gateway request bound. The agent loop and MCP execution remain upstream code.
+  background review, checkpoints and trajectories are disabled. An empty system-prompt override suppresses Hermes' general-purpose prompt,
+  which exceeds the default gateway request bound. The measured small generator
+  also copied schemas into arguments under the tested short system prompts. The agent loop and MCP execution remain upstream code.
 - OpenAI SDK retries are zero; Hermes attempts one model request with zero recovery
   cycles and no fallback. MCP recovery callbacks are removed. A request failure
   permanently closes the model-dispatch path for that invocation. Denied/pending
   tool results stop the upstream loop before another model request.
 - The fixed model transport permits only gateway Chat Completions; it drops a
-  reviewed set of inference/display metadata, caps output and prohibits new routing
+  reviewed set of inference/display metadata, sets temperature zero, caps output and prohibits new routing
   fields. It does not modify tool-call IDs or execute a model-proposed tool locally.
 - A Python audit hook refuses subprocess creation, external DNS and socket
   connections outside the chosen gateway origin. Stdout/stderr are discarded;
@@ -176,4 +176,6 @@ to either agent. The runner uses `config/policy-models.yaml`: **semantic inspect
 is disabled**. This proves generator/gateway/tool integration, not real Laya
 protection. Standard/CoreML semantic quality and enforcement have their own
 [evaluation report](semantic-evaluation.md). No cloud fallback or model download.
-Minimized generated reports stay ignored under `reports/generated/`.
+Minimized generated reports stay ignored under `reports/generated/`. Report files
+are never overwritten; select a fresh `--report` path for another explicit run.
+`--clients hermes-mcp` can measure only Hermes without repeating the direct runs.

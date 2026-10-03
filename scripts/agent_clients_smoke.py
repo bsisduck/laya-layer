@@ -112,6 +112,13 @@ def main():
         "runs": [],
         "prompt_sha256": hashlib.sha256(PROMPT.encode()).hexdigest(),
         "script_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+        "source_sha256": {
+            str(path.relative_to(ROOT)): hashlib.sha256(path.read_bytes()).hexdigest()
+            for path in sorted((ROOT / "src/agentgate/agents").glob("*.py"))
+        },
+        "policy_sha256": hashlib.sha256(
+            (ROOT / "config/policy-models.yaml").read_bytes()
+        ).hexdigest(),
         "commit": subprocess.check_output(
             ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True
         ).strip(),
@@ -193,10 +200,24 @@ def main():
                         )
                         for operation in ("chat.completions", "documents.read")
                     }
+                    model_trace = [
+                        item
+                        for item in response.get("trace", [])
+                        if item.get("operation") == "chat.completions"
+                    ]
+                    correlated = (
+                        len(model_trace) == 2
+                        and len(model_trace[0].get("tool_call_ids", [])) == 1
+                        and model_trace[0]["tool_call_ids"] == model_trace[1].get("tool_result_ids")
+                        and not model_trace[1].get("tool_call_ids")
+                    )
+                    roots = sorted({event["root_run_id"] for event in measured})
                     passed = (
                         result.returncode == 0
                         and response.get("status") == "completed"
                         and counts == {"chat.completions": 2, "documents.read": 1}
+                        and correlated
+                        and len(roots) == 1
                     )
                     report["runs"].append(
                         {
@@ -204,6 +225,8 @@ def main():
                             "status": "pass" if passed else "fail",
                             "elapsed_ms": round((time.monotonic() - started) * 1000, 1),
                             "dispatches": counts,
+                            "exact_call_correlation": correlated,
+                            "roots": roots,
                             "events": measured,
                             "trace": response.get("trace", []),
                             "active_tools": response.get("active_tools"),

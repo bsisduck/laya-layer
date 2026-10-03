@@ -224,6 +224,9 @@ def invoke(payload: dict[str, Any]) -> dict[str, Any]:
                         if key in properties
                     },
                     "unknown_argument_count": len(set(arguments) - set(properties)),
+                    "schema_instead_of_arguments": bool(arguments)
+                    and set(arguments)
+                    <= {"type", "properties", "required", "additionalProperties", "title"},
                 }
             )
             raw = handler(arguments, **kwargs)
@@ -273,9 +276,9 @@ def invoke(payload: dict[str, Any]) -> dict[str, Any]:
 
     class RestrictedHermes(upstream.AIAgent):  # type: ignore[misc, name-defined]
         def _build_system_prompt(self, system_message: str | None = None) -> str:
-            return (
-                system_message or "Use the discovered gateway tools and answer from their results."
-            )
+            # This profile is capability-restricted in code, independent of prompts.
+            # No stock identity/context or model-specific system instructions.
+            return ""
 
         def _create_openai_client(self, client_kwargs: Any, **kwargs: Any) -> Any:
             return openai.OpenAI(
@@ -312,14 +315,7 @@ def invoke(payload: dict[str, Any]) -> dict[str, Any]:
             raise ProfileStop("agent_tool_mismatch_" + "_".join(sorted(agent.valid_tool_names)))
         if agent.compression_enabled or agent._memory_enabled:
             raise ProfileStop("agent_memory_or_compression_enabled")
-        result = agent.run_conversation(
-            payload["prompt"],
-            system_message=(
-                "Use only the discovered tools. Tool arguments must match the supplied JSON "
-                "schema exactly; do not wrap them in an arguments or parameters field. "
-                "After a successful tool result, answer concisely without another tool call."
-            ),
-        )
+        result = agent.run_conversation(payload["prompt"])
         if not result.get("completed") or result.get("error"):
             raise ProfileStop(transport.failure or "upstream_incomplete_no_retry")
         return {
