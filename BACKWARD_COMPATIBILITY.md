@@ -58,3 +58,13 @@ responses retain their shape and add denial reasons `THREAT_FEED_BLOCKED` and
 schema 1 remains unchanged and does not include the new feed field. Admin timeline
 adds feed evidence separately. No remote delivery, model inference, or new tools
 are implied by these contracts.
+
+Explicit operator credential renewal adds `operator_credential_epochs` and
+`credential_renewals` without changing schema-2 credentials, budgets, approvals or
+audit/export. Epoch zero retains the original tool/model playground HMAC tokens.
+Only an explicit trusted operator action may replace expired non-revoked rows;
+old rows remain revoked, identities/root spend are unchanged, and existing
+approvals cannot transfer to the new token. New admin routes and trusted installer
+hooks are documented in `docs/credential-renewal-contract.md`. Older binaries do
+not understand renewed epochs; stop serving before rollback and preserve all
+credential/epoch/history/budget tables. Do not reset state to recover expiry.
