@@ -52,5 +52,5 @@ PR: #23
 
 ### Phase 2: Verify and deliver
 
-- [ ] 2.1 Measure both real backends sequentially
-- [ ] 2.2 Validate, review and publish measured delivery
+- [x] 2.1 Measure both real backends sequentially — 43e0396; CoreML warm timeout retained
+- [x] 2.2 Validate, review and publish measured delivery — 43e0396; make validate: 267 tests; author review complete
