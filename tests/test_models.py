@@ -1,0 +1,357 @@
+import json
+from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass
+from pathlib import Path
+
+import httpx
+import pytest
+from fastapi.testclient import TestClient
+
+from agentgate.app import create_app
+from agentgate.contracts import Identity
+from agentgate.documents import DocumentRegistry, FixtureExecutor, demo_documents
+from agentgate.model_config import ModelPolicy, ResourceLimits
+from agentgate.models import ModelService, PrivateProvider
+from agentgate.policy import Policy
+from agentgate.service import ActionService
+from agentgate.storage import Store
+
+
+class ObservedProvider:
+    def __init__(self, store):
+        self.calls = []
+        self.store = store
+        self.content = "Local response"
+        self.usage = {"prompt_tokens": 20, "completion_tokens": 3, "total_tokens": 23}
+        self.tool_calls = None
+        self.failure = None
+        self.raw = None
+
+    def complete(self, payload):
+        assert any(
+            event.event_type == "dispatch_intent" and event.operation == "chat.completions"
+            for event in Store(self.store.path).events()
+        )
+        self.calls.append(payload)
+        if self.failure:
+            raise self.failure
+        if self.raw is not None:
+            return self.raw
+        message = {"role": "assistant", "content": self.content}
+        if self.tool_calls is not None:
+            message["tool_calls"] = self.tool_calls
+        return json.dumps(
+            {
+                "choices": [{"index": 0, "message": message, "finish_reason": "stop"}],
+                "usage": self.usage,
+            }
+        ).encode()
+
+
+@dataclass
+class ModelHarness:
+    store: Store
+    actions: ActionService
+    models: ModelService
+    provider: ObservedProvider
+    client: TestClient
+    token: str
+    identity: Identity
+
+    def call(self, text="Hello", *, token=None, **changes):
+        payload = {"model": "local-demo", "messages": [{"role": "user", "content": text}]}
+        payload.update(changes)
+        return self.client.post(
+            "/v1/chat/completions",
+            headers={"Authorization": f"Bearer {token or self.token}"},
+            json=payload,
+        )
+
+    def limits(self, **changes):
+        self.actions.policy = self.actions.policy.model_copy(
+            update={"models": ModelPolicy(**changes)}
+        )
+
+
+@pytest.fixture
+def model(tmp_path: Path):
+    store = Store(tmp_path / "db.sqlite3")
+    store.initialize()
+    identity = Identity(
+        principal_id="tester",
+        tenant_id="tenant-a",
+        agent_id="agent",
+        root_run_id="root",
+        roles=("analyst",),
+        operations=("documents.read", "chat.completions"),
+    )
+    token = store.issue(identity, 2000.0)
+    actions = ActionService(
+        store,
+        Policy(policy_id="model-test", revision=1, models=ModelPolicy()),
+        DocumentRegistry(demo_documents()),
+        FixtureExecutor(demo_documents()),
+        b"a" * 32,
+        clock=lambda: 1000.0,
+    )
+    provider = ObservedProvider(store)
+    models = ModelService(actions, provider)
+    with TestClient(create_app(actions, models)) as client:
+        yield ModelHarness(store, actions, models, provider, client, token, identity)
+
+
+def test_model_intent_settlement_and_minimized_audit(model):
+    response = model.call("unique-private-prompt")
+    assert response.status_code == 200
+    assert response.json()["choices"][0]["message"]["content"] == "Local response"
+    assert len(model.provider.calls) == 1
+    events = model.store.events()
+    assert [e.event_type for e in events] == ["dispatch_intent", "action_completed"]
+    assert events[0].trace_id == events[1].trace_id
+    assert all(e.operation == "chat.completions" for e in events)
+    for counter in model.models.ledger.counters():
+        assert counter["reserved"] == 0
+        assert counter["spent"] == {"calls": 1, "tokens": 23, "micro_usd": 0}[counter["resource"]]
+    for path in model.store.path.parent.glob("db.sqlite3*"):
+        assert b"unique-private-prompt" not in path.read_bytes()
+        assert b"Local response" not in path.read_bytes()
+        assert model.token.encode() not in path.read_bytes()
+
+
+@pytest.mark.parametrize(
+    "changes",
+    [
+        {"model": "unapproved"},
+        {"api_base": "https://other.invalid"},
+        {"api_key": "private"},
+        {"metadata": {"tenant_id": "other"}},
+        {"max_tokens": 500},
+        {"n": 2},
+        {"parallel_tool_calls": True},
+        {"tools": [{"type": "function", "function": {"name": "shell", "parameters": {}}}]},
+    ],
+)
+def test_T09_T10_forbidden_routing_has_no_upstream_attempt(model, changes):
+    assert model.call(**changes).status_code in (403, 422)
+    assert model.provider.calls == []
+    assert model.models.ledger.counters() == []
+
+
+def test_T11_input_secret_is_not_dispatched(model):
+    assert model.call("AGENTGATE_SECRET[example]").status_code == 403
+    assert model.provider.calls == []
+
+
+def test_T12_input_and_output_emails_are_redacted(model):
+    model.provider.content = "Reply to output@example.org"
+    response = model.call("Contact input@example.org")
+    assert response.status_code == 200
+    assert "input@example.org" not in json.dumps(model.provider.calls)
+    assert "output@example.org" not in response.text
+    assert response.json()["agentgate"]["decision"] == "redact"
+    assert "[REDACTED_EMAIL]" in json.dumps(model.provider.calls)
+
+
+@pytest.mark.parametrize("stream", [False, True])
+def test_T27_T45_secret_output_is_never_released_but_usage_is_settled(model, stream):
+    model.provider.content = "AGENTGATE_SECRET[split-in-provider-stream]"
+    response = model.call(stream=stream)
+    assert response.status_code == 403
+    assert response.json()["executed"] is True
+    assert "AGENTGATE_SECRET" not in response.text
+    assert model.store.events()[-1].event_type == "output_blocked"
+    assert all(row["reserved"] == 0 for row in model.models.ledger.counters())
+
+
+def test_buffered_sse_retains_tool_call_correlation(model):
+    model.provider.content = None
+    model.provider.tool_calls = [
+        {
+            "id": "call-a",
+            "type": "function",
+            "function": {"name": "documents_read", "arguments": '{"document_id":"tenant-a-notes"}'},
+        }
+    ]
+    response = model.call(
+        stream=True,
+        tools=[
+            {
+                "type": "function",
+                "function": {"name": "documents_read", "parameters": {"type": "object"}},
+            }
+        ],
+    )
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/event-stream")
+    chunks = [
+        json.loads(line[6:])
+        for line in response.text.splitlines()
+        if line.startswith("data:") and "[DONE]" not in line
+    ]
+    assert chunks[0]["choices"][0]["delta"]["tool_calls"][0]["id"] == "call-a"
+    assert chunks[0]["choices"][0]["delta"]["tool_calls"][0]["index"] == 0
+    assert chunks[0]["agentgate"]["buffered"] is True
+    assert model.provider.calls[0]["stream"] is False
+
+
+def test_model_auth_is_separate_from_ability_to_use_tools(model):
+    document_token = model.store.issue(
+        model.identity.model_copy(update={"operations": ("documents.read",)}), 2000.0
+    )
+    assert model.call(token=document_token).status_code == 403
+    assert (
+        model.client.get(
+            "/v1/models", headers={"Authorization": f"Bearer {document_token}"}
+        ).json()["data"]
+        == []
+    )
+    assert model.client.get("/v1/models").status_code == 401
+    assert model.client.post("/v1/chat/completions", json={}).status_code == 401
+    model.store.revoke(model.token)
+    assert model.call().status_code == 401
+    assert model.provider.calls == []
+
+
+def test_duplicate_keys_depth_and_identity_overrides_rejected(model):
+    headers = {"Authorization": f"Bearer {model.token}", "Content-Type": "application/json"}
+    response = model.client.post(
+        "/v1/chat/completions",
+        headers=headers,
+        content='{"model":"local-demo","model":"local-demo","messages":[]}',
+    )
+    assert response.status_code == 422
+    response = model.client.post(
+        "/v1/chat/completions", headers={**headers, "X-Tenant-Id": "other"}, content="{}"
+    )
+    assert response.status_code == 422
+    assert model.provider.calls == []
+
+
+def test_T23_atomic_final_call_capacity(model):
+    model.limits(root_run=ResourceLimits(calls=1), max_concurrent=8)
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        codes = list(pool.map(lambda _: model.call().status_code, range(8)))
+    assert sorted(codes) == [200] + [429] * 7
+    assert len(model.provider.calls) == 1
+    assert all(row["reserved"] == 0 for row in model.models.ledger.counters())
+
+
+def test_T30_delegated_principal_cannot_reset_root_budget(model):
+    model.limits(root_run=ResourceLimits(calls=1))
+    assert model.call().status_code == 200
+    child = model.identity.model_copy(update={"principal_id": "child", "agent_id": "child-agent"})
+    child_token = model.store.issue(child, 2000.0)
+    assert model.call(token=child_token).status_code == 429
+    assert len(model.provider.calls) == 1
+
+
+def test_T26_timeout_retains_reservation_and_admission_slot_after_restart(model):
+    model.provider.failure = httpx.ReadTimeout("sensitive provider diagnostic")
+    response = model.call()
+    assert response.status_code == 503
+    assert "sensitive" not in response.text
+    assert all(row["spent"] == 0 for row in model.models.ledger.counters())
+    assert any(row["reserved"] > 0 for row in model.models.ledger.counters())
+    restarted = ModelService(model.actions, model.provider)
+    with TestClient(create_app(model.actions, restarted)) as client:
+        response = client.post(
+            "/v1/chat/completions",
+            headers={"Authorization": f"Bearer {model.token}"},
+            json={"model": "local-demo", "messages": [{"role": "user", "content": "hello"}]},
+        )
+    assert response.status_code == 429
+    assert len(model.provider.calls) == 1
+
+
+def test_usage_above_bound_is_recorded_and_freezes_accounts(model):
+    model.provider.usage = {"prompt_tokens": 100000, "completion_tokens": 3, "total_tokens": 100003}
+    assert model.call().status_code == 503
+    assert all(row["frozen"] == 1 for row in model.models.ledger.counters())
+    assert model.call().status_code == 429
+    assert len(model.provider.calls) == 1
+    assert any(row["spent"] == 100003 for row in model.models.ledger.counters())
+
+
+@pytest.mark.parametrize(
+    "usage",
+    [
+        None,
+        {},
+        {"prompt_tokens": -1, "completion_tokens": 1, "total_tokens": 0},
+        {"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 5},
+    ],
+)
+def test_invalid_usage_withholds_output_and_retains_full_reservation(model, usage):
+    model.provider.usage = usage
+    response = model.call()
+    assert response.status_code == 503
+    assert "Local response" not in response.text
+    assert any(row["reserved"] > 0 for row in model.models.ledger.counters())
+
+
+def test_simulated_money_limit_rejects_before_provider(model):
+    limits = ResourceLimits(calls=10, tokens=100000, micro_usd=1)
+    model.limits(
+        input_micro_usd=1,
+        output_micro_usd=2,
+        tenant_day=limits,
+        principal_day=limits,
+        root_run=limits,
+        tariff_revision="simulated-test-v1",
+    )
+    assert model.call().status_code == 429
+    assert model.provider.calls == []
+    assert model.models.ledger.counters() == []
+
+
+def test_simulated_tariff_settles_integer_micro_units(model):
+    limits = ResourceLimits(micro_usd=1000000)
+    model.limits(
+        input_micro_usd=1,
+        output_micro_usd=2,
+        tenant_day=limits,
+        principal_day=limits,
+        root_run=limits,
+        tariff_revision="simulated-test-v1",
+    )
+    assert model.call().status_code == 200
+    assert all(
+        row["spent"] == 26
+        for row in model.models.ledger.counters()
+        if row["resource"] == "micro_usd"
+    )
+
+
+def test_T47_audit_failure_prevents_upstream(model):
+    with model.store.connection() as db:
+        db.execute(
+            "CREATE TRIGGER fail_audit BEFORE INSERT ON audit_events BEGIN SELECT RAISE(FAIL, 'no'); END"
+        )
+    assert model.call().status_code == 503
+    assert model.provider.calls == []
+    assert model.models.ledger.counters() == []
+
+
+def test_T47_audit_failure_after_dispatch_withholds_result(model):
+    with model.store.connection() as db:
+        db.execute(
+            "CREATE TRIGGER fail_outcome BEFORE INSERT ON audit_events WHEN json_extract(NEW.event, '$.event_type')='action_completed' BEGIN SELECT RAISE(FAIL, 'no'); END"
+        )
+    assert model.call().status_code == 503
+    assert len(model.provider.calls) == 1
+    assert any(row["reserved"] > 0 for row in model.models.ledger.counters())
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://other.test/v1",
+        "http://localhost:4000/v1",
+        "http://user:pass@127.0.0.1:4000/v1",
+        "http://127.0.0.1:4000/v1?key=x",
+        "http://127.0.0.1:4000/other",
+    ],
+)
+def test_private_upstream_is_fixed_and_never_client_selected(url):
+    with pytest.raises(ValueError):
+        PrivateProvider(url, "test-key")

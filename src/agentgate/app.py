@@ -2,7 +2,7 @@
 
 import asyncio
 import json
-from typing import Annotated, NoReturn
+from typing import TYPE_CHECKING, Annotated, NoReturn
 
 from fastapi import Depends, FastAPI, Request
 from fastapi.responses import JSONResponse
@@ -14,6 +14,9 @@ from starlette.requests import ClientDisconnect
 from agentgate.contracts import ActionRequest, ActionResponse, Reason
 from agentgate.service import ActionService, GateError
 from agentgate.storage import StorageUnavailable
+
+if TYPE_CHECKING:
+    from agentgate.models import ModelService
 
 
 def unique_object(pairs: list[tuple[str, object]]) -> dict[str, object]:
@@ -76,7 +79,7 @@ async def read_body(request: Request, maximum: int, timeout: float) -> bytes:
     return bytes(body)
 
 
-def create_app(service: ActionService) -> FastAPI:
+def create_app(service: ActionService, models: "ModelService | None" = None) -> FastAPI:
     app = FastAPI(
         title="AgentGate", version="0.1.0", docs_url=None, redoc_url=None, openapi_url=None
     )
@@ -137,4 +140,8 @@ def create_app(service: ActionService) -> FastAPI:
             headers=headers,
         )
 
+    if models is not None:
+        from agentgate.model_http import attach_model_routes
+
+        attach_model_routes(app, models)
     return app
