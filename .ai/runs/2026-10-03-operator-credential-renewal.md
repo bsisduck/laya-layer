@@ -27,13 +27,15 @@ agent tokens; this module never returns an agent token to a browser.
 
 ## Progress
 
+PR: #24
+
 ### Phase 1: Contract
 
-- [ ] 1.1 Freeze and publish renewal contract
+- [x] 1.1 Freeze and publish renewal contract
 
 ### Phase 2: Implementation
 
-- [ ] 2.1 Implement atomic credential replacement and operator routes
+- [x] 2.1 Implement atomic credential replacement and operator routes
 - [ ] 2.2 Exercise authorization, concurrency, restart and accounting boundaries
 
 ### Phase 3: Evidence
