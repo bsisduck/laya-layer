@@ -89,6 +89,14 @@ construction; the shipped production command always configures it. Operator
 overview adds measured `budgets.semantic` or an explicit unavailable status.
 See `docs/semantic-call-quota.md` for conservative accounting and cap changes.
 
+The additive root `./laya` CLI manages a separately owned installation. Its
+version-1 `installation.json` lives outside the checkout; unknown versions,
+unsafe paths and unowned legacy state are refused. Existing `agentgate` and Make
+commands are retained. Reinstallation preserves credentials/audit/budgets and
+backs up the gateway database before running its additive migration; optional
+worker quota state is retained. See [local lifecycle](docs/local-app.md) for
+ports, exit status, expiry, update and rollback contracts.
+
 Explicit operator credential renewal adds `operator_credential_epochs` and
 `credential_renewals` without changing schema-2 credentials, budgets, approvals or
 audit/export. Epoch zero retains the original tool/model playground HMAC tokens.

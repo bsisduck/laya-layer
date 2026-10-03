@@ -7,6 +7,7 @@ import math
 import re
 import secrets
 import sqlite3
+from collections.abc import Callable
 from typing import Literal, TypedDict
 
 from agentgate.contracts import Identity
@@ -105,7 +106,14 @@ def _replace(
     )
 
 
-def renew_agent_credential(store: Store, token: str, *, now: float, expires_at: float) -> str:
+def renew_agent_credential(
+    store: Store,
+    token: str,
+    *,
+    now: float,
+    expires_at: float,
+    persist: Callable[[str], None] | None = None,
+) -> str:
     """Installer-only: privately persist the returned secret; no browser/agent route."""
     _times(now, expires_at)
     if re.fullmatch(r"[A-Za-z0-9_-]{43}", token) is None:
@@ -115,6 +123,9 @@ def renew_agent_credential(store: Store, token: str, *, now: float, expires_at: 
         db.execute("BEGIN IMMEDIATE")
         _schema(db)
         _replace(db, token, replacement, now, expires_at, "agent")
+        if persist is not None:
+            # Trusted installer fsyncs a recoverable private file before authority commits.
+            persist(replacement)
         db.execute("COMMIT")
     return replacement
 

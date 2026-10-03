@@ -5,6 +5,7 @@ Start with the [visual architecture](architecture.md), then follow the
 
 | Document | Purpose |
 |---|---|
+| [Install and lifecycle](local-app.md) | One-command local app, credentials, offline restart and recovery |
 | [Visual architecture](architecture.md) | Working path, trust boundaries, and target system |
 | [Challenge alignment](challenge-alignment.md) | Supplied PDFs mapped to implemented controls, gaps and submission evidence |
 | [Enterprise integration design](enterprise-integrations.md) | Bank-stack context, interface choices, diagram and verification boundaries |
