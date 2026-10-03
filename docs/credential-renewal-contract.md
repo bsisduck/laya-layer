@@ -17,13 +17,19 @@ the tools/default call is unchanged. No model execution is added by this change.
   dict`: atomic compare-and-swap, only for expired non-revoked current authority.
   Retire the old token, increment epoch, issue a new 24-hour token; return the
   status shape. Same tenant/principal/root/operations, unchanged budget rows.
-- `renew_agent_credential(store, token, *, now: float, expires_at: float) -> str`:
+- `renew_agent_credential(store, token, *, now: float, expires_at: float, persist=None) -> str`:
   trusted operator/installer-only hook. Replace an expired non-revoked credential
   with a fresh random token and the exact stored identity. New expiry must be
   after `now` and at most 24 hours later. Return secret only to the trusted caller.
   No REST/MCP agent renewal/issuance endpoint. Caller must privately persist the
   replacement; serialize renewal with private-file publication and stop serving
-  during installer rotation. Never log or print the returned token.
+  during installer rotation. Optional trusted `persist(token)` runs after replacement
+  statements but before COMMIT. The installer fsyncs `client.token.next` and its
+  directory there; callback failure rolls back the transaction. Recovery publishes
+  only a token matching committed old/new digests, identical identity and non-revoked
+  replacement. Uncommitted pending files may be discarded only while the old row
+  remains non-revoked and the pending token has no credential row. The default
+  callback remains absent for existing trusted callers. Never log or print the returned token.
 - `CredentialRenewalError.reason`: `missing`, `revoked`, `active`, `conflict`.
   Invalid bounds/types raise `ValueError`; unavailable durable state raises
   `StorageUnavailable`. No partial epoch/token transition on failure.
