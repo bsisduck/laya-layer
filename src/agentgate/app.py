@@ -88,7 +88,7 @@ def create_app(service: ActionService) -> FastAPI:
 
     @app.get("/health/ready")
     def ready() -> JSONResponse:
-        healthy = not service.policy.semantic_required and service.store.ready()
+        healthy = service.store.ready() and service.semantic_ready()
         return JSONResponse(
             {"status": "ready" if healthy else "not_ready"}, status_code=200 if healthy else 503
         )

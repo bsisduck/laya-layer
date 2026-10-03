@@ -1,0 +1,13 @@
+# Explicit experimental semantic profile; standard or CoreML chosen by the operator.
+schema_version: 1
+policy_id: document-semantic-demo
+revision: 1
+documents_read:
+  roles: [analyst]
+  classifications: [public, internal]
+semantic_required: true
+semantic_mode: enforce
+tool_budgets:
+  tenant_day: 1000
+  principal_day: 500
+  root_run: 100

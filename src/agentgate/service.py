@@ -20,9 +20,11 @@ from agentgate.contracts import (
     DocumentArguments,
     Identity,
     Reason,
+    SemanticResult,
 )
 from agentgate.documents import DocumentExecutor, DocumentRegistry
 from agentgate.policy import Policy
+from agentgate.semantics import SemanticEvaluator, SemanticInvalid, SemanticUnavailable
 from agentgate.storage import CredentialInvalid, StorageUnavailable, Store, credential_digest
 
 EMAIL = re.compile(r"\b[A-Za-z0-9._%+-]{1,64}@[A-Za-z0-9.-]{1,253}\.[A-Za-z]{2,63}\b")
@@ -38,6 +40,8 @@ class Context:
     payload_digest: str | None = None
     operation: Literal["documents.read"] | None = None
     executed: bool = False
+    semantic: SemanticResult | None = None
+    semantic_failure: Literal["unavailable", "invalid_output"] | None = None
 
 
 class GateError(Exception):
@@ -55,6 +59,7 @@ class ActionService:
         executor: DocumentExecutor,
         audit_key: bytes,
         clock: Callable[[], float] = time.time,
+        semantic: SemanticEvaluator | None = None,
     ) -> None:
         if len(audit_key) < 32:
             raise ValueError("Audit HMAC key requires at least 32 bytes")
@@ -64,6 +69,12 @@ class ActionService:
         self.executor = executor
         self.audit_key = audit_key
         self.clock = clock
+        self.semantic = semantic
+
+    def semantic_ready(self) -> bool:
+        return not self.policy.semantic_required or (
+            self.semantic is not None and self.semantic.ready()
+        )
 
     @staticmethod
     def new_context() -> Context:
@@ -116,12 +127,17 @@ class ActionService:
             payload_digest=context.payload_digest,
             executed=context.executed,
             semantic_status=(
-                "unavailable"
+                context.semantic.status
+                if context.semantic is not None
+                else context.semantic_failure
+                if context.semantic_failure is not None
+                else "unavailable"
                 if reason == Reason.REQUIRED_SEMANTIC_UNAVAILABLE
                 else "not_run_hard_denial"
                 if decision == "deny"
                 else "not_configured"
             ),
+            semantic=context.semantic,
         )
 
     def reject(self, context: Context, error: GateError) -> tuple[int, ActionResponse]:
@@ -160,7 +176,7 @@ class ActionService:
         denial = self.policy.authorize(identity, metadata)
         if denial is not None:
             raise GateError(403, denial)
-        if self.policy.semantic_required:
+        if not self.semantic_ready():
             raise GateError(503, Reason.REQUIRED_SEMANTIC_UNAVAILABLE)
         try:
             self.store.dispatch_intent(
@@ -191,6 +207,29 @@ class ActionService:
             raise GateError(403, Reason.OUTPUT_TOO_LARGE)
         if SYNTHETIC_SECRET.search(content):
             raise GateError(403, Reason.SECRET_IN_OUTPUT)
+        if self.policy.semantic_required:
+            assert self.semantic is not None
+            try:
+                context.semantic = self.semantic.evaluate(context.action_id, content)
+            except SemanticUnavailable as error:
+                context.semantic_failure = "unavailable"
+                raise GateError(503, Reason.REQUIRED_SEMANTIC_UNAVAILABLE) from error
+            except SemanticInvalid as error:
+                context.semantic_failure = "invalid_output"
+                raise GateError(503, Reason.SEMANTIC_INVALID) from error
+            semantic = context.semantic
+            if semantic.status in ("incomplete", "invalid_output", "unavailable"):
+                reason = {
+                    "incomplete": Reason.SEMANTIC_INCOMPLETE,
+                    "invalid_output": Reason.SEMANTIC_INVALID,
+                    "unavailable": Reason.REQUIRED_SEMANTIC_UNAVAILABLE,
+                }[semantic.status]
+                raise GateError(503, reason)
+            if self.policy.semantic_mode == "enforce":
+                if semantic.status == "abstain":
+                    raise GateError(403, Reason.SEMANTIC_ABSTAIN)
+                if semantic.selected_labels["content_role"] == "behavior_instruction":
+                    raise GateError(403, Reason.SEMANTIC_BLOCKED)
         released = (
             EMAIL.sub("[REDACTED_EMAIL]", content) if self.policy.output.redact_emails else content
         )

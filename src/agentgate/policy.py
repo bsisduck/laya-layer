@@ -40,6 +40,7 @@ class Policy(Contract):
     documents_read: DocumentPermission = DocumentPermission()
     output: OutputPolicy = OutputPolicy()
     semantic_required: bool = False
+    semantic_mode: Literal["enforce", "observe"] = "enforce"
     tool_budgets: ToolBudgets | None = None
 
     @property

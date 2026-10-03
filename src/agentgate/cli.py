@@ -14,6 +14,7 @@ from agentgate.app import create_app
 from agentgate.contracts import Identity
 from agentgate.documents import DocumentRegistry, FixtureExecutor, demo_documents
 from agentgate.policy import load_policy
+from agentgate.semantics import SemanticClient
 from agentgate.service import ActionService
 from agentgate.storage import StorageUnavailable, Store
 
@@ -29,6 +30,7 @@ def initialize_demo(directory: Path) -> None:
     store = Store(directory / "agentgate.sqlite3")
     store.initialize()
     private_file(directory / "audit.key", secrets.token_bytes(32))
+    private_file(directory / "worker.token", secrets.token_urlsafe(32).encode())
     token = store.issue(
         Identity(
             principal_id="analyst-demo",
@@ -53,6 +55,15 @@ def main() -> None:
     serve = commands.add_parser("serve", help="Serve the document-only gateway on loopback")
     serve.add_argument("--policy", type=Path, default=Path("config/policy.yaml"))
     serve.add_argument("--port", type=int, default=8000)
+    serve.add_argument("--semantic-url")
+    serve.add_argument(
+        "--semantic-backend", choices=["laya_standard", "laya_coreml"], default="laya_standard"
+    )
+    worker = commands.add_parser("semantic-worker", help="Serve a supervised local Laya backend")
+    worker.add_argument("--backend", choices=["laya_standard", "laya_coreml"], required=True)
+    worker.add_argument("--runtime-python", type=Path, required=True)
+    worker.add_argument("--root", type=Path, default=Path.cwd())
+    worker.add_argument("--port", type=int, default=8091)
     read = commands.add_parser(
         "demo-read", help="Call the gateway with the local scoped credential"
     )
@@ -84,8 +95,29 @@ def main() -> None:
                 DocumentRegistry(documents),
                 FixtureExecutor(documents),
                 (args.state_dir / "audit.key").read_bytes(),
+                semantic=SemanticClient(
+                    args.semantic_url,
+                    (args.state_dir / "worker.token").read_text().strip(),
+                    args.semantic_backend,
+                )
+                if args.semantic_url
+                else None,
             )
             uvicorn.run(create_app(service), host="127.0.0.1", port=args.port, access_log=False)
+        elif args.command == "semantic-worker":
+            from agentgate.semantic_worker import Supervisor, create_worker
+
+            command = [
+                str(args.runtime_python.absolute()),
+                str(Path(__file__).with_name("inference_engine.py")),
+                "--backend",
+                args.backend,
+                "--root",
+                str(args.root.absolute()),
+            ]
+            supervisor = Supervisor(command, args.backend)
+            app = create_worker(supervisor, (args.state_dir / "worker.token").read_text().strip())
+            uvicorn.run(app, host="127.0.0.1", port=args.port, access_log=False)
         elif args.command == "demo-read":
             token = (args.state_dir / "client.token").read_text().strip()
             with httpx.Client(timeout=10, trust_env=False) as client:

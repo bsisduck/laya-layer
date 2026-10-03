@@ -1,5 +1,7 @@
 """Strict boundary contracts shared by the HTTP adapter and enforcement core."""
 
+from __future__ import annotations
+
 from enum import StrEnum
 from typing import Annotated, Literal
 
@@ -49,6 +51,10 @@ class Reason(StrEnum):
     RESOURCE_NOT_ALLOWED = "RESOURCE_NOT_ALLOWED"
     REQUIRED_SEMANTIC_UNAVAILABLE = "REQUIRED_SEMANTIC_UNAVAILABLE"
     BUDGET_EXCEEDED = "BUDGET_EXCEEDED"
+    SEMANTIC_BLOCKED = "SEMANTIC_BLOCKED"
+    SEMANTIC_ABSTAIN = "SEMANTIC_ABSTAIN"
+    SEMANTIC_INCOMPLETE = "SEMANTIC_INCOMPLETE"
+    SEMANTIC_INVALID = "SEMANTIC_INVALID"
     AUDIT_UNAVAILABLE = "AUDIT_UNAVAILABLE"
     EXECUTION_FAILED = "EXECUTION_FAILED"
     OUTPUT_INVALID = "OUTPUT_INVALID"
@@ -86,7 +92,16 @@ class AuditEvent(Contract):
     policy_version: str
     payload_digest: str | None
     executed: bool
-    semantic_status: Literal["not_configured", "not_run_hard_denial", "unavailable"]
+    semantic_status: Literal[
+        "not_configured",
+        "not_run_hard_denial",
+        "unavailable",
+        "ok",
+        "abstain",
+        "incomplete",
+        "invalid_output",
+    ]
+    semantic: SemanticResult | None = None
 
 
 class SemanticCoverage(Contract):
@@ -105,3 +120,10 @@ class SemanticResult(Contract):
     selected_labels: dict[str, str]
     raw_scores: dict[str, float]
     coverage: SemanticCoverage
+    usage: SemanticUsage
+
+
+class SemanticUsage(Contract):
+    input_tokens: Annotated[int, Field(ge=0, le=1024)]
+    output_tokens: Literal[0] = 0
+    inference_wall_ms: Annotated[float, Field(ge=0, le=60000)]
