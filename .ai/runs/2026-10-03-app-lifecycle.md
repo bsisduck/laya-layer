@@ -48,8 +48,8 @@ PR: #22
 - [x] 1.3 Exercise real subprocess failures, ownership, offline restart and preservation.
 
 ### Phase 2: Integrated application
-- [ ] 2.1 Adapt to integrated main runtime, packaged UI, model/tool/operator contracts.
-- [ ] 2.2 Prepare and test a clean local install, authenticated HTTP/UI and offline restart.
+- [x] 2.1 Adapt to integrated main runtime, packaged UI, model/tool/operator contracts.
+- [x] 2.2 Prepare and test a clean local install, authenticated HTTP/UI and offline restart.
 
 ### Phase 3: Delivery
 - [ ] 3.1 Document getting started, migration, model manifests and limits; review and validate.
@@ -61,3 +61,19 @@ Root owns semantic-call quota #26 and final browser QA; launcher preserves all
 private data files and uses the normal semantic worker CLI. Runtime clean install
 is still pending tools integration on main; dependencies were fixtures in install
 unit tests, while provisioning/migration and subprocess/HTTP effects were real.
+
+2026-10-03 integration: merged main PR24 and PR19 into this branch, preserving
+runtime author history. c5b918e passed make validate (448 tests), then a genuine
+clean install at a private temporary directory served gateway8080/proxy4002.
+Port4000 was occupied and correctly refused. Operator session/static assets,
+document allow/cross-tenant denial, scoped memory, approval-to-once-only local
+outbox, MCP initialization/discovery and local model discovery passed over HTTP.
+Warm prepared restart with UV_OFFLINE=true took5.4s; authority, audit, budgets,
+outbox and configuration matched exactly. Owned services were stopped afterward;
+shared8000/4000/4001/11434/Cezar4322 listeners were still present. No inference run.
+
+Independent root review reproduced source-only wheel cache reuse at the same
+package version. Added an actual offline uv/wheel regression: failed against old
+installer by observing stale installed JS, then passed with --reinstall-package
+agentgate on the changed-install path. Unchanged fingerprint still skips all
+preparation. Root owns PR31 collector/telemetry/lifespan/CLI/QA integration.

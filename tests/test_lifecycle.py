@@ -367,6 +367,64 @@ def test_repeated_install_preserves_private_authority(installation_fixture):
     assert "sk-" not in (state / "installation.json").read_text()
 
 
+def test_source_only_upgrade_rebuilds_actual_installed_wheel(installation_fixture, monkeypatch):
+    """Use real offline uv/wheels; only the unrelated proxy/upstream remain fixtures."""
+    import shutil
+
+    from agentgate.lifecycle.processes import clean_environment
+
+    installer, root, state, options = installation_fixture
+    repository = Path(__file__).resolve().parents[1]
+    for name in ("pyproject.toml", "uv.lock", "README.md"):
+        shutil.copyfile(repository / name, root / name)
+    shutil.copytree(
+        repository / "src",
+        root / "src",
+        dirs_exist_ok=True,
+        ignore=shutil.ignore_patterns("__pycache__"),
+    )
+    dependency_fixture = installer.run
+
+    def actual_gateway_sync(command, *, env=None):
+        if command[:2] == ["uv", "sync"]:
+            subprocess.run(command, env=env, check=True, capture_output=True, timeout=90)
+        else:
+            dependency_fixture(command, env=env)
+
+    monkeypatch.setattr(installer, "run", actual_gateway_sync)
+
+    def installed_asset():
+        return subprocess.check_output(
+            [
+                str(state / "runtime/gateway/bin/python"),
+                "-c",
+                "from importlib.resources import files; "
+                "print(files('agentgate').joinpath('web/app.js').read_text(), end='')",
+            ],
+            cwd=state,
+            env=clean_environment(),
+            timeout=10,
+        )
+
+    installer.install(root, state, **options)
+    asset = root / "src/agentgate/web/app.js"
+    assert installed_asset() == asset.read_bytes()
+    authority = (state / "data/client.token").read_bytes()
+    metadata = [(root / name).read_bytes() for name in ("pyproject.toml", "uv.lock")]
+    asset.write_bytes(asset.read_bytes() + b"\n// source-only upgrade regression\n")
+    installer.install(root, state, **options)
+    assert installed_asset() == asset.read_bytes()
+    assert authority == (state / "data/client.token").read_bytes()
+    assert metadata == [(root / name).read_bytes() for name in ("pyproject.toml", "uv.lock")]
+
+    def unexpected_preparation(*args, **kwargs):
+        pytest.fail("Unchanged fingerprint must not reinstall any package")
+
+    monkeypatch.setattr(installer, "run", unexpected_preparation)
+    installer.install(root, state, **options)
+    assert installed_asset() == asset.read_bytes()
+
+
 def test_install_refuses_unknown_state_without_writes(installation_fixture):
     installer, root, state, options = installation_fixture
     private_dir(state, create=True)

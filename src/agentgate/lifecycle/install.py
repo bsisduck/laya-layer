@@ -194,6 +194,9 @@ def install(
                 "--locked",
                 "--no-dev",
                 "--no-editable",
+                # uv's default local-wheel cache does not track source-only changes.
+                "--reinstall-package",
+                "agentgate",
                 "--extra",
                 "mcp",
                 *flags,
