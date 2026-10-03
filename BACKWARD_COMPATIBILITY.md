@@ -58,3 +58,10 @@ responses retain their shape and add denial reasons `THREAT_FEED_BLOCKED` and
 schema 1 remains unchanged and does not include the new feed field. Admin timeline
 adds feed evidence separately. No remote delivery, model inference, or new tools
 are implied by these contracts.
+
+E04-S01 adds the offline `scripts/semantic_evaluate.py run|compare` CLI and
+version-1 frozen corpus/protocol/minimized report described in
+`docs/semantic-evaluation.md`. It imports the unchanged content-role-v1 engine.
+No production endpoint, question, policy, auth or storage contract changes.
+New evaluation versions must preserve earlier labels/provenance; generated
+reports are ignored and output files are never overwritten.
