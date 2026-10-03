@@ -31,6 +31,49 @@ def run_once(source, cfg, token, now=2000.0):
         return asyncio.run(sender.once())
 
 
+def test_pending_and_approved_mail_events_do_not_stall_delivery(harness: Harness, tmp_path):
+    identity = harness.identity.model_copy(update={"operations": ("mail.send",)})
+    agent_token = harness.store.issue(identity, 2000.0)
+    payload = {
+        "operation": "mail.send",
+        "arguments": {
+            "recipient": "reviewer@demo.internal",
+            "subject": "synthetic approval",
+            "body": "Local fixture",
+            "idempotency_key": "telemetry-mail",
+        },
+    }
+    result = harness.client.post(
+        "/v1/actions/execute", json=payload, headers={"Authorization": f"Bearer {agent_token}"}
+    )
+    assert result.status_code == 202 and result.json()["executed"] is False
+    token = token_file(tmp_path)
+    db = tmp_path / "collector.sqlite3"
+    collector = Collector(db, "tenant-a")
+    with live_server(create_collector(collector, token)) as origin:
+        cfg = TelemetryConfig(origin=origin, tenant="tenant-a")
+        first = run_once(harness.store.path, cfg, token)
+        assert first.cursor == 1 and first.last_error is None
+        action = harness.service.tools.list_approvals(tenant_id="tenant-a")[0]
+        harness.service.tools.decide(
+            tenant_id="tenant-a",
+            action_id=action["action_id"],
+            fingerprint=action["fingerprint"],
+            approve=True,
+            actor="operator",
+        )
+        second = run_once(harness.store.path, cfg, token)
+        assert second.cursor == 2 and second.last_error is None
+        records = received(db)
+        assert [(e["event_type"], e["decision"], e["executed"]) for e in records] == [
+            ("action_pending", "require_approval", False),
+            ("approval_decided", "require_approval", False),
+        ]
+        assert harness.service.tools.outbox(tenant_id="tenant-a") == []
+        assert run_once(harness.store.path, cfg, token).acknowledged_events == 2
+        assert len(received(db)) == 2
+
+
 def test_live_gateway_to_collector_correlates_privacy_and_scope(harness: Harness, tmp_path):
     token = token_file(tmp_path)
     db = tmp_path / "collector.sqlite3"

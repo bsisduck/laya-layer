@@ -78,7 +78,7 @@ class ProjectedEvent(Contract):
     principal_id: Text | None
     root_run_id: Text | None
     operation: Text | None
-    decision: Literal["allow", "redact", "deny"]
+    decision: Literal["allow", "redact", "deny", "require_approval"]
     reason_codes: Annotated[list[Text], Field(max_length=32)]
     policy_version: Text
     executed: bool
