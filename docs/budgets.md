@@ -80,3 +80,11 @@ their own units and reservations. No client idempotency or exact-action approval
 is claimed; document reads are the only implemented operation. Policy reload is
 still restart-only, and all processes sharing a database must use the same policy.
 Independent security review is required before a production release.
+
+Root counters now use `[tenant, root_run]`, so delegated principals share the root
+allowance. Stop the gateway and run `agentgate migrate` before starting this version
+against existing state. The transaction sums all legacy `[tenant, principal, root]`
+spent/reserved counters into the shared root and rewires outstanding reservations;
+repeat migration is a no-op. Credentials, audit and daily accounts are retained.
+Do not run old and new gateway binaries against the same database. Rollback requires
+a stopped pre-upgrade backup; never discard live spend to restore old behavior.

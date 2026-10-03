@@ -13,6 +13,7 @@ from pydantic import ValidationError
 from agentgate import budgets
 from agentgate.budgets import ToolBudgets
 from agentgate.contracts import AuditEvent, Identity
+from agentgate.scoped_contracts import SCHEMA as TOOL_SCHEMA
 
 
 class StorageUnavailable(Exception):
@@ -72,8 +73,11 @@ class Store:
                 CREATE TABLE IF NOT EXISTS health_probe (id INTEGER PRIMARY KEY CHECK(id = 1));
             """
                 + budgets.SCHEMA
-                + "PRAGMA user_version=2; COMMIT;"
+                + TOOL_SCHEMA
+                + "PRAGMA user_version=2;"
             )
+            budgets.migrate_root_counters(connection)
+            connection.execute("COMMIT")
         self.path.chmod(0o600)
 
     def issue(self, identity: Identity, expires_at: float) -> str:
@@ -131,6 +135,7 @@ class Store:
         event: AuditEvent,
         clock: Callable[[], float],
         limits: ToolBudgets | None = None,
+        before_dispatch: Callable[[sqlite3.Connection], None] | None = None,
     ) -> None:
         with self.connection() as connection:
             connection.execute("BEGIN IMMEDIATE")
@@ -138,6 +143,8 @@ class Store:
             now = clock()
             if self._resolve(connection, digest, now) != identity:
                 raise CredentialInvalid
+            if before_dispatch is not None:
+                before_dispatch(connection)
             if limits is not None:
                 budgets.reserve(
                     connection, event.action_id, identity, limits, now, event.policy_version
@@ -163,6 +170,21 @@ class Store:
                 connection.execute(
                     "SELECT action_id, scope, scope_key FROM reservation_scopes LIMIT 0"
                 )
+                if (
+                    connection.execute(
+                        "SELECT version FROM scoped_tool_schema WHERE version=1"
+                    ).fetchone()
+                    is None
+                ):
+                    return False
+                connection.execute("SELECT action_id,state FROM tool_actions LIMIT 0")
+                connection.execute("SELECT action_id FROM tool_outbox LIMIT 0")
+                connection.execute("SELECT tenant_id,entry_id FROM memory_entries LIMIT 0")
+                if connection.execute(
+                    "SELECT 1 FROM budget_counters WHERE scope='root_run' "
+                    "AND json_array_length(scope_key)!=2 LIMIT 1"
+                ).fetchone():
+                    return False
                 connection.execute("INSERT OR REPLACE INTO health_probe(id) VALUES (1)")
             return True
         except StorageUnavailable:

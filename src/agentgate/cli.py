@@ -40,24 +40,42 @@ def initialize_demo(directory: Path) -> None:
             agent_id="demo-reader",
             root_run_id="run-demo",
             roles=("analyst",),
-            operations=("documents.read",),
+            operations=("documents.read", "memory.query", "mail.send", "chat.completions"),
         ),
         time.time() + 3600,
     )
     private_file(directory / "client.token", token.encode("ascii"))
+    with store.connection() as connection:
+        connection.executemany(
+            "INSERT INTO memory_entries VALUES (?, ?, 'internal', ?)",
+            [
+                ("tenant-a", "demo-notes", "Quarterly memory notes for tenant A."),
+                ("tenant-b", "demo-notes", "Quarterly private memory notes for tenant B."),
+            ],
+        )
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="AgentGate document enforcement demo")
+    parser = argparse.ArgumentParser(description="AgentGate scoped tool enforcement demo")
     parser.add_argument("--state-dir", type=Path, default=Path(".agentgate"))
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser(
         "init-demo", help="Create private local state and a one-hour scoped credential"
     )
-    serve = commands.add_parser("serve", help="Serve the document-only gateway on loopback")
+    serve = commands.add_parser(
+        "serve", help="Serve the governed model and tool gateway on loopback"
+    )
+    operator = commands.add_parser("init-operator", help="Create a private operator token once")
+    operator.add_argument("--policy", type=Path, default=Path("config/policy.yaml"))
+    serve.add_argument(
+        "--admin-origin", help="Exact operator browser origin; defaults to loopback URL"
+    )
     serve.add_argument("--policy", type=Path, default=Path("config/policy.yaml"))
     serve.add_argument("--port", type=int, default=8000)
+    serve.add_argument("--mcp", action="store_true", help="Enable /mcp (install the mcp extra)")
     serve.add_argument("--semantic-url")
+    serve.add_argument("--model-url", help="Private loopback LiteLLM base URL, including /v1")
+    serve.add_argument("--model-token-file", type=Path, help="Private upstream credential file")
     serve.add_argument(
         "--semantic-backend", choices=["laya_standard", "laya_coreml"], default="laya_standard"
     )
@@ -95,6 +113,13 @@ def main() -> None:
             print(
                 "Demo initialized. Scoped credential stored in the private client.token file; expires in one hour."
             )
+        elif args.command == "init-operator":
+            from agentgate.admin import bootstrap_operator
+
+            bootstrap_operator(args.state_dir, load_policy(args.policy))
+            print(
+                "Operator initialized. Credential stored in private operator.token; never shared with agents."
+            )
         elif args.command == "serve":
             policy = load_policy(args.policy)
             store = Store(args.state_dir / "agentgate.sqlite3")
@@ -115,7 +140,27 @@ def main() -> None:
                 if args.semantic_url
                 else None,
             )
-            uvicorn.run(create_app(service), host="127.0.0.1", port=args.port, access_log=False)
+            models = None
+            if bool(args.model_url) != bool(args.model_token_file):
+                raise ValueError("Model URL and token file must be configured together")
+            if args.model_url:
+                from agentgate.models import ModelService, PrivateProvider
+
+                models = ModelService(
+                    service,
+                    PrivateProvider(args.model_url, args.model_token_file.read_text().strip()),
+                )
+            uvicorn.run(
+                create_app(
+                    service,
+                    models=models,
+                    enable_mcp=args.mcp,
+                    admin_origin=args.admin_origin or f"http://127.0.0.1:{args.port}",
+                ),
+                host="127.0.0.1",
+                port=args.port,
+                access_log=False,
+            )
         elif args.command == "semantic-worker":
             from agentgate.semantic_worker import Supervisor, create_worker
 
@@ -168,7 +213,9 @@ def main() -> None:
             if not path.is_file():
                 raise StorageUnavailable
             Store(path).initialize()
-            print("State upgraded to schema 2; credentials and audit retained.")
+            print(
+                "State upgraded to schema 2 plus scoped tools; credentials, audit and budget spend retained."
+            )
     except BrokenPipeError:
         # Avoid a second failing flush during interpreter shutdown. No export
         # checkpoint has been emitted when the data stream fails.

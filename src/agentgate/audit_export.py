@@ -72,6 +72,8 @@ def format_event(event: AuditEvent, sequence: int, format: ExportFormat) -> dict
         event_type, outcome = "start", "unknown"
     elif event.event_type == "execution_failed":
         event_type, outcome = "error", "unknown"
+    elif event.decision == "require_approval":
+        event_type, outcome = "info", "unknown"
     elif event.decision == "deny":
         event_type, outcome = "denied", "failure"
     else:

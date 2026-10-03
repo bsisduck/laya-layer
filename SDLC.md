@@ -28,9 +28,10 @@ independent review before release, or an explicit maintainer exception.
 
 The configured command is `make validate`. It checks workflow artifacts and the
 Cezar configuration, verifies `uv.lock`, runs Ruff lint and formatting, strict
-mypy, pytest, and builds a source distribution and wheel. Tests cover only the
-implemented document path; real inference checks and future integration suites
-remain separate. Local success does not imply CI success.
+mypy, pytest, and builds a source distribution and wheel. Tests cover implemented document and
+scoped-tool enforcement, approvals/outbox transactions and official-SDK MCP over
+HTTP. Setup and validation install/use the optional locked MCP extra. Real inference
+checks and full-application integration remain separate. Local success does not imply CI success.
 
 Any failing required check blocks completion. Report which deterministic,
 real-semantic, and integration suites ran or were skipped, and why.

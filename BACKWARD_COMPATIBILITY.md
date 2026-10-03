@@ -46,3 +46,36 @@ policy versions, approval payload binding, budget units, audit events, and SDK c
 For a used contract, incompatible changes require a consumer update, migration or
 versioning plan as appropriate, and tests. Never silently change identity,
 authorization, or accounting semantics to preserve apparent compatibility.
+
+Scoped tools add optional `scoped_tools` policy defaults, memory/mail audit operation
+and event variants, `require_approval`, and optional approval/state/expiry fields
+on ActionResponse. Results can include structured memory rows; existing document
+result fields are preserved. Exact underscored aliases are newly supported.
+`docs/scoped-tools.md` specifies REST/MCP, trusted operator hooks and migration.
+Schema 2 gains scoped-tool tables with their own version marker. Readiness requires
+the additive migration and tenant+root accounting layout; old binaries must remain
+stopped. Existing credentials keep their old scopes; only newly initialized demo
+credentials include memory/mail. `make setup`/`make validate` install/use the locked
+MCP extra for typechecking and wire tests; base package runtime remains optional.
+E01-S01 adds the separately authenticated `/admin/*` contract documented in
+`docs/control-plane-contract.md`. `attach_admin_routes` is reusable; `create_app`
+accepts optional keyword `admin_origin`. `agentgate init-operator` bootstraps a
+private, non-overwritable operator credential; `serve --admin-origin` configures the
+exact browser origin (default loopback). Sessions and agent credentials are separate.
+
+Live controls add `active_controls`, `control_events`, `operator_credentials`, and
+`operator_sessions` tables without changing schema-2 document/budget tables. First
+admin attachment seeds policy from the supplied configuration; later starts retain
+the last activated policy/feed. After initialization, edit through validation and
+CAS activation rather than changing the startup policy file. Keep the gateway
+stopped while backing up/restoring authoritative state. Old binaries can still
+read schema-2 audit/export, but must not serve after live controls have been enabled:
+they do not enforce durable snapshots. Rollback requires stopping serving and
+explicitly restoring a reviewed static policy; never silently revert permissions.
+
+AuditEvent adds nullable `feed_version`; old records remain readable. Document
+responses retain their shape and add denial reasons `THREAT_FEED_BLOCKED` and
+`CONTROLS_CHANGED` (409 if repeated activations prevent a stable dispatch). Export
+schema 1 remains unchanged and does not include the new feed field. Admin timeline
+adds feed evidence separately. No remote delivery, model inference, or new tools
+are implied by these contracts.

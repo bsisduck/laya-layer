@@ -10,6 +10,8 @@ from yaml.nodes import MappingNode
 
 from agentgate.budgets import ToolBudgets
 from agentgate.contracts import Contract, DocumentMetadata, Identifier, Identity, Reason
+from agentgate.model_config import ModelPolicy
+from agentgate.scoped_contracts import ScopedToolPolicy
 
 
 class IngressPolicy(Contract):
@@ -39,9 +41,11 @@ class Policy(Contract):
     ingress: IngressPolicy = IngressPolicy()
     documents_read: DocumentPermission = DocumentPermission()
     output: OutputPolicy = OutputPolicy()
+    scoped_tools: ScopedToolPolicy = ScopedToolPolicy()
     semantic_required: bool = False
     semantic_mode: Literal["enforce", "observe"] = "enforce"
     tool_budgets: ToolBudgets | None = None
+    models: ModelPolicy | None = None
 
     @property
     def version(self) -> str:
