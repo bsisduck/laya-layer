@@ -68,3 +68,10 @@ approvals cannot transfer to the new token. New admin routes and trusted install
 hooks are documented in `docs/credential-renewal-contract.md`. Older binaries do
 not understand renewed epochs; stop serving before rollback and preserve all
 credential/epoch/history/budget tables. Do not reset state to recover expiry.
+
+E04-S01 adds the offline `scripts/semantic_evaluate.py run|compare` CLI and
+version-1 frozen corpus/protocol/minimized report described in
+`docs/semantic-evaluation.md`. It imports the unchanged content-role-v1 engine.
+No production endpoint, question, policy, auth or storage contract changes.
+New evaluation versions must preserve earlier labels/provenance; generated
+reports are ignored and output files are never overwritten.
