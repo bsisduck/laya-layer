@@ -114,3 +114,8 @@ See [readiness](docs/readiness.md) for verified tools and remaining prerequisite
 and [the first implementation slice](.ai/specs/implementation-start.md) for the
 next task. Optional product discovery is available through
 `om-setup-discovery-pipeline`.
+
+Restricted direct and pinned upstream Hermes clients: see
+[setup, commands, approval handling and evidence](docs/restricted-agents.md).
+Their local generation demo explicitly disables semantic inspection; it is not
+real Laya protection or an OS sandbox.

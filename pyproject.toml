@@ -23,6 +23,8 @@ mcp = ["mcp>=2.3,<3"]
 agentgate = "agentgate.cli:main"
 agentgate-artifacts = "agentgate.artifacts:main"
 agentgate-telemetry = "agentgate.telemetry_cli:main"
+agentgate-agent = "agentgate.agents.direct:main"
+agentgate-hermes = "agentgate.agents.hermes:main"
 
 [dependency-groups]
 dev = [
