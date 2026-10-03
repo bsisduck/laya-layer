@@ -355,3 +355,74 @@ def test_T47_audit_failure_after_dispatch_withholds_result(model):
 def test_private_upstream_is_fixed_and_never_client_selected(url):
     with pytest.raises(ValueError):
         PrivateProvider(url, "test-key")
+
+
+def test_invalid_unicode_is_audited_without_dispatch(model):
+    response = model.client.post(
+        "/v1/chat/completions",
+        headers={"Authorization": f"Bearer {model.token}", "Content-Type": "application/json"},
+        content=b'{"model":"local-demo","messages":[{"role":"user","content":"\\ud800"}]}',
+    )
+    assert response.status_code == 422
+    assert model.provider.calls == []
+    assert model.store.events()[-1].reason_codes == ("MALFORMED_REQUEST",)
+
+
+@pytest.mark.parametrize("arguments", ["[]", "not json", '{"x":1,"x":2}', '{"x":NaN}'])
+def test_invalid_tool_argument_json_is_not_released(model, arguments):
+    model.provider.content = None
+    model.provider.tool_calls = [
+        {
+            "id": "call-a",
+            "type": "function",
+            "function": {
+                "name": "documents_read",
+                "arguments": arguments,
+            },
+        }
+    ]
+    response = model.call(
+        tools=[
+            {
+                "type": "function",
+                "function": {
+                    "name": "documents_read",
+                    "parameters": {"type": "object"},
+                },
+            }
+        ]
+    )
+    assert response.status_code == 503
+    assert all(row["reserved"] == 0 for row in model.models.ledger.counters())
+
+
+def test_parallel_calls_are_rejected_even_if_provider_ignores_control(model):
+    model.provider.tool_calls = [
+        {
+            "id": f"call-{index}",
+            "type": "function",
+            "function": {
+                "name": "documents_read",
+                "arguments": "{}",
+            },
+        }
+        for index in range(2)
+    ]
+    response = model.call(
+        tools=[
+            {
+                "type": "function",
+                "function": {
+                    "name": "documents_read",
+                    "parameters": {"type": "object"},
+                },
+            }
+        ]
+    )
+    assert response.status_code == 503
+    assert "parallel_tool_calls" not in model.provider.calls[0]
+
+
+def test_policy_cannot_approve_an_unregistered_model_alias():
+    with pytest.raises(ValueError):
+        ModelPolicy(aliases=("unregistered",))

@@ -1,0 +1,5 @@
+# Isolated provider adapter, not a gateway dependency.
+litellm[proxy]==1.103.2
+# This proxy version imports Prisma's error types even for invalid master-key auth.
+# No Prisma database or generated client is used by this standalone profile.
+prisma==0.15.0

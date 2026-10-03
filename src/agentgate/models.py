@@ -103,7 +103,10 @@ class PrivateProvider:
     def complete(self, payload: dict[str, JsonValue]) -> bytes:
         with httpx.Client(timeout=self.timeout, trust_env=False, follow_redirects=False) as client:
             with client.stream(
-                "POST", self.url, headers={"Authorization": f"Bearer {self.token}"}, json=payload
+                "POST",
+                self.url,
+                headers={"Authorization": f"Bearer {self.token}", "Accept-Encoding": "identity"},
+                json=payload,
             ) as response:
                 response.raise_for_status()
                 if response.headers.get("content-encoding", "identity") != "identity":
@@ -200,11 +203,18 @@ class ModelService:
         payload = request.model_dump(mode="json", exclude_none=True)
         payload["stream"] = False
         payload.pop("stream_options", None)
+        # Ollama does not accept parallel_tool_calls; enforce the single-call
+        # contract on the returned message instead of silently dropping controls.
+        payload.pop("parallel_tool_calls", None)
         if request.tools is None:
             payload.pop("tool_choice", None)
             payload.pop("parallel_tool_calls", None)
         serialized = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
-        if len(serialized.encode()) > limits.max_input_bytes:
+        try:
+            size = len(serialized.encode())
+        except UnicodeError as error:
+            raise GateError(422, Reason.MALFORMED_REQUEST) from error
+        if size > limits.max_input_bytes:
             raise GateError(413, Reason.BODY_TOO_LARGE)
         inspected = self.inspect(service, context, serialized, incoming=True)
         payload = json.loads(inspected)
@@ -240,12 +250,23 @@ class ModelService:
             names = {tool.function.name for tool in request.tools or []}
             if message.tool_calls and (
                 request.tool_choice == "none"
+                or len(message.tool_calls) > 1
                 or any(call.function.name not in names for call in message.tool_calls)
                 or len({call.id for call in message.tool_calls}) != len(message.tool_calls)
             ):
                 raise GateError(503, Reason.OUTPUT_INVALID)
             if message.content is None and not message.tool_calls:
                 raise GateError(503, Reason.OUTPUT_INVALID)
+            for call in message.tool_calls or []:
+                from agentgate.app import reject_constant, unique_object
+
+                arguments = json.loads(
+                    call.function.arguments,
+                    object_pairs_hook=unique_object,
+                    parse_constant=reject_constant,
+                )
+                if not isinstance(arguments, dict):
+                    raise GateError(503, Reason.OUTPUT_INVALID)
             output = message.model_dump_json(exclude_none=True)
             if len(output.encode()) > policy.output.max_result_bytes:
                 raise GateError(403, Reason.OUTPUT_TOO_LARGE)

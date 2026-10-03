@@ -40,7 +40,7 @@ def initialize_demo(directory: Path) -> None:
             agent_id="demo-reader",
             root_run_id="run-demo",
             roles=("analyst",),
-            operations=("documents.read",),
+            operations=("documents.read", "chat.completions"),
         ),
         time.time() + 3600,
     )
@@ -58,6 +58,8 @@ def main() -> None:
     serve.add_argument("--policy", type=Path, default=Path("config/policy.yaml"))
     serve.add_argument("--port", type=int, default=8000)
     serve.add_argument("--semantic-url")
+    serve.add_argument("--model-url", help="Private loopback LiteLLM base URL, including /v1")
+    serve.add_argument("--model-token-file", type=Path, help="Private upstream credential file")
     serve.add_argument(
         "--semantic-backend", choices=["laya_standard", "laya_coreml"], default="laya_standard"
     )
@@ -115,7 +117,19 @@ def main() -> None:
                 if args.semantic_url
                 else None,
             )
-            uvicorn.run(create_app(service), host="127.0.0.1", port=args.port, access_log=False)
+            models = None
+            if bool(args.model_url) != bool(args.model_token_file):
+                raise ValueError("Model URL and token file must be configured together")
+            if args.model_url:
+                from agentgate.models import ModelService, PrivateProvider
+
+                models = ModelService(
+                    service,
+                    PrivateProvider(args.model_url, args.model_token_file.read_text().strip()),
+                )
+            uvicorn.run(
+                create_app(service, models), host="127.0.0.1", port=args.port, access_log=False
+            )
         elif args.command == "semantic-worker":
             from agentgate.semantic_worker import Supervisor, create_worker
 

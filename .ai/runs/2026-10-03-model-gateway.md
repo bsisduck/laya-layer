@@ -9,11 +9,16 @@ Local proxy integration uses an isolated pinned LiteLLM environment. The local m
 
 ## Progress
 
+PR: #6
+Issue: #9
+
 ### Phase 1: Runtime and contracts
-- [ ] 1.1 Add strict model request/config and atomic resource ledger.
-- [ ] 1.2 Add authenticated model facade, inspection and buffered SSE.
+- [x] 1.1 Add strict model request/config and atomic resource ledger.
+- [x] 1.2 Add authenticated model facade, inspection and buffered SSE.
 
 ### Phase 2: Verification and integration
-- [ ] 2.1 Prove denied paths, races, timeout retention and output withholding.
-- [ ] 2.2 Run real local LiteLLM generation/tool integration and document evidence.
+- [x] 2.1 Prove denied paths, races, timeout retention and output withholding.
+- [x] 2.2 Run real local LiteLLM generation/tool integration and document evidence.
 - [ ] 2.3 Complete validation and independent review, then ready the PR.
+
+Evidence: c83e2d0 introduced the runtime; full gate now passes 204 tests. Real HTTP gateway/private LiteLLM/Ollama/document-tool/result-summary cycle passed, documented in docs/model-gateway.md. Integration with PR17 snapshot/feed contract and independent review remain before release.

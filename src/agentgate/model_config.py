@@ -1,6 +1,6 @@
 """Administrator-owned resource and routing policy; no provider secrets."""
 
-from typing import Annotated
+from typing import Annotated, Literal
 
 from pydantic import Field
 
@@ -16,7 +16,9 @@ class ResourceLimits(Contract):
 
 
 class ModelPolicy(Contract):
-    aliases: tuple[Identifier, ...] = ("local-demo",)
+    aliases: Annotated[tuple[Literal["local-demo"], ...], Field(min_length=1, max_length=1)] = (
+        "local-demo",
+    )
     max_output_tokens: Annotated[int, Field(ge=1, le=4096)] = 256
     max_input_bytes: Annotated[int, Field(ge=64, le=65536)] = 8192
     # Bounded serialized request bytes + this allowance is the reserved input
@@ -30,4 +32,4 @@ class ModelPolicy(Contract):
     output_micro_usd: Amount = 0
     tariff_revision: Identifier = "local-no-invoice-v1"
     # Nonzero tariffs are a simulation, never an assertion about provider billing.
-    simulated_tariff: bool = True
+    simulated_tariff: Literal[True] = True
