@@ -72,8 +72,10 @@ class Store:
                 CREATE TABLE IF NOT EXISTS health_probe (id INTEGER PRIMARY KEY CHECK(id = 1));
             """
                 + budgets.SCHEMA
-                + "PRAGMA user_version=2; COMMIT;"
+                + "PRAGMA user_version=2;"
             )
+            budgets.migrate_root_counters(connection)
+            connection.execute("COMMIT")
         self.path.chmod(0o600)
 
     def issue(self, identity: Identity, expires_at: float) -> str:

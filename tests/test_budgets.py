@@ -264,3 +264,60 @@ def test_failed_migration_is_atomic(harness: Harness, tmp_path, monkeypatch):
         )
     assert legacy.resolve(credential_digest(token), 1000.0) == harness.identity
     assert legacy.events() == [event]
+
+
+def test_delegated_principal_cannot_reset_root_allowance(harness: Harness):
+    enable(harness, root_run=1)
+    assert harness.read().status_code == 200
+    rebind(harness, principal_id="delegate", agent_id="delegated-agent")
+    assert harness.read().status_code == 429
+    assert len(harness.executor.calls) == 1
+
+
+def test_legacy_roots_merge_spend_reservations_and_settle_once(harness: Harness):
+    import json
+
+    enable(harness, root_run=4)
+    assert harness.read().status_code == 200
+    with harness.store.connection() as connection:
+        connection.execute("BEGIN IMMEDIATE")
+        # Seed two legacy principals, one with an unresolved dispatch, alongside
+        # the already spent shared-root account. Keep all real reservation FKs.
+        for principal, reserved, spent in (("parent", 0, 1), ("child", 1, 1)):
+            key = json.dumps(["tenant-a", principal, "run-a"], separators=(",", ":"))
+            connection.execute(
+                "INSERT INTO budget_counters VALUES ('root_run', ?, ?, ?)",
+                (key, reserved, spent),
+            )
+        connection.execute(
+            "INSERT INTO tool_reservations VALUES ('legacy', 'uncertain', 999, 'old:1')"
+        )
+        counters = connection.execute(
+            "SELECT scope, scope_key FROM budget_counters WHERE scope!='root_run'"
+        ).fetchall()
+        for row in counters:
+            connection.execute(
+                "UPDATE budget_counters SET reserved=reserved+1 WHERE scope=? AND scope_key=?",
+                tuple(row),
+            )
+            connection.execute("INSERT INTO reservation_scopes VALUES ('legacy', ?, ?)", tuple(row))
+        connection.execute(
+            "INSERT INTO reservation_scopes VALUES ('legacy', 'root_run', ?)",
+            ('["tenant-a","child","run-a"]',),
+        )
+        budgets.migrate_root_counters(connection)
+        budgets.migrate_root_counters(connection)
+        connection.execute("COMMIT")
+    root = [c for c in harness.store.budget_counters() if c["scope"] == "root_run"]
+    assert root == [
+        {"scope": "root_run", "scope_key": '["tenant-a","run-a"]', "reserved": 1, "spent": 3}
+    ]
+    assert harness.read().status_code == 429
+    with harness.store.connection() as connection:
+        connection.execute("BEGIN IMMEDIATE")
+        budgets.settle(connection, "legacy", uncertain=False)
+        budgets.settle(connection, "legacy", uncertain=False)
+        connection.execute("COMMIT")
+    root = [c for c in harness.store.budget_counters() if c["scope"] == "root_run"]
+    assert root[0]["reserved"] == 0 and root[0]["spent"] == 4
+    assert harness.read().status_code == 429

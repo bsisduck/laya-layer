@@ -60,7 +60,7 @@ def reserve(
         ("principal_day", [identity.tenant_id, identity.principal_id, day], limits.principal_day),
         (
             "root_run",
-            [identity.tenant_id, identity.principal_id, identity.root_run_id],
+            [identity.tenant_id, identity.root_run_id],
             limits.root_run,
         ),
     ]
@@ -83,6 +83,45 @@ def reserve(
             raise BudgetExceeded
         connection.execute(
             "INSERT INTO reservation_scopes VALUES (?, ?, ?)", (action_id, scope, key)
+        )
+
+
+def migrate_root_counters(connection: sqlite3.Connection) -> None:
+    """Fold principal-specific roots without losing spent or unresolved usage.
+
+    The caller owns the write transaction. Keep reservation foreign keys pointing
+    at the summed account so a late settlement charges that same root exactly once.
+    """
+    rows = connection.execute(
+        "SELECT scope_key, reserved, spent FROM budget_counters WHERE scope='root_run'"
+    )
+    for row in rows:
+        try:
+            parts = json.loads(row["scope_key"])
+        except (TypeError, ValueError) as error:
+            raise sqlite3.IntegrityError("Invalid root budget key") from error
+        if (
+            not isinstance(parts, list)
+            or len(parts) not in (2, 3)
+            or not all(isinstance(part, str) for part in parts)
+        ):
+            raise sqlite3.IntegrityError("Invalid root budget key")
+        if len(parts) == 2:
+            continue
+        key = json.dumps([parts[0], parts[2]], separators=(",", ":"))
+        connection.execute(
+            "INSERT INTO budget_counters(scope, scope_key, reserved, spent) "
+            "VALUES ('root_run', ?, ?, ?) ON CONFLICT(scope, scope_key) DO UPDATE SET "
+            "reserved=reserved+excluded.reserved, spent=spent+excluded.spent",
+            (key, row["reserved"], row["spent"]),
+        )
+        connection.execute(
+            "UPDATE reservation_scopes SET scope_key=? WHERE scope='root_run' AND scope_key=?",
+            (key, row["scope_key"]),
+        )
+        connection.execute(
+            "DELETE FROM budget_counters WHERE scope='root_run' AND scope_key=?",
+            (row["scope_key"],),
         )
 
 

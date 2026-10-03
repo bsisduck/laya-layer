@@ -37,7 +37,7 @@ reservations retained. High-risk independent review remains required before rele
 > Convention: `- [ ]` pending, `- [x]` done. Append ` — <commit sha>` when a step lands. Do not rename step titles.
 
 ### Phase 1: Durable authority
-- [ ] 1.1 Preserve legacy root spend while sharing tenant/root counters across principals.
+- [x] 1.1 Preserve legacy root spend while sharing tenant/root counters across principals.
 - [ ] 1.2 Implement strict tools, immutable approvals, idempotency and atomic local outbox.
 
 ### Phase 2: Adapters and verification
