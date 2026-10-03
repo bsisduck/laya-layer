@@ -14,6 +14,7 @@ from starlette.requests import ClientDisconnect
 from agentgate.contracts import ActionRequest, ActionResponse, Reason
 from agentgate.service import ActionService, GateError
 from agentgate.storage import StorageUnavailable
+from agentgate.web_routes import attach_web_routes
 
 
 def unique_object(pairs: list[tuple[str, object]]) -> dict[str, object]:
@@ -137,4 +138,5 @@ def create_app(service: ActionService) -> FastAPI:
             headers=headers,
         )
 
+    attach_web_routes(app)
     return app
