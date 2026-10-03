@@ -75,3 +75,7 @@ def test_assets_in_wheel_and_source_distribution(tmp_path):
     with tarfile.open(next(tmp_path.glob("*.tar.gz"))) as archive:
         names = {name.split("/src/", 1)[-1] for name in archive.getnames()}
         assert required <= names
+
+
+def test_frontend_request_and_state_contracts():
+    subprocess.run(["node", "--test", "tests/frontend/contracts.mjs"], check=True)
