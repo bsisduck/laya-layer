@@ -1,8 +1,9 @@
 # AgentGate development workflow
 
-The current phase is local implementation. `main` is the local base; no project
-remote or CI is configured. GitHub is the selected future tracker, labels are
-disabled, and the QA gate is enabled in `.ai/agentic.config.json`.
+The current phase is prototype implementation in the public
+`bsisduck/laya-sec-agent` repository. `main` is the base. GitHub Actions runs
+`make validate`; GitHub is the tracker, labels are disabled, and the QA gate is
+enabled in `.ai/agentic.config.json`. Public source is not a production release.
 
 ## Delivery flow
 

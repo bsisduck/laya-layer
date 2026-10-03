@@ -1,5 +1,10 @@
 # laya-sec-agent — AgentGate
 
+[![Validate](https://github.com/bsisduck/laya-sec-agent/actions/workflows/validate.yml/badge.svg)](https://github.com/bsisduck/laya-sec-agent/actions/workflows/validate.yml)
+
+[Visual architecture](docs/architecture.md) · [Documentation](docs/README.md) ·
+[Delivery plan and skills](docs/delivery.md)
+
 AgentGate is a policy-enforcement gateway being built for agentic applications.
 The first working slice authenticates document reads, enforces tenant/role/agent
 permissions, filters output, and persists minimized audit events. The complete
@@ -61,8 +66,10 @@ The private `package.json` and npm lockfile belong to development tooling.
 separate environments; see [the inference spike](docs/inference-spike.md).
 
 Read [AGENTS.md](AGENTS.md) and [SDLC.md](SDLC.md) for workflow rules. Local commits
-are automatic; publishing requires an explicit user instruction. There is no
-project Git remote yet.
+are automatic; publishing requires an explicit user instruction. The public
+repository is [bsisduck/laya-sec-agent](https://github.com/bsisduck/laya-sec-agent).
+GitHub Actions runs the same deterministic validation gate on pushes and PRs.
+Real inference remains a separate, hardware-dependent check.
 
 ## Skills and next work
 
