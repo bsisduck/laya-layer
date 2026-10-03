@@ -172,6 +172,7 @@ class MCPAdapter:
 
 def attach_mcp(app: FastAPI, service: ActionService) -> None:
     adapter = MCPAdapter(service)
+    app.state.mcp_enabled = True
     previous = app.router.lifespan_context
 
     @asynccontextmanager

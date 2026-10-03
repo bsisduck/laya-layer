@@ -40,7 +40,7 @@ def initialize_demo(directory: Path) -> None:
             agent_id="demo-reader",
             root_run_id="run-demo",
             roles=("analyst",),
-            operations=("documents.read", "memory.query", "mail.send"),
+            operations=("documents.read", "memory.query", "mail.send", "chat.completions"),
         ),
         time.time() + 3600,
     )
@@ -62,11 +62,20 @@ def main() -> None:
     commands.add_parser(
         "init-demo", help="Create private local state and a one-hour scoped credential"
     )
-    serve = commands.add_parser("serve", help="Serve the scoped tool gateway on loopback")
+    serve = commands.add_parser(
+        "serve", help="Serve the governed model and tool gateway on loopback"
+    )
+    operator = commands.add_parser("init-operator", help="Create a private operator token once")
+    operator.add_argument("--policy", type=Path, default=Path("config/policy.yaml"))
+    serve.add_argument(
+        "--admin-origin", help="Exact operator browser origin; defaults to loopback URL"
+    )
     serve.add_argument("--policy", type=Path, default=Path("config/policy.yaml"))
     serve.add_argument("--port", type=int, default=8000)
     serve.add_argument("--mcp", action="store_true", help="Enable /mcp (install the mcp extra)")
     serve.add_argument("--semantic-url")
+    serve.add_argument("--model-url", help="Private loopback LiteLLM base URL, including /v1")
+    serve.add_argument("--model-token-file", type=Path, help="Private upstream credential file")
     serve.add_argument(
         "--semantic-backend", choices=["laya_standard", "laya_coreml"], default="laya_standard"
     )
@@ -104,6 +113,13 @@ def main() -> None:
             print(
                 "Demo initialized. Scoped credential stored in the private client.token file; expires in one hour."
             )
+        elif args.command == "init-operator":
+            from agentgate.admin import bootstrap_operator
+
+            bootstrap_operator(args.state_dir, load_policy(args.policy))
+            print(
+                "Operator initialized. Credential stored in private operator.token; never shared with agents."
+            )
         elif args.command == "serve":
             policy = load_policy(args.policy)
             store = Store(args.state_dir / "agentgate.sqlite3")
@@ -124,8 +140,23 @@ def main() -> None:
                 if args.semantic_url
                 else None,
             )
+            models = None
+            if bool(args.model_url) != bool(args.model_token_file):
+                raise ValueError("Model URL and token file must be configured together")
+            if args.model_url:
+                from agentgate.models import ModelService, PrivateProvider
+
+                models = ModelService(
+                    service,
+                    PrivateProvider(args.model_url, args.model_token_file.read_text().strip()),
+                )
             uvicorn.run(
-                create_app(service, enable_mcp=args.mcp),
+                create_app(
+                    service,
+                    models=models,
+                    enable_mcp=args.mcp,
+                    admin_origin=args.admin_origin or f"http://127.0.0.1:{args.port}",
+                ),
                 host="127.0.0.1",
                 port=args.port,
                 access_log=False,

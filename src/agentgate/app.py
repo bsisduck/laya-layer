@@ -2,7 +2,7 @@
 
 import asyncio
 import json
-from typing import Annotated, NoReturn
+from typing import TYPE_CHECKING, Annotated, NoReturn
 
 from fastapi import Depends, FastAPI, Request
 from fastapi.responses import JSONResponse
@@ -14,6 +14,9 @@ from starlette.requests import ClientDisconnect
 from agentgate.contracts import ActionRequest, ActionResponse, Reason
 from agentgate.service import ActionService, GateError
 from agentgate.storage import StorageUnavailable
+
+if TYPE_CHECKING:
+    from agentgate.models import ModelService
 
 
 def unique_object(pairs: list[tuple[str, object]]) -> dict[str, object]:
@@ -83,7 +86,13 @@ async def read_body(request: Request, maximum: int, timeout: float) -> bytes:
     return bytes(body)
 
 
-def create_app(service: ActionService, *, enable_mcp: bool = False) -> FastAPI:
+def create_app(
+    service: ActionService,
+    models: "ModelService | None" = None,
+    *,
+    admin_origin: str | None = None,
+    enable_mcp: bool = False,
+) -> FastAPI:
     app = FastAPI(
         title="AgentGate", version="0.1.0", docs_url=None, redoc_url=None, openapi_url=None
     )
@@ -95,7 +104,10 @@ def create_app(service: ActionService, *, enable_mcp: bool = False) -> FastAPI:
 
     @app.get("/health/ready")
     def ready() -> JSONResponse:
-        healthy = service.store.ready() and service.semantic_ready()
+        try:
+            healthy = service.store.ready() and service.semantic_ready()
+        except StorageUnavailable:
+            healthy = False
         return JSONResponse(
             {"status": "ready" if healthy else "not_ready"}, status_code=200 if healthy else 503
         )
@@ -124,7 +136,7 @@ def create_app(service: ActionService, *, enable_mcp: bool = False) -> FastAPI:
                 )
             ):
                 raise GateError(422, Reason.IDENTITY_OVERRIDE)
-            limits = service.policy.ingress
+            limits = service.context_controls(context).policy.ingress
             body = await read_body(request, limits.max_body_bytes, limits.body_timeout_seconds)
             service.digest_payload(context, body)
             action = parse_action(body, limits.max_json_depth)
@@ -151,6 +163,14 @@ def create_app(service: ActionService, *, enable_mcp: bool = False) -> FastAPI:
         from agentgate.mcp_adapter import attach_mcp
 
         attach_mcp(app, service)
+    if models is not None:
+        from agentgate.model_http import attach_model_routes
+
+        attach_model_routes(app, models)
+    if admin_origin is not None:
+        from agentgate.admin import attach_admin_routes
+
+        attach_admin_routes(app, service, origin=admin_origin)
     return app
 
 

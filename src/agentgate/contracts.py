@@ -71,8 +71,11 @@ class Reason(StrEnum):
     POLICY_CHANGED = "POLICY_CHANGED"
     THREAT_FEED_BLOCKED = "THREAT_FEED_BLOCKED"
     RECIPIENT_DOMAIN_NOT_ALLOWED = "RECIPIENT_DOMAIN_NOT_ALLOWED"
-    SECRET_IN_INPUT = "SECRET_IN_INPUT"
+    CONTROLS_CHANGED = "CONTROLS_CHANGED"
     ALLOWED = "ALLOWED"
+    MODEL_NOT_ALLOWED = "MODEL_NOT_ALLOWED"
+    SECRET_IN_INPUT = "SECRET_IN_INPUT"
+    USAGE_INVALID = "USAGE_INVALID"
 
 
 class ActionResponse(Contract):
@@ -122,6 +125,7 @@ class AuditEvent(Contract):
         "invalid_output",
     ]
     semantic: SemanticResult | None = None
+    feed_version: str | None = None
 
 
 class SemanticCoverage(Contract):

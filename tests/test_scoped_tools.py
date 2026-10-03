@@ -434,38 +434,25 @@ def test_operator_hooks_require_exact_fingerprint_and_tenant(tools):
     )
 
 
-def test_pr17_snapshot_binding_inspects_real_unicode_and_checks_transaction(tools, monkeypatch):
-    from dataclasses import dataclass
+def test_live_feed_inspects_unicode_and_invalidates_existing_approval(tools):
+    from agentgate.control_plane import ControlPlane, Indicator, ThreatFeed
 
-    observed = []
-    generation = [1]
-
-    @dataclass(frozen=True)
-    class Snapshot:
-        policy: object
-        generation: int
-
-        def inspect(self, stage, text):
-            observed.append((stage, text))
-            if "niedozwolone żądanie" in text:
-                raise RuntimeError("fixture feed match")
-
-        def assert_current(self, connection):
-            assert connection.in_transaction
-            assert self.generation == generation[0]
-
-    monkeypatch.setattr(tools.service, "controls", object(), raising=False)
-    monkeypatch.setattr(
-        tools.service,
-        "current_controls",
-        lambda: Snapshot(tools.service.policy, generation[0]),
-        raising=False,
-    )
-    monkeypatch.setattr(
-        tools.service,
-        "context_controls",
-        lambda context: tools.service.current_controls(),
-        raising=False,
+    controls = ControlPlane(tools.store, clock=tools.service.clock)
+    controls.initialize(tools.service.policy)
+    tools.service.controls = controls
+    controls.activate_feed(
+        ThreatFeed(
+            revision=2,
+            indicators=(
+                Indicator(
+                    id="unicode",
+                    kind="literal_text",
+                    value="niedozwolone żądanie",
+                    stages=("tool_action", "tool_result"),
+                ),
+            ),
+        ),
+        "local:1",
     )
     assert mail(tools, body="niedozwolone żądanie").status_code == 403
     assert rows(tools, "tool_outbox") == rows(tools, "tool_actions") == []
@@ -473,10 +460,10 @@ def test_pr17_snapshot_binding_inspects_real_unicode_and_checks_transaction(tool
     decide(tools)
     assert resume(tools, action_id).status_code == 200
     assert len(rows(tools, "tool_outbox")) == 1
-    assert any(stage == "tool_result" for stage, _ in observed)
+    assert all(event.feed_version == "local:2" for event in tools.store.events())
     action_id = mail(tools, idempotency_key="generation-change").json()["action_id"]
     decide(tools)
-    generation[0] += 1
+    controls.activate_feed(ThreatFeed(revision=3), "local:2")
     assert resume(tools, action_id).status_code == 403
     assert len(rows(tools, "tool_outbox")) == 1
 
@@ -500,7 +487,7 @@ def test_pr17_changed_snapshot_between_check_and_dispatch_denies(tools, monkeypa
             if self.generation != generation[0]:
                 raise RuntimeError("fixture concurrent activation")
 
-    # Create/approve before attaching the provider; preserve binding=static to
+    # Create/approve before attaching the provider; preserve binding=0 to
     # test the execution-time callback separately from fingerprint invalidation.
     action_id = mail(tools).json()["action_id"]
     decide(tools)
@@ -514,7 +501,7 @@ def test_pr17_changed_snapshot_between_check_and_dispatch_denies(tools, monkeypa
             except RuntimeError as error:
                 raise GateError(409, Reason.POLICY_CHANGED) from error
 
-        return ToolSnapshot(captured.policy, "static", captured.inspect, current)
+        return ToolSnapshot(captured.policy, "0", captured.inspect, current)
 
     tools.service.tools.snapshot_provider = provider
     assert resume(tools, action_id).status_code == 409
