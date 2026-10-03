@@ -77,4 +77,4 @@ PR: #32
 
 - [x] 3.1 Exercise real HTTP gateway ordinary allow, malicious block and hard-control denials. — f503b0f
 - [x] 3.2 Record metrics, raw-report hashes, resource limits and CoreML failure investigation. — f503b0f
-- [ ] 3.3 Run full validation and OM review, publish evidence and ready PR without merging.
+- [x] 3.3 Run full validation and OM review, publish evidence and ready PR without merging. — 14916c5; make validate499, independent review97 focused tests/no blocker or major; final ready/CI recorded on PR32.
