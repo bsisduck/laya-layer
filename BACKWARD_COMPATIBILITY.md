@@ -74,3 +74,8 @@ version-1 frozen corpus/protocol/minimized report described in
 No production endpoint, question, policy, auth or storage contract changes.
 New evaluation versions must preserve earlier labels/provenance; generated
 reports are ignored and output files are never overwritten.
+
+Terminal audit events now prioritize the failing semantic stage. If output
+classification fails after successful input classification, the terminal event
+reports unavailable/invalid output and no stale semantic result; the input result
+remains on dispatch_intent. Enforcement and settled usage are unchanged.

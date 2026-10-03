@@ -12,6 +12,7 @@ from fastapi.testclient import TestClient
 from test_models import model as model
 from test_semantics import result_data
 
+from agentgate.contracts import SemanticResult
 from agentgate.semantic_quota import QuotaExhausted, QuotaUnavailable, SemanticQuota
 from agentgate.semantic_worker import Supervisor, create_worker
 from agentgate.semantics import (
@@ -194,3 +195,33 @@ def test_client_maps_worker_exhaustion_and_validates_status(monkeypatch):
         ).encode(),
     )
     assert client.budget()["status"] == "measured"
+
+
+def test_output_quota_denial_does_not_report_input_classification_as_output(model):
+    class OneClassification:
+        calls = 0
+
+        def ready(self):
+            return True
+
+        def evaluate(self, request_id, content):
+            self.calls += 1
+            if self.calls > 1:
+                raise SemanticBudgetExceeded
+            return SemanticResult.model_validate(result_data() | {"request_id": request_id})
+
+    model.actions.semantic = OneClassification()
+    model.actions.policy = model.actions.policy.model_copy(update={"semantic_required": True})
+    response = model.call()
+    assert response.status_code == 429
+    assert response.json()["executed"] is True
+    assert len(model.provider.calls) == 1
+    intent, terminal = model.store.events()
+    assert intent.semantic_status == "ok"
+    assert intent.semantic is not None
+    assert terminal.event_type == "output_blocked"
+    assert terminal.semantic_status == "unavailable"
+    assert terminal.semantic is None
+    for counter in model.models.ledger.counters():
+        assert counter["reserved"] == 0
+        assert counter["spent"] == {"calls": 1, "tokens": 23, "micro_usd": 0}[counter["resource"]]
