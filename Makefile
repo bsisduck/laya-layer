@@ -2,7 +2,7 @@
 
 setup:
 	npm ci --ignore-scripts
-	uv sync --locked
+	uv sync --locked --extra mcp
 
 validate:
 	python3 .ai/scripts/check_setup.py
@@ -15,10 +15,10 @@ lint:
 	uv run --locked ruff format --check src tests scripts
 
 typecheck:
-	uv run --locked mypy
+	uv run --locked --extra mcp mypy
 
 test:
-	uv run --locked pytest
+	uv run --locked --extra mcp pytest
 
 build:
 	uv build

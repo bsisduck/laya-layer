@@ -165,11 +165,15 @@ One internal credential is deterministically derived with a domain-separated HMA
 from the private audit key and registered once for the fixed demo principal/root.
 Its initial lifetime is 24 hours (greater than the tool owner's maximum 1-hour
 approval TTL). It persists through retry/process restart and is never deleted after
-pending/approved output, exposed to the browser, renewed on expiry, or unrevoked.
-Expiry/revocation denies later proposals/retries. For a fresh demo after expiry,
-initialize a new private demo state explicitly; do not silently reset credentials
-or budget counters. A pending approval can still expire earlier if its credential
-expires; the tool authority must revalidate both.
+pending/approved output, exposed to the browser, automatically renewed, or unrevoked.
+Expiry/revocation denies later proposals/retries. Explicit operator renewal of an
+expired, non-revoked credential creates a new epoch/token and preserves the fixed
+identity and all spend. See [credential-renewal-contract.md](credential-renewal-contract.md)
+for trusted installer hooks and session/CSRF-protected status/renewal routes.
+Tool and model playground credentials have separate epochs. Old credentials and
+old approval bindings remain invalid; a new proposal is required. A pending
+approval can still expire earlier if its credential expires; the tool authority
+must revalidate both.
 
 ### Tools integration reserved routes
 

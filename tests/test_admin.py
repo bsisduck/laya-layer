@@ -55,6 +55,9 @@ PROTECTED = [
     ("POST", "/admin/feed"),
     ("POST", "/admin/playground"),
     ("GET", "/admin/audit/export"),
+    ("GET", "/admin/approvals?tenant_id=tenant-a"),
+    ("GET", "/admin/outbox?tenant_id=tenant-a"),
+    ("POST", "/admin/approvals/act-test/decision"),
 ]
 
 
@@ -298,7 +301,7 @@ def test_metadata_is_minimized_and_export_schema_is_unchanged(admin):
             json={"mode": "document", "document_id": document},
         )
     result = admin.client.get("/admin/overview").json()
-    assert result["counts"] == {"allow": 1, "redact": 1, "deny": 1, "pending": None}
+    assert result["counts"] == {"allow": 1, "redact": 1, "deny": 1, "pending": 0}
     assert result["latency"]["status"] == "unknown"
     assert result["count_window"]["audit_rows"] == 6
     timeline = admin.client.get("/admin/events?limit=2").json()
@@ -350,6 +353,7 @@ def test_admin_query_limits_and_export_selection(admin, path):
 
 
 def test_unavailable_tools_are_explicit_and_real_hook_is_tenant_scoped(admin):
+    admin.gateway.service.tools = None  # Explicitly detached integration.
     admin.login()
     assert admin.client.get("/admin/approvals?tenant_id=tenant-a").status_code == 503
     assert admin.client.get("/admin/outbox?tenant_id=tenant-a").status_code == 503
@@ -516,7 +520,8 @@ def test_stable_playground_credential_expiry_is_never_silently_extended(admin):
 def test_memory_mail_adapters_forward_exact_payload_with_same_internal_credential(
     admin, monkeypatch
 ):
-    # Adapter contract fixture only. Real mail approval/execution belongs to PR19.
+    # Adapter contract fixture only; real effects are covered in test_full_stack.py.
+    admin.gateway.service.tools = None
     from agentgate.contracts import ActionResponse, Reason
 
     admin.login()

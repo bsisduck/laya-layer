@@ -4,7 +4,6 @@ Attach to an existing FastAPI app; no frontend, inference, or agent permission
 is implemented here. The only playground authority is a server-owned demo run.
 """
 
-import base64
 import hashlib
 import hmac
 import json
@@ -24,6 +23,13 @@ from fastapi.routing import APIRoute
 from pydantic import BaseModel, Field, RootModel
 from starlette.concurrency import run_in_threadpool
 
+from agentgate.admin_credentials import (
+    CredentialRenewalError,
+    CredentialStatus,
+    playground_credential,
+    playground_credential_status,
+    renew_playground_credential,
+)
 from agentgate.app import read_body, reject_constant, response_status, unique_object
 from agentgate.audit_export import MAX_SEQUENCE, export_page, format_event
 from agentgate.contracts import (
@@ -32,7 +38,6 @@ from agentgate.contracts import (
     AuditEvent,
     Contract,
     Identifier,
-    Identity,
     Reason,
 )
 from agentgate.control_plane import ControlConflict, ControlPlane, ThreatFeed
@@ -56,6 +61,9 @@ class AdminError(Exception):
 def error_response(error: Exception) -> JSONResponse:
     if isinstance(error, AdminError):
         status, detail = error.status, error.detail
+    elif isinstance(error, CredentialRenewalError):
+        status = 404 if error.reason == "missing" else 403 if error.reason == "revoked" else 409
+        detail = "Credential renewal " + error.reason
     elif isinstance(error, ControlConflict):
         status, detail = 409, "Control version conflict"
     elif isinstance(error, GateError):
@@ -76,6 +84,7 @@ class AdminRoute(APIRoute):
                 return await handler(request)
             except (
                 AdminError,
+                CredentialRenewalError,
                 ControlConflict,
                 GateError,
                 StorageUnavailable,
@@ -154,42 +163,6 @@ class Playground(
     ]
 ):
     pass
-
-
-def playground_credential(service: ActionService, *, model: bool = False) -> str:
-    # Domain-separated derivation keeps the token stable across process restarts
-    # without storing or exposing plaintext. Expired/revoked rows are NOT renewed.
-    token = (
-        base64.urlsafe_b64encode(
-            hmac.new(
-                service.audit_key,
-                b"operator-model-playground-credential-v1"
-                if model
-                else b"operator-playground-credential-v1",
-                hashlib.sha256,
-            ).digest()
-        )
-        .decode("ascii")
-        .rstrip("=")
-    )
-    identity = Identity(
-        principal_id="operator-playground",
-        tenant_id="tenant-a",
-        agent_id="admin-demo",
-        root_run_id="operator-playground",
-        roles=("analyst",),
-        operations=("chat.completions",)
-        if model
-        else ("documents.read", "memory.query", "mail.send"),
-    )
-    with service.store.connection() as db:
-        db.execute("BEGIN IMMEDIATE")
-        db.execute(
-            "INSERT OR IGNORE INTO credentials(digest, identity, expires_at) VALUES (?, ?, ?)",
-            (credential_digest(token), identity.model_dump_json(), service.clock() + 86400),
-        )
-        db.execute("COMMIT")
-    return token
 
 
 @dataclass(frozen=True)
@@ -310,6 +283,11 @@ class OperatorTools(Protocol):
         self, *, tenant_id: str, action_id: str, fingerprint: str, approve: bool, actor: str
     ) -> object: ...
     def outbox(self, *, tenant_id: str, limit: int = 100) -> object: ...
+
+
+class CredentialRenewal(Contract):
+    scope: Literal["tools", "model"]
+    expected_epoch: Annotated[int, Field(ge=0, lt=2147483647)]
 
 
 class ApprovalDecision(Contract):
@@ -506,7 +484,18 @@ def attach_admin_routes(
         query(request, set())
         snapshot = controls.snapshot()
         events = service.store.events(1000)
-        terminal = [event for event in events if event.event_type != "dispatch_intent"]
+        terminal = [
+            event
+            for event in events
+            if event.event_type
+            in ("action_completed", "action_denied", "output_blocked", "execution_failed")
+        ]
+        with service.store.connection() as db:
+            pending = db.execute(
+                "SELECT COUNT(*) FROM tool_actions WHERE state='pending' AND expires_at>?",
+                (service.clock(),),
+            ).fetchone()[0]
+        mcp_enabled = getattr(app.state, "mcp_enabled", False) is True
         models = getattr(app.state, "models", None)
         model_enabled = isinstance(models, ModelService) and snapshot.policy.models is not None
         return {
@@ -525,13 +514,14 @@ def attach_admin_routes(
                     decision: sum(e.decision == decision for e in terminal)
                     for decision in ("allow", "redact", "deny")
                 },
-                "pending": None,
+                "pending": pending,
             },
             "count_window": {
                 "status": "measured",
                 "audit_rows": len(events),
                 "limit": 1000,
                 "scope": "latest audit rows; terminal events only",
+                "pending_scope": "all unexpired pending approval records",
             },
             "budgets": {
                 "status": "measured",
@@ -547,6 +537,8 @@ def attach_admin_routes(
             "services": {
                 "gateway": "ready" if service.store.ready() else "unavailable",
                 "model": "configured" if model_enabled else "not_configured",
+                "scoped_tools": "ready",
+                "mcp": "configured" if mcp_enabled else "not_configured",
                 "semantic": "not_configured"
                 if service.semantic is None
                 else "ready"
@@ -555,11 +547,14 @@ def attach_admin_routes(
             },
             "latency": {"status": "unknown", "reason": "Gateway latency is not recorded"},
             "coverage": {
-                "enforced": ["documents.read"] + (["chat.completions"] if model_enabled else []),
-                "not_implemented": ([] if model_enabled else ["models"])
-                + ["memory", "mail", "approvals", "mcp"],
+                "enforced": ["documents.read", "memory.query", "mail.send"]
+                + (["chat.completions"] if model_enabled else []),
+                "not_implemented": [],
+                "not_configured": ([] if model_enabled else ["models"])
+                + ([] if mcp_enabled else ["mcp"]),
+                "mail_delivery": "local_outbox_fixture",
                 "real_model_evaluation": "not_run",
-                "pending_approvals": "unknown",
+                "pending_approvals": pending,
             },
         }
 
@@ -640,6 +635,24 @@ def attach_admin_routes(
                 error if isinstance(error, GateError) else GateError(503, Reason.AUDIT_UNAVAILABLE),
             )
         return JSONResponse(result.model_dump(mode="json", exclude_none=True), status_code=status)
+
+    @router.get("/playground/credential")
+    def playground_authority(request: Request) -> CredentialStatus:
+        params = query(request, {"scope"})
+        if params.get("scope") not in ("tools", "model"):
+            raise ValueError("Credential scope required")
+        return playground_credential_status(service, model=params["scope"] == "model")
+
+    @router.post("/playground/credential/renew")
+    async def renew_playground_authority(request: Request) -> CredentialStatus:
+        query(request, set())
+        body = await body_model(request, CredentialRenewal, 1024)
+        return await run_in_threadpool(
+            renew_playground_credential,
+            service,
+            model=body.scope == "model",
+            expected_epoch=body.expected_epoch,
+        )
 
     @router.post("/playground")
     async def playground(request: Request) -> Response:

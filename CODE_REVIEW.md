@@ -1,8 +1,8 @@
 # AgentGate review rules
 
-Current runtime scope: document-only REST enforcement, hashed scoped credentials,
-SQLite audit, and local fixture execution. The architecture's other surfaces
-remain proposals. Review the implemented boundary without implying broader coverage.
+Current runtime scope: document/scoped-tool REST and MCP enforcement, hashed
+scoped credentials, SQLite audit/budgets, exact approvals and a local fixture
+outbox. See docs/scoped-tools.md for implemented contracts and integration limits. Review the implemented boundary without implying broader coverage.
 
 - Confirm the change matches the architecture and the task's acceptance criteria.
 - Keep deterministic authorization separate from model confidence. A semantic
