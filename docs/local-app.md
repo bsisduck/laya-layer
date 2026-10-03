@@ -152,7 +152,9 @@ Stop this installation before changing its checkout/runtime. Back up the entire
 private state directory while it is stopped; that includes audit HMAC material,
 credentials, SQLite databases, budgets, approvals, active policy/feed and optional
 semantic quota. Keep backups private. Then run `./laya install` from the updated
-complete checkout using the same state directory. Before additive gateway schema
+complete checkout using the same state directory. A changed source fingerprint
+forces a fresh application wheel even when the package version is unchanged;
+an unchanged fingerprint skips package installation. Before additive gateway schema
 migration, the installer retains a SQLite backup as `data/before-migrate-*.sqlite3`.
 It does not reissue keys, reset spend or overwrite the activated policy/feed.
 
@@ -218,7 +220,20 @@ flowchart LR
 
 `tests/test_lifecycle.py` uses real subprocesses/HTTP and real state provisioning;
 package downloads and Ollama discovery are declared fixtures in isolated install
-unit tests. Those tests are not full application or real-model evidence. The PR's
-clean-install report records the exact integrated checkout and actual HTTP results
-separately. Root owns the final browser/delivery QA. Hermes, enterprise SSO, vendor
+unit tests. Those tests are not full application or real-model evidence. The actual clean-install run at `c5b918e` on macOS arm64 served the bundled UI,
+authenticated an operator session, enforced cross-tenant document denial, queried
+tenant-scoped memory, and committed exactly one approved local outbox message.
+MCP initialization/tool discovery and authenticated `local-demo` discovery passed.
+A prepared restart under `UV_OFFLINE=true` completed in 5.4 seconds, retaining
+credentials, audit rows, budgets, outbox and configuration exactly. This was a
+restart without downloads, not a host network-isolation test. Default port 4000
+correctly refused an existing listener; that run explicitly selected 4002.
+The separate wheel-upgrade regression builds actual wheels with offline uv,
+changes only packaged JavaScript at the same package version, and verifies the
+installed asset changes while authority remains unchanged.
+
+No generation or semantic inference was run for installer evidence. The optional
+standard/CoreML profile preparation paths have fixture/manifest checks; an actual
+heavyweight profile installation was not part of this run. Native Linux launch
+is not claimed by the macOS smoke (Linux CI runs the deterministic suite). Root owns the final browser/delivery QA. Hermes, enterprise SSO, vendor
 certification, network isolation and real semantic evaluation are separate work.

@@ -80,6 +80,14 @@ schema 1 remains unchanged and does not include the new feed field. Admin timeli
 adds feed evidence separately. No remote delivery, model inference, or new tools
 are implied by these contracts.
 
+The additive root `./laya` CLI manages a separately owned installation. Its
+version-1 `installation.json` lives outside the checkout; unknown versions,
+unsafe paths and unowned legacy state are refused. Existing `agentgate` and Make
+commands are retained. Reinstallation preserves credentials/audit/budgets and
+backs up the gateway database before running its additive migration; optional
+worker quota state is retained. See [local lifecycle](docs/local-app.md) for
+ports, exit status, expiry, update and rollback contracts.
+
 Production semantic workers now require a private, persistent per-installation
 call ledger (`semantic-quota.sqlite3`). The default is 1000 admissions per UTC day,
 configurable with `semantic-worker --daily-calls`; retain the ledger during restart.
@@ -88,14 +96,6 @@ The optional internal Supervisor quota parameter preserves fixture/evaluation
 construction; the shipped production command always configures it. Operator
 overview adds measured `budgets.semantic` or an explicit unavailable status.
 See `docs/semantic-call-quota.md` for conservative accounting and cap changes.
-
-The additive root `./laya` CLI manages a separately owned installation. Its
-version-1 `installation.json` lives outside the checkout; unknown versions,
-unsafe paths and unowned legacy state are refused. Existing `agentgate` and Make
-commands are retained. Reinstallation preserves credentials/audit/budgets and
-backs up the gateway database before running its additive migration; optional
-worker quota state is retained. See [local lifecycle](docs/local-app.md) for
-ports, exit status, expiry, update and rollback contracts.
 
 Explicit operator credential renewal adds `operator_credential_epochs` and
 `credential_renewals` without changing schema-2 credentials, budgets, approvals or
