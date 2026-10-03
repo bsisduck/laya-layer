@@ -33,11 +33,13 @@ No auth/enforcement authority lives in JavaScript. Privileged data uses text nod
 
 ## Progress
 
+PR: #20
+
 > Convention: `- [ ]` pending, `- [x]` done. Append ` — <commit sha>` when a step lands. Do not rename step titles.
 
 ### Phase 1: Packaged application
 
-- [ ] 1.1 Package static shell and verify routing
+- [x] 1.1 Package static shell and verify routing — cc74e71
 - [ ] 1.2 Implement session and observation views
 - [ ] 1.3 Implement operator actions and editors
 
