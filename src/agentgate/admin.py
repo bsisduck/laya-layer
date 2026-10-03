@@ -36,6 +36,7 @@ from agentgate.contracts import (
     Reason,
 )
 from agentgate.control_plane import ControlConflict, ControlPlane, ThreatFeed
+from agentgate.models import ChatRequest, ModelService
 from agentgate.policy import Policy
 from agentgate.service import ActionService, GateError
 from agentgate.storage import StorageUnavailable, Store, credential_digest
@@ -138,23 +139,33 @@ class MailPlayground(Contract):
     idempotency_key: Identifier
 
 
+class ModelPlayground(ChatRequest):
+    mode: Literal["model"]
+    stream: Literal[False] = False
+
+
 class Playground(
     RootModel[
         Annotated[
-            DocumentPlayground | MemoryPlayground | MailPlayground, Field(discriminator="mode")
+            DocumentPlayground | MemoryPlayground | MailPlayground | ModelPlayground,
+            Field(discriminator="mode"),
         ]
     ]
 ):
     pass
 
 
-def playground_credential(service: ActionService) -> str:
+def playground_credential(service: ActionService, *, model: bool = False) -> str:
     # Domain-separated derivation keeps the token stable across process restarts
     # without storing or exposing plaintext. Expired/revoked rows are NOT renewed.
     token = (
         base64.urlsafe_b64encode(
             hmac.new(
-                service.audit_key, b"operator-playground-credential-v1", hashlib.sha256
+                service.audit_key,
+                b"operator-model-playground-credential-v1"
+                if model
+                else b"operator-playground-credential-v1",
+                hashlib.sha256,
             ).digest()
         )
         .decode("ascii")
@@ -166,7 +177,9 @@ def playground_credential(service: ActionService) -> str:
         agent_id="admin-demo",
         root_run_id="operator-playground",
         roles=("analyst",),
-        operations=("documents.read", "memory.query", "mail.send"),
+        operations=("chat.completions",)
+        if model
+        else ("documents.read", "memory.query", "mail.send"),
     )
     with service.store.connection() as db:
         db.execute("BEGIN IMMEDIATE")
@@ -493,6 +506,8 @@ def attach_admin_routes(
         snapshot = controls.snapshot()
         events = service.store.events(1000)
         terminal = [event for event in events if event.event_type != "dispatch_intent"]
+        models = getattr(app.state, "models", None)
+        model_enabled = isinstance(models, ModelService) and snapshot.policy.models is not None
         return {
             "policy_version": snapshot.policy.version,
             "feed_version": snapshot.feed.version,
@@ -521,10 +536,13 @@ def attach_admin_routes(
                 "status": "measured",
                 "tool_counters": service.store.budget_counters(1000),
                 "limit": 1000,
-                "model": None,
+                "model": models.ledger.counters()
+                if model_enabled and isinstance(models, ModelService)
+                else None,
             },
             "services": {
                 "gateway": "ready" if service.store.ready() else "unavailable",
+                "model": "configured" if model_enabled else "not_configured",
                 "semantic": "not_configured"
                 if service.semantic is None
                 else "ready"
@@ -533,8 +551,9 @@ def attach_admin_routes(
             },
             "latency": {"status": "unknown", "reason": "Gateway latency is not recorded"},
             "coverage": {
-                "enforced": ["documents.read"],
-                "not_implemented": ["models", "memory", "mail", "approvals", "mcp"],
+                "enforced": ["documents.read"] + (["chat.completions"] if model_enabled else []),
+                "not_implemented": ([] if model_enabled else ["models"])
+                + ["memory", "mail", "approvals", "mcp"],
                 "real_model_evaluation": "not_run",
                 "pending_approvals": "unknown",
             },
@@ -582,6 +601,19 @@ def attach_admin_routes(
 
     def execute_playground(body: Playground) -> Response:
         selection = body.root
+        if isinstance(selection, ModelPlayground):
+            models = getattr(app.state, "models", None)
+            if not isinstance(models, ModelService):
+                raise AdminError(503, "Model provider unavailable")
+            context = service.new_context()
+            try:
+                service.authenticate(context, playground_credential(service, model=True))
+                chat = ChatRequest.model_validate_json(selection.model_dump_json(exclude={"mode"}))
+                service.digest_payload(context, chat.model_dump_json().encode())
+                return JSONResponse(models.complete(context, chat))
+            except (GateError, StorageUnavailable) as error:
+                code, denied = models.reject(context, error)
+                return JSONResponse(denied.model_dump(mode="json", exclude_none=True), code)
         if selection.mode != "document":
             tool_service()  # Explicit unavailable until the real executor is attached.
         context = service.new_context()

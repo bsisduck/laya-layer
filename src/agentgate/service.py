@@ -46,7 +46,7 @@ class Context:
     identity: Identity | None = None
     credential_digest: str | None = None
     payload_digest: str | None = None
-    operation: Literal["documents.read"] | None = None
+    operation: Literal["documents.read", "chat.completions"] | None = None
     executed: bool = False
     semantic: SemanticResult | None = None
     controls: ControlSnapshot | None = None
