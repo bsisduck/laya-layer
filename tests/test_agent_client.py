@@ -156,3 +156,43 @@ def test_repeated_call_ids_stop_without_another_execution():
     with pytest.raises(ClientFailure, match="repeated_call_id"):
         asyncio.run(DirectAgent(fixture).run("read"))
     assert len(fixture.calls) == 2
+
+
+def test_direct_cli_removes_inherited_vendor_operator_and_proxy_credentials(monkeypatch):
+    import os
+
+    from agentgate.agents.direct import scrub_process_environment
+
+    with monkeypatch.context() as context:
+        for key in (
+            "OPENAI_API_KEY",
+            "AGENTGATE_OPERATOR_TOKEN",
+            "HTTP_PROXY",
+            "LITELLM_MASTER_KEY",
+            "AWS_SECRET_ACCESS_KEY",
+        ):
+            context.setenv(key, "synthetic-only")
+        previous = dict(os.environ)
+        try:
+            scrub_process_environment()
+            assert not any(
+                key in os.environ
+                for key in (
+                    "OPENAI_API_KEY",
+                    "AGENTGATE_OPERATOR_TOKEN",
+                    "HTTP_PROXY",
+                    "LITELLM_MASTER_KEY",
+                    "AWS_SECRET_ACCESS_KEY",
+                )
+            )
+        finally:
+            os.environ.clear()
+            os.environ.update(previous)
+
+
+@pytest.mark.parametrize("state", [{}, {"turns": -1}, {"turns": True}, {"turns": 1000}])
+def test_malformed_resume_rejected_before_network(state):
+    fixture = ProtocolFixture()
+    with pytest.raises(ClientFailure, match="invalid_pending_state"):
+        asyncio.run(DirectAgent(fixture).run("", state=state))
+    assert fixture.calls == []

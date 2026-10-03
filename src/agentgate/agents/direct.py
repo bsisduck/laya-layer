@@ -24,6 +24,43 @@ def private_read(path: Path) -> str:
         raise ClientFailure("private_file_unavailable") from error
 
 
+def scrub_process_environment() -> None:
+    """CLI-only: do not carry vendor/operator/proxy credentials into the client."""
+    allowed = {
+        key: value
+        for key, value in os.environ.items()
+        if key in ("PATH", "LANG", "LC_ALL", "LC_CTYPE", "TZ", "PYTHONUTF8", "PYTHONNOUSERSITE")
+    }
+    os.environ.clear()
+    os.environ.update(allowed)
+
+
+def validate_pending_state(state: dict[str, Any], max_turns: int) -> None:
+    try:
+        pending = state["pending"]
+        turns, messages, seen = state["turns"], state["messages"], state["seen"]
+        valid = (
+            type(turns) is int
+            and 1 <= turns < max_turns
+            and isinstance(messages, list)
+            and 1 <= len(messages) <= 60
+            and isinstance(seen, list)
+            and len(seen) == turns
+            and all(isinstance(item, str) for item in seen)
+            and len(set(seen)) == len(seen)
+            and isinstance(pending, dict)
+            and set(pending) == {"action_id", "call_id"}
+            and isinstance(pending["action_id"], str)
+            and messages[-1]["role"] == "assistant"
+            and len(messages[-1]["tool_calls"]) == 1
+            and messages[-1]["tool_calls"][0]["id"] == pending["call_id"] == seen[-1]
+        )
+    except (KeyError, IndexError, TypeError):
+        valid = False
+    if not valid:
+        raise ClientFailure("invalid_pending_state")
+
+
 def save_state(path: Path, state: dict[str, Any]) -> None:
     data = json.dumps(state, ensure_ascii=False)
     if len(data.encode()) > MAX_BYTES:
@@ -57,6 +94,8 @@ class DirectAgent:
         self.max_turns, self.max_tokens = max_turns, max_tokens
 
     async def run(self, prompt: str, *, state: dict[str, Any] | None = None) -> dict[str, Any]:
+        if state is not None:
+            validate_pending_state(state, self.max_turns)
         tools = await self.client.discover()
         status, models, _ = await self.client.request("GET", "/v1/models")
         if status != 200 or self.model not in [m.get("id") for m in models.get("data", [])]:
@@ -150,13 +189,13 @@ async def cli_run(args: argparse.Namespace) -> dict[str, Any]:
         "max_turns": args.max_turns,
         "max_tokens": args.max_tokens,
     }
-    state = None
-    if args.resume:
-        saved = decode(private_read(args.resume))
-        if saved.get("binding") != binding:
-            raise ClientFailure("resume_binding_mismatch")
-        state = saved["state"]
     try:
+        state = None
+        if args.resume:
+            saved = decode(private_read(args.resume))
+            if saved.get("binding") != binding or not isinstance(saved.get("state"), dict):
+                raise ClientFailure("resume_binding_mismatch")
+            state = saved["state"]
         async with asyncio.timeout(300):
             result = await DirectAgent(
                 client,
@@ -194,6 +233,7 @@ def main() -> None:
         help="New private pending-state file; never overwritten",
     )
     args = parser.parse_args()
+    scrub_process_environment()
     try:
         result = asyncio.run(cli_run(args))
     except (ClientFailure, TimeoutError) as error:

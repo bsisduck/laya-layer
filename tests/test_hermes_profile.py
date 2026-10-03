@@ -130,3 +130,37 @@ assert checks == 3
         timeout=10,
     )
     assert result.returncode == 0
+
+
+@pytest.mark.skipif(
+    not os.environ.get("AGENTGATE_HERMES_SOURCE"),
+    reason="Actual upstream Hermes runtime not configured; not an integration pass",
+)
+def test_actual_hermes_explicit_approved_reinvocation_is_one_effect(live_agent_gateway):
+    from test_scoped_tools import decide, rows
+
+    tools, provider, model, origin = live_agent_gateway
+    tools.service.policy = tools.service.policy.model_copy(
+        update={"output": tools.service.policy.output.model_copy(update={"redact_emails": False})}
+    )
+    provider.operation = "mail_send"
+    provider.arguments = {
+        "recipient": "a@demo.internal",
+        "subject": "Review",
+        "body": "Exact approved",
+        "idempotency_key": "hermes-approved",
+    }
+    source = Path(os.environ["AGENTGATE_HERMES_SOURCE"])
+    first = run_hermes(source, origin, tools.token, "Send this exact mail")
+    assert first["status"] == "pending_approval"
+    assert rows(tools, "tool_outbox") == []
+    decide(tools)
+    second = run_hermes(source, origin, tools.token, "Send this exact mail")
+    assert second["status"] == "completed"
+    assert len(rows(tools, "tool_outbox")) == 1
+    assert len(provider.calls) == 3
+    assert all(e.root_run_id == tools.identity.root_run_id for e in tools.store.events())
+    assert any(
+        c["scope"] == "root_run" and c["resource"] == "calls" and c["spent"] == 3
+        for c in model.ledger.counters()
+    )

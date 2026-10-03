@@ -197,6 +197,14 @@ class GatewayClient:
         )
         if status != 200:
             raise ClientFailure(f"model_rejected_{status}_no_retry")
+        self.traces[-1]["trace_id"] = data.get("agentgate", {}).get("trace_id")
+        calls = data.get("choices", [{}])[0].get("message", {}).get("tool_calls") or []
+        self.traces[-1]["tool_call_ids"] = [call.get("id") for call in calls]
+        self.traces[-1]["tool_result_ids"] = [
+            message["tool_call_id"]
+            for message in payload.get("messages", [])
+            if message.get("role") == "tool"
+        ]
         return data
 
     async def execute(

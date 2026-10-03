@@ -133,6 +133,7 @@ class ModelTransport(httpx.BaseTransport):
             calls = returned["choices"][0]["message"].get("tool_calls") or []
             self.trace[-1]["tool_call_ids"] = [c["id"] for c in calls]
             self.trace[-1]["completion_id"] = returned.get("id")
+            self.trace[-1]["trace_id"] = returned.get("agentgate", {}).get("trace_id")
             return httpx.Response(200, json=returned, request=request)
         except httpx.HTTPError:
             raise ProfileStop("model_transport_failed_no_retry") from None
