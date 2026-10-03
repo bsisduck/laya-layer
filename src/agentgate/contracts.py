@@ -61,8 +61,18 @@ class Reason(StrEnum):
     OUTPUT_TOO_LARGE = "OUTPUT_TOO_LARGE"
     SECRET_IN_OUTPUT = "SECRET_IN_OUTPUT"
     EMAIL_REDACTED = "EMAIL_REDACTED"
+    REQUIRES_APPROVAL = "REQUIRES_APPROVAL"
+    APPROVAL_DENIED = "APPROVAL_DENIED"
+    APPROVAL_EXPIRED = "APPROVAL_EXPIRED"
+    APPROVAL_APPROVED = "APPROVAL_APPROVED"
+    ACTION_NOT_FOUND = "ACTION_NOT_FOUND"
+    IDEMPOTENCY_CONFLICT = "IDEMPOTENCY_CONFLICT"
+    APPROVAL_MISMATCH = "APPROVAL_MISMATCH"
+    POLICY_CHANGED = "POLICY_CHANGED"
     THREAT_FEED_BLOCKED = "THREAT_FEED_BLOCKED"
+    RECIPIENT_DOMAIN_NOT_ALLOWED = "RECIPIENT_DOMAIN_NOT_ALLOWED"
     CONTROLS_CHANGED = "CONTROLS_CHANGED"
+    SEMANTIC_BUDGET_EXCEEDED = "SEMANTIC_BUDGET_EXCEEDED"
     ALLOWED = "ALLOWED"
     MODEL_NOT_ALLOWED = "MODEL_NOT_ALLOWED"
     SECRET_IN_INPUT = "SECRET_IN_INPUT"
@@ -70,20 +80,29 @@ class Reason(StrEnum):
 
 
 class ActionResponse(Contract):
-    status: Literal["completed", "denied", "error"]
+    status: Literal["completed", "denied", "error", "pending_approval", "approved", "expired"]
     action_id: str
     trace_id: str
-    decision: Literal["allow", "redact", "deny"]
+    decision: Literal["allow", "redact", "deny", "require_approval"]
     reason_codes: tuple[Reason, ...]
     policy_version: str
     executed: bool
-    result: dict[str, str] | None = None
+    result: dict[str, JsonValue] | None = None
+    approval_id: str | None = None
+    action_state: Literal["pending", "approved", "denied", "expired", "consumed"] | None = None
+    expires_at: float | None = None
 
 
 class AuditEvent(Contract):
     event_id: str
     event_type: Literal[
-        "action_denied", "dispatch_intent", "action_completed", "output_blocked", "execution_failed"
+        "action_denied",
+        "dispatch_intent",
+        "action_completed",
+        "output_blocked",
+        "execution_failed",
+        "action_pending",
+        "approval_decided",
     ]
     timestamp: float
     action_id: str
@@ -91,8 +110,8 @@ class AuditEvent(Contract):
     principal_id: str | None
     tenant_id: str | None
     root_run_id: str | None
-    operation: Literal["documents.read", "chat.completions"] | None
-    decision: Literal["allow", "redact", "deny"]
+    operation: Literal["documents.read", "memory.query", "mail.send", "chat.completions"] | None
+    decision: Literal["allow", "redact", "deny", "require_approval"]
     reason_codes: tuple[Reason, ...]
     policy_version: str
     payload_digest: str | None

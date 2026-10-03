@@ -23,6 +23,17 @@ that projection. Cursor metadata is emitted on stderr; it records local scan
 progress, not downstream delivery. See `docs/audit-export.md` for scope and
 snapshot semantics. No public HTTP endpoint or storage migration is added.
 
+`agentgate-telemetry` adds local send/status/collector commands and the operator-only
+`telemetry_status(source, config)` hook. Existing CLI/routes/config and audit
+schemas are unchanged; `export_page(require_contiguous=False)` preserves default
+file export behavior while the sender explicitly requires contiguous scans. A
+private version-1 sidecar stores one bounded batch/cursor/retry state; the separate
+contract collector owns its own version-1 receipt/scope database. No gateway
+migration is required. Preserve source and sidecars together on normal restarts;
+source relocation/replacement or tenant/destination changes require deliberate
+operator reconciliation. See `docs/telemetry-delivery.md` for wire contracts,
+restart/rollback limits and additive root integration for newer audit variants.
+
 The current operational contracts are `make setup`, `make validate`, `make doctor`,
 `make harness`, Python lint/type/test/build commands, local demo commands, and the
 upstream configuration formats under `.ai/`. Keep their
@@ -36,6 +47,16 @@ For a used contract, incompatible changes require a consumer update, migration o
 versioning plan as appropriate, and tests. Never silently change identity,
 authorization, or accounting semantics to preserve apparent compatibility.
 
+Scoped tools add optional `scoped_tools` policy defaults, memory/mail audit operation
+and event variants, `require_approval`, and optional approval/state/expiry fields
+on ActionResponse. Results can include structured memory rows; existing document
+result fields are preserved. Exact underscored aliases are newly supported.
+`docs/scoped-tools.md` specifies REST/MCP, trusted operator hooks and migration.
+Schema 2 gains scoped-tool tables with their own version marker. Readiness requires
+the additive migration and tenant+root accounting layout; old binaries must remain
+stopped. Existing credentials keep their old scopes; only newly initialized demo
+credentials include memory/mail. `make setup`/`make validate` install/use the locked
+MCP extra for typechecking and wire tests; base package runtime remains optional.
 E01-S01 adds the separately authenticated `/admin/*` contract documented in
 `docs/control-plane-contract.md`. `attach_admin_routes` is reusable; `create_app`
 accepts optional keyword `admin_origin`. `agentgate init-operator` bootstraps a
@@ -58,3 +79,40 @@ responses retain their shape and add denial reasons `THREAT_FEED_BLOCKED` and
 schema 1 remains unchanged and does not include the new feed field. Admin timeline
 adds feed evidence separately. No remote delivery, model inference, or new tools
 are implied by these contracts.
+
+Production semantic workers now require a private, persistent per-installation
+call ledger (`semantic-quota.sqlite3`). The default is 1000 admissions per UTC day,
+configurable with `semantic-worker --daily-calls`; retain the ledger during restart.
+Worker exhaustion adds HTTP429 and gateway reason `SEMANTIC_BUDGET_EXCEEDED`.
+The optional internal Supervisor quota parameter preserves fixture/evaluation
+construction; the shipped production command always configures it. Operator
+overview adds measured `budgets.semantic` or an explicit unavailable status.
+See `docs/semantic-call-quota.md` for conservative accounting and cap changes.
+
+Explicit operator credential renewal adds `operator_credential_epochs` and
+`credential_renewals` without changing schema-2 credentials, budgets, approvals or
+audit/export. Epoch zero retains the original tool/model playground HMAC tokens.
+Only an explicit trusted operator action may replace expired non-revoked rows;
+old rows remain revoked, identities/root spend are unchanged, and existing
+approvals cannot transfer to the new token. New admin routes and trusted installer
+hooks are documented in `docs/credential-renewal-contract.md`. Older binaries do
+not understand renewed epochs; stop serving before rollback and preserve all
+credential/epoch/history/budget tables. Do not reset state to recover expiry.
+
+E04-S01 adds the offline `scripts/semantic_evaluate.py run|compare` CLI and
+version-1 frozen corpus/protocol/minimized report described in
+`docs/semantic-evaluation.md`. It imports the unchanged content-role-v1 engine.
+No production endpoint, question, policy, auth or storage contract changes.
+New evaluation versions must preserve earlier labels/provenance; generated
+reports are ignored and output files are never overwritten.
+
+Terminal audit events now prioritize the failing semantic stage. If output
+classification fails after successful input classification, the terminal event
+reports unavailable/invalid output and no stale semantic result; the input result
+remains on dispatch_intent. Enforcement and settled usage are unchanged.
+
+The additive `agentgate-artifacts` local operator CLI accepts bounded JSON metadata,
+an exact approved registry and an active or supplied threat feed. Exit 0 means
+metadata accepted, 2 means policy denial, and 1 means invalid input. JSON output
+explicitly reports simulation and unverified/unexecuted artifact bytes. It adds no
+agent tool authority or download path; see [artifact intake](docs/artifact-intake.md).

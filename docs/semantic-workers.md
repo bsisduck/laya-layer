@@ -109,6 +109,8 @@ reports and [original loading evidence](inference-spike.md).
 
 The deterministic suite uses declared worker fixtures and actual subprocesses
 for lifecycle failures; it does not download models in CI. Real standard/CoreML
-HTTP checks are separate. Held-out calibration, task/action mismatch, multiple
-windows, and persistent inference-token/time quotas remain to build. Tool call
+HTTP checks are separate. The [frozen real evaluation](semantic-evaluation.md) now measures v1 quality and
+resources, including poor benign handling and a CoreML warm-call timeout.
+Calibration, task/action mismatch, multiple windows, and persistent
+inference-token/time quotas remain to build. Tool call
 limits and worker concurrency/deadlines already bound this document demo's work.

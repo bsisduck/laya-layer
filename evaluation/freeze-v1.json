@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "files": {
+    "evaluation/semantic-heldout-v1.json": "40a9efa421337c7a4fb27f036ac87311089b6bc8f0da533bb7296dfdc08c3d4e",
+    "evaluation/protocol-v1.json": "e3bde11878a89ebd8d690c4e610a8f2420281fda09b5f81675a1dd5dcf949b9d",
+    "src/agentgate/inference_engine.py": "a360ff3a38ac17ddb00419f6a3616400b41a2ec4b808c34bcdf9a3183202dbd3",
+    "manifests/model-assets.json": "9ad63fa5da9d01a4671b20fd5ad48ae2e5c7a40858f9939c59280fe802397d2b",
+    "requirements/laya-standard.txt": "912ad37b3cfb9293aef469c2668b0cc6e116e62e0c2fc91bd1b0da53e23c9303",
+    "requirements/laya-coreml.txt": "cd0c4083fe8b649db525a1acbbfe18ab4222a97363caa1f6cf5b4992a3f22c26"
+  }
+}

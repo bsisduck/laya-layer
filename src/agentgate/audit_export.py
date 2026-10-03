@@ -72,6 +72,8 @@ def format_event(event: AuditEvent, sequence: int, format: ExportFormat) -> dict
         event_type, outcome = "start", "unknown"
     elif event.event_type == "execution_failed":
         event_type, outcome = "error", "unknown"
+    elif event.decision == "require_approval":
+        event_type, outcome = "info", "unknown"
     elif event.decision == "deny":
         event_type, outcome = "denied", "failure"
     else:
@@ -105,6 +107,7 @@ def export_page(
     after_sequence: int = 0,
     through_sequence: int | None = None,
     limit: int = 100,
+    require_contiguous: bool = False,
 ) -> ExportPage:
     if (
         type(limit) is not int
@@ -140,6 +143,11 @@ def export_page(
             "WHERE sequence > ? AND sequence <= ? ORDER BY sequence LIMIT ?",
             (MAX_EVENT_BYTES, after_sequence, through, limit),
         ).fetchall()
+        if require_contiguous and (
+            any(row[0] != after_sequence + index + 1 for index, row in enumerate(rows))
+            or (len(rows) < limit and after_sequence + len(rows) != through)
+        ):
+            raise StorageUnavailable
         lines = []
         for sequence, event_id, body in rows:
             if body is None:
