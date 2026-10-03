@@ -61,7 +61,7 @@ push ready PR with exact deterministic/API evidence and inference exclusions.
 
 ### Phase 2: Operator APIs
 
-- [ ] 2.1 Implement authenticated APIs and private operator bootstrap
+- [x] 2.1 Implement authenticated APIs and private operator bootstrap
 - [ ] 2.2 Verify boundary behavior and document compatibility
 
 ### Phase 3: Verify and publish

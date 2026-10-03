@@ -76,7 +76,7 @@ async def read_body(request: Request, maximum: int, timeout: float) -> bytes:
     return bytes(body)
 
 
-def create_app(service: ActionService) -> FastAPI:
+def create_app(service: ActionService, *, admin_origin: str | None = None) -> FastAPI:
     app = FastAPI(
         title="AgentGate", version="0.1.0", docs_url=None, redoc_url=None, openapi_url=None
     )
@@ -88,7 +88,10 @@ def create_app(service: ActionService) -> FastAPI:
 
     @app.get("/health/ready")
     def ready() -> JSONResponse:
-        healthy = service.store.ready() and service.semantic_ready()
+        try:
+            healthy = service.store.ready() and service.semantic_ready()
+        except StorageUnavailable:
+            healthy = False
         return JSONResponse(
             {"status": "ready" if healthy else "not_ready"}, status_code=200 if healthy else 503
         )
@@ -137,4 +140,8 @@ def create_app(service: ActionService) -> FastAPI:
             headers=headers,
         )
 
+    if admin_origin is not None:
+        from agentgate.admin import attach_admin_routes
+
+        attach_admin_routes(app, service, origin=admin_origin)
     return app
