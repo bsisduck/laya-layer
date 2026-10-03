@@ -1,116 +1,116 @@
-# laya-sec-agent — AgentGate
+# Laya Sec Layer — AgentGate
 
 [![Validate](https://github.com/bsisduck/laya-sec-agent/actions/workflows/validate.yml/badge.svg)](https://github.com/bsisduck/laya-sec-agent/actions/workflows/validate.yml)
 
-[Visual architecture](docs/architecture.md) · [Documentation](docs/README.md) ·
-[Delivery plan and skills](docs/delivery.md)
+[Architecture](docs/architecture.md) · [Quickstart](docs/local-app.md) ·
+[Demo runbook](docs/demo-runbook.md) · [T01–T48 evidence](docs/acceptance.md) ·
+[Challenge mapping](docs/challenge-alignment.md) · [Documentation](docs/README.md)
 
-AgentGate is a policy-enforcement gateway being built for agentic applications.
-The first working slice authenticates document reads, enforces tenant/role/agent
-permissions, filters output, and persists minimized audit events. The complete
-target design is in [the architecture](AgentGate_Full_Project_Architecture.md).
+Laya Sec Layer governs model requests and registered tool execution through one
+AgentGate policy boundary. It authenticates identity, enforces tenant/role/model
+permissions and budgets, filters supported text, requires exact mail approval and
+records minimized evidence before releasing output. Laya is an optional local
+semantic signal; its predictions never grant permissions.
 
-**Status: scoped-tool enforcement prototype.** Atomic call budgets and authenticated
-standard Laya / native CoreML workers are implemented. The optional semantic
-profile inspects document results before release; classification is experimental.
-Scoped memory queries, exact mail approvals/local outbox, and official-SDK MCP are
-implemented; see [scoped tools](docs/scoped-tools.md). Model routing, Hermes, and
-the integrated operator dashboard remain separate delivery work.
-The product is also referred to as **Laya Sec Layer**. See the
-[challenge coverage](docs/challenge-alignment.md) and
-[enterprise integration design](docs/enterprise-integrations.md) for the supplied
-PDF requirements and proposed bank-stack connections. Local event export is
-implemented; live vendor and bank integrations are not yet verified.
+**Status: local full-stack prototype in release integration, not a production
+release.** The release branch contains the gateway, packaged operator dashboard,
+live policy/feed controls, scoped REST/MCP tools, private LiteLLM/Ollama model
+routing, persistent budgets and local telemetry delivery. Open installer,
+artifact, restricted-agent, semantic-v2 and release PRs have separate integration
+and review states; see the [commit/PR evidence ledger](docs/release-evidence.md).
+Cezar is development orchestration, separate from the product.
 
-## Install the local application
+## Run the local application
+
+Use a complete checkout on macOS/Linux, `uv`, and an already running local
+Ollama with the exact `llama3.2:1b` digest in
+[the generation manifest](manifests/generation-model.json). Initial preparation
+needs network access or complete dependency/model caches. Then:
 
 ```sh
-./laya install  # locked Python runtimes, private state, then http://127.0.0.1:8080/
+./laya install
 ./laya status
+```
+
+Open the printed operator URL (default **http://127.0.0.1:8080/**) and log in
+locally with the private `data/operator.token` file at the printed state path.
+Credentials are never printed by the launcher. Agent and operator authority are
+separate. Default state is `~/.local/share/laya`; ports are gateway 8080, private
+proxy 4000, local contract collector 8095, and optional semantic worker 8091.
+An occupied port fails; the launcher does not evict its owner or stop shared Ollama.
+For a second installation, choose a new private state directory and unused ports:
+
+```sh
+./laya install --state-dir "$HOME/.local/share/laya-demo" \
+  --port 8082 --proxy-port 4002 --collector-port 8096
+```
+
+Use the operator playground to read `tenant-a-notes` (allow),
+`tenant-b-notes` (deny before execution), `tenant-a-contact` (email redacted),
+and `tenant-a-leak` (read executed, output withheld). Memory is tenant scoped.
+An internal mail proposal remains pending until exact operator approval and
+resubmission; it creates one **local fixture outbox** row, never SMTP mail.
+Model alias `local-demo` uses local generation; returned tool calls are proposals.
+
+```sh
 ./laya stop
+./laya start    # prepared offline restart; shared Ollama must still be available
+./laya logs
+./laya doctor   # readiness/tooling, not inference accuracy or enforcement evidence
 ```
 
-Requires uv and the verified local Ollama model. The installed application needs
-no Node or Cezar. Read [getting started and lifecycle](docs/local-app.md) for
-prerequisites, credential file locations, optional Laya/CoreML, offline restart,
-upgrades and known limits. Use a complete integrated application checkout.
+See [installation, backup and explicit credential renewal](docs/local-app.md)
+and [the five-minute demo](docs/demo-runbook.md). Restart preserves authority,
+spend and policy. It does not renew expired/revoked credentials or reset budgets.
 
-## Run the document demo
+## Evidence and limitations
 
-```sh
-make setup
-make demo-init   # once: private .agentgate/ state; one-hour tenant-A credential
-make serve      # http://127.0.0.1:8000
-```
+- Deterministic tests assert dispatch, outbox, ledger and audit effects. The
+  [acceptance runner](docs/acceptance.md) maps the original 48 scenarios to real
+  tests, frozen evaluation cases, pending work or explicit gaps.
+- Semantic inspection is **off by default**. Standard Laya and native Apple
+  CoreML have real loading/integration evidence, but quality is experimental.
+  Frozen v1: 7/26 correct on each backend, all 16 benign cases withheld, and a
+  failed CoreML warm run. Pending v2: 15/28 standard, 16/28 CoreML, with false
+  positives and missed malicious paraphrases. See [semantic evidence](docs/release-evidence.md#real-semantic-evidence-remains-imperfect).
+- JSONL, ECS-oriented records and Splunk HEC envelopes are local exports.
+  Actual delivery uses **Laya local HTTP contract collector v1**, at least once
+  with event-ID deduplication. [Vendor adapters and bank deployments](docs/enterprise-integrations.md)
+  remain unverified; no SOC/vendor certification is claimed.
+- Local financial tariffs are simulated zero; quotas still consume calls/tokens.
+  Unknown provider consumption retains reservations. Native same-user loopback
+  operation trusts the host and does not prevent direct upstream access.
+- Supported email redaction and `AGENTGATE_SECRET[...]` blocking are bounded
+  examples, not general DLP or universal prompt-injection protection.
 
-In a second terminal:
-
-```sh
-uv run agentgate demo-read                     # allowed; records intent and outcome
-uv run agentgate demo-read tenant-b-notes      # denied before execution
-uv run agentgate demo-read tenant-a-contact    # email redacted before release
-uv run agentgate demo-read tenant-a-leak       # synthetic secret withheld after read
-uv run agentgate audit                         # minimized local event records
-uv run agentgate budgets                       # reserved and spent tool attempts
-uv run agentgate audit-export --tenant tenant-a --format ecs  # one local export page
-```
-
-Denied reads exit with code 1. Credentials are written with mode 0600 and never
-printed by initialization. The SQLite credential table stores only their digest
-and server-owned identity. `init-demo` refuses to overwrite existing state. For a
-fresh session, use `--state-dir .agentgate/session-2` before each subcommand.
-
-The partial policy lives in `config/policy.yaml`; restart to apply changes.
-Use [the semantic worker runbook](docs/semantic-workers.md) to run real Laya or
-CoreML inspection. A required but unavailable worker fails readiness and dispatch.
-The output scanner covers the explicit synthetic marker
-`AGENTGATE_SECRET[...]` and a bounded email pattern; it is not general DLP.
-The loopback demo assumes trusted host processes and registered fixture executors.
-See [the implemented contract](docs/document-slice.md) for precise boundaries.
-The [export runbook](docs/audit-export.md) covers formats, privacy and resumable pages.
-Existing schema-1 state needs the [budget migration](docs/budgets.md#upgrading-existing-local-state)
-before starting this version. Fresh demo initialization needs no migration.
+The [full architecture](AgentGate_Full_Project_Architecture.md) is the original
+specification. Implementation and measured evidence are tracked separately.
 
 ## Development
 
-Node 20+ runs the Cezar development harness; Python 3.12 is the application
-runtime. From this directory:
+Python 3.12 runs the gateway; Node 20+ is only needed for development checks and
+the Cezar harness. Locked gateway and model/proxy environments stay separate.
 
 ```sh
-make setup       # install locked Python and development tooling
-make validate    # config, lock, lint, format, typing, tests, and package build
-make doctor      # inspect host tools and installed Open Mercato skills
-make harness     # start Cezar; select the agentgate-local workflow
+make setup
+make validate     # config, lock, lint/format, typing, deterministic tests, packaging
+uv run --locked python scripts/acceptance_matrix.py --check
+uv run --locked python scripts/acceptance_matrix.py --run
+make doctor
+make harness      # optional Cezar cockpit on 4322; does not start product tasks
 ```
 
-Cezar opens at http://localhost:4322, with project-local workspace state under
-the ignored `.ai/cezar/home/`. If that port is in use, run
-`npm run harness -- --port 4323`. The runner is Codex using its existing login and
-native model configuration. The launcher disables background automations and
-child-task dispatch. No coding task starts merely by opening the cockpit.
-Work done directly in a Codex chat is not automatically a Cezar task. Use
-`make harness-verify` to record a real validation run in its Tasks view; see
-[where progress appears](docs/cezar.md). Local task history is intentionally
-excluded from Git; a fresh checkout starts with an empty cockpit.
+`--run` executes mapped control checks and writes ignored evidence. It does not
+run heavyweight inference, pretend semantic fixtures prove accuracy, or execute
+unmerged agent/artifact code. Real semantic, local-generation and browser
+integration reports must name the tested commit separately.
 
-The private `package.json` and npm lockfile belong to development tooling.
-`pyproject.toml` and `uv.lock` define the gateway. Real Laya loading checks use
-separate environments; see [the inference spike](docs/inference-spike.md).
+The lower-level document demo remains available through `make demo-init`,
+`make serve`, `uv run --locked agentgate demo-read` (port 8000); see
+[its contract](docs/document-slice.md). It is separate from the installed app.
 
-Read [AGENTS.md](AGENTS.md) and [SDLC.md](SDLC.md) for workflow rules. Local commits
-are automatic; publishing requires an explicit user instruction. The public
-repository is [bsisduck/laya-sec-agent](https://github.com/bsisduck/laya-sec-agent).
-GitHub Actions runs the same deterministic validation gate on pushes and PRs.
-Real inference remains a separate, hardware-dependent check.
-
-## Skills and next work
-
-The Cezar catalog uses [Open Mercato skills](https://github.com/open-mercato/skills)
-at the commit in `.ai/cezar/config.json`. Codex and Claude Code can also use the
-globally installed collection. `make doctor` checks local coverage; machine
-installations are separate from the pinned Cezar catalog.
-
-See [readiness](docs/readiness.md) for verified tools and remaining prerequisites,
-and [the first implementation slice](.ai/specs/implementation-start.md) for the
-next task. Optional product discovery is available through
-`om-setup-discovery-pipeline`.
+Read [AGENTS.md](AGENTS.md) and [SDLC.md](SDLC.md). Working commits are local;
+pushes, PRs, tags, remote changes and messages require explicit user instruction.
+[Open Mercato skills](https://github.com/open-mercato/skills) support development
+review and QA. Their installation, setup checks and Cezar task counts are not
+AgentGate delivery or real-model evaluation.
