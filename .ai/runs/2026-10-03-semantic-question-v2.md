@@ -59,16 +59,18 @@ Independent review remains required before integration/release.
 
 ## Progress
 
+PR: #32
+
 > Convention: `- [ ]` pending, `- [x]` done. Append ` — <commit sha>` when a step lands. Do not rename step titles.
 
 ### Phase 1: Versioned contract
 
-- [ ] 1.1 Bind v1/v2 across engine, result validation, authenticated worker/client and CLI.
-- [ ] 1.2 Add consuming-boundary tests and compatibility/protocol documentation.
+- [x] 1.1 Bind v1/v2 across engine, result validation, authenticated worker/client and CLI. — b466537
+- [x] 1.2 Add consuming-boundary tests and compatibility/protocol documentation. — b466537
 
 ### Phase 2: Frozen evaluation
 
-- [ ] 2.1 Version the existing runner and freeze a new 26+ case EN/PL corpus and protocol.
+- [x] 2.1 Version the existing runner and freeze a new 26+ case EN/PL corpus and protocol. — b466537
 - [ ] 2.2 Run standard CPU then native CoreML once under the frozen protocol; preserve all failures.
 
 ### Phase 3: Application and delivery evidence
