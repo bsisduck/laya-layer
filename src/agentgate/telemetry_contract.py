@@ -7,6 +7,7 @@ import json
 import os
 import re
 import stat
+from datetime import datetime
 from pathlib import Path
 from typing import Annotated, Literal
 from urllib.parse import urlsplit
@@ -81,6 +82,13 @@ class ProjectedEvent(Contract):
     policy_version: Text
     executed: bool
     semantic_status: Text
+
+    @field_validator("timestamp")
+    @classmethod
+    def utc_timestamp(cls, value: str) -> str:
+        if not value.endswith("Z") or datetime.fromisoformat(value).utcoffset() is None:
+            raise ValueError("Expected UTC timestamp")
+        return value
 
 
 class Batch(Contract):

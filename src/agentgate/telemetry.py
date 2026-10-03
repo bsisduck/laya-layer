@@ -207,6 +207,8 @@ class Sender:
     def stage(self, state: DeliveryState) -> DeliveryState:
         source_position(self.source, state)
         if state.pending:
+            if len(state.pending.model_dump_json().encode()) > self.config.batch_bytes:
+                raise ValueError("Pending batch exceeds configured capacity")
             return state
         limit = self.config.batch_events
         while True:
@@ -324,6 +326,19 @@ class Sender:
                 pass
 
 
+def sender_running(source: Path) -> bool:
+    try:
+        stream = source.resolve().with_suffix(".telemetry.lock").open("rb")
+    except FileNotFoundError:
+        return False
+    with stream:
+        try:
+            fcntl.flock(stream, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            return True
+        return False
+
+
 def telemetry_status(source: Path, config: TelemetryConfig) -> dict[str, object]:
     """Read-only operator hook; caller MUST enforce admin auth. No credentials needed."""
     try:
@@ -332,6 +347,7 @@ def telemetry_status(source: Path, config: TelemetryConfig) -> dict[str, object]
         lag = maximum - state.cursor
         return {
             "enabled": True,
+            "sender_running": sender_running(source),
             "status": "backpressure"
             if lag >= config.backlog_high_watermark
             else "retrying"

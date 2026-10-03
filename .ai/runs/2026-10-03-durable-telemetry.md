@@ -49,11 +49,11 @@ PR: #21
 
 ### Phase 1: Sender
 
-- [x] 1.1 Implement durable bounded sender and contract tests
+- [x] 1.1 Implement durable bounded sender and contract tests — d59ea0a
 
 ### Phase 2: Collector and operator commands
 
-- [ ] 2.1 Add contract collector and CLI lifecycle
+- [x] 2.1 Add contract collector and CLI lifecycle
 
 ### Phase 3: Evidence and handoff
 
