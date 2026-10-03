@@ -108,3 +108,16 @@ The owner requested GPT-6.1-Sol for execution. Cezar's live catalog exposes it;
 subsequent docs and integrated artifact-review tasks explicitly use that model.
 Native prior runs finish on their existing model. Final integration review/CI and
 remaining agent/document delivery are still required before product release.
+
+At f6bccde, the complete executable installed browser suite also passed with
+`--model`, including the real provider response and durable attempt accounting.
+An independently prepared standard/v2 installation passed offline reprepare and
+four-service startup. Its actual browser released ordinary notes, withheld the
+embedded-instruction document output (`SEMANTIC_BLOCKED`, read executed), and
+refused cross-tenant access before execution. Semantic quota advanced from 0 to
+2 of 1000; all owned semantic-QA processes were stopped afterwards. This does not
+replace the held-out quality evaluation or claim that all attacks are detected.
+
+PR28 artifact intake merged after GPT-6.1-Sol independent exact-head review:
+548 deterministic tests plus 56 negative probes, both CI checks green. Its
+metadata-only simulator adds no artifact execution/download permission.
