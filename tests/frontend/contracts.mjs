@@ -79,3 +79,17 @@ test('filters preserve actual events, editor errors and server-owned identity', 
   assert.deepEqual(playgroundBody('document', {document_id: 'notes'}, 'key'), {mode: 'document', document_id: 'notes'});
   assert.equal(playgroundBody('mail', {recipient: 'a@demo.internal'}, 'retry-key').idempotency_key, 'retry-key');
 });
+
+test('live ladder filters preserve unknown and overlapping control associations', async () => {
+  const {eventContext} = await import('../../src/agentgate/web/threats.js');
+  const context = {schema_version: 1, taxonomy_version: 'laya-threat-v1', candidate_levels: [], level_status: 'unknown', layers: ['identity', 'data'], owasp: ['LLM06:2025', 'ASI03:2026']};
+  const denied = {decision: 'deny', threat_context: context};
+  const old = {decision: 'allow'};
+  assert.deepEqual(filterEvents([denied, old], '', '', 'unknown'), [denied, old]);
+  for (const level of ['L0','L1','L2','L3','L4','L5']) assert.deepEqual(filterEvents([denied,old], '', '', level), []);
+  assert.deepEqual(filterEvents([denied,old], '', '', '', 'data'), [denied]);
+  assert.deepEqual(filterEvents([denied,old], 'allow', '', '', 'identity'), []);
+  assert.equal(eventContext({...denied, threat_context: {...context, candidate_levels: ['L5']}}).level_status, 'unknown');
+  assert.deepEqual(eventContext({...denied, threat_context: {...context, schema_version: 99}}).layers, []);
+  assert.deepEqual(eventContext({threat_context: {...context, layers: ['<script>', 'input']}}).layers, ['input']);
+});

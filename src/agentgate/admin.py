@@ -46,6 +46,7 @@ from agentgate.policy import Policy
 from agentgate.semantics import SemanticClient
 from agentgate.service import ActionService, GateError
 from agentgate.storage import StorageUnavailable, Store, credential_digest
+from agentgate.threat_taxonomy import taxonomy, threat_context
 
 COOKIE = "agentgate_operator"
 SESSION_SECONDS = 900
@@ -468,6 +469,11 @@ def attach_admin_routes(
             "refresh": "operator-managed",
         }
 
+    @router.get("/threat-taxonomy")
+    def threat_taxonomy(request: Request) -> dict[str, object]:
+        query(request, set())
+        return dict(taxonomy())
+
     @router.get("/events")
     def events(request: Request) -> dict[str, object]:
         params = query(request, {"limit"})
@@ -483,7 +489,8 @@ def attach_admin_routes(
                 raise StorageUnavailable
             event = AuditEvent.model_validate_json(row["event"])
             records.append(
-                format_event(event, row["sequence"], "jsonl") | {"feed_version": event.feed_version}
+                format_event(event, row["sequence"], "jsonl")
+                | {"feed_version": event.feed_version, "threat_context": threat_context(event)}
             )
         return {"events": records, "control_events": controls.events(limit)}
 

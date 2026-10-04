@@ -827,3 +827,10 @@ footer {
 table {
   min-width:460px;
 }
+
+.threat-ladder {list-style: none; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; counter-reset: none;}
+.threat-ladder li {border-left: 3px solid var(--accent, #6bcbb2); padding: .5rem 1rem; background: rgba(255,255,255,.02);}
+.threat-ladder h3 {margin: 0; font-size: 1rem;}
+.threat-ladder p, .table-wrap .footnote {overflow-wrap: anywhere;}
+.filters {flex-wrap: wrap;}
+@media (max-width: 700px) {.threat-ladder {grid-template-columns: 1fr;}}
