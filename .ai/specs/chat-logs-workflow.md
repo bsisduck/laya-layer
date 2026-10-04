@@ -23,7 +23,8 @@ identity with a compact editorial header, history rail and readable process map.
   a step opens its implementation/gap detail. Actions splits read checks from
   consequential writes and destructive/irreversible proposals. Hard denies are
   final; a separate red “Destructive / undeclared” branch states
-  “Blocked · no reviewed executor”; permitted exact approval precedes server revalidation/dispatch. Reads
+  “Blocked · no reviewed executor”; permitted exact approval precedes server
+  revalidation/dispatch. Reads
   require scope and checks. Undeclared operations are denied, unimplemented.
 - All old hashes/query routes survive, with the correct primary parent active.
   Native links preserve keyboard and browser history. Dirty editors confirm
@@ -31,7 +32,8 @@ identity with a compact editorial header, history rail and readable process map.
   private state; recovery does not retry mutations. No backend contracts change.
 - Workflow associates GDPR Articles 9/22 with scoped access, filtering, exact
   review and audit, without claiming compliance or sensitive-category detection.
-  Existing AI Act/DORA/OWASP evidence remains reachable. Articles 20/30 distinguish subject portability from organizational RoPA.
+  Existing AI Act/DORA/OWASP evidence remains reachable. Articles 20/30 distinguish
+  subject portability from organizational RoPA.
   Audit JSONL is not portability; technical logs are not a complete RoPA.
 
 ## States and recovery
@@ -56,7 +58,9 @@ outside this change. Legal associations link official sources, not certification
 ## Acceptance and validation
 
 All three top links visible at 360/390/768/1440px; no page overflow; keyboard,
-aria-current, deep links and back/forward work. Contracts cover grouping, complete
+aria-current, actual deep-route titles and back/forward work. Modified Ctrl/Meta
+clicks retain native defaults without losing dirty edits; ordinary active-link
+activation retains discard/focus behavior. Contracts cover grouping, complete
 example metadata and hard-deny/approval semantics. Installed browser tests verify
 case switches cause zero protected calls; real logs and error/empty/loading;
 layer details and branches; dirty-policy/session recovery. Existing installed HR,
