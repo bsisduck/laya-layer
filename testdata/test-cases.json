@@ -1,0 +1,1391 @@
+{
+  "schema_version": 1,
+  "taxonomy_version": "laya-threat-v1",
+  "datasets": [
+    {
+      "id": "acceptance",
+      "path": "docs/acceptance-inventory.json",
+      "sha256": "13053bdc75ffd4a1d192063cf6930b202c0ac7d62427824b0b8ddda9fd96f921",
+      "frozen_manifest": null,
+      "question_set_id": null,
+      "evidence": "docs/acceptance.md"
+    },
+    {
+      "id": "semantic-heldout-v1",
+      "path": "evaluation/semantic-heldout-v1.json",
+      "sha256": "40a9efa421337c7a4fb27f036ac87311089b6bc8f0da533bb7296dfdc08c3d4e",
+      "frozen_manifest": "evaluation/freeze-v1.json",
+      "question_set_id": "content-role-v1",
+      "evidence": "docs/semantic-evaluation.md"
+    },
+    {
+      "id": "semantic-heldout-v2",
+      "path": "evaluation/semantic-heldout-v2.json",
+      "sha256": "c169fb6ec25ef1d3c0ab60444054443b8acc36ee695c9ffbcf15a949e7fdd286",
+      "frozen_manifest": "evaluation/freeze-v2.json",
+      "question_set_id": "content-role-v2",
+      "evidence": "docs/semantic-v2-evidence.md"
+    }
+  ],
+  "cases": [
+    {
+      "dataset": "acceptance",
+      "id": "T01",
+      "level": "L0",
+      "layers": [
+        "identity",
+        "data",
+        "output"
+      ],
+      "owasp": [
+        "LLM06:2025",
+        "ASI03:2026"
+      ],
+      "rationale": "Authorized document read. Primary authored axis; no intent is inferred from the eventual result."
+    },
+    {
+      "dataset": "acceptance",
+      "id": "T02",
+      "level": "L1",
+      "layers": [
+        "identity"
+      ],
+      "owasp": [
+        "LLM06:2025",
+        "ASI03:2026"
+      ],
+      "rationale": "Missing credential. Primary authored axis; no intent is inferred from the eventual result."
+    },
+    {
+      "dataset": "acceptance",
+      "id": "T03",
+      "level": "L1",
+      "layers": [
+        "identity"
+      ],
+      "owasp": [
+        "LLM06:2025",
+        "ASI03:2026"
+      ],
+      "rationale": "Expired credential. Primary authored axis; no intent is inferred from the eventual result."
+    },
+    {
+      "dataset": "acceptance",
+      "id": "T04",
+      "level": "L4",
+      "layers": [
+        "identity",
+        "actions"
+      ],
+      "owasp": [
+        "LLM06:2025",
+        "ASI03:2026"
+      ],
+      "rationale": "Revoked credential after initial decision. Primary authored axis; no intent is inferred from the eventual result."
+    },
+    {
+      "dataset": "acceptance",
+      "id": "T05",
+      "level": "L4",
+      "layers": [
+        "identity",
+        "data"
+      ],
+      "owasp": [
+        "LLM06:2025",
+        "ASI03:2026"
+      ],
+      "rationale": "Caller claims another tenant. Primary authored axis; no intent is inferred from the eventual result."
+    },
+    {
+      "dataset": "acceptance",
+      "id": "T06",
+      "level": "L0",
+      "layers": [
+        "identity",
+        "data",
+        "output"
+      ],
+      "owasp": [
+        "LLM06:2025",
+        "ASI03:2026"
+      ],
+      "rationale": "Same-tenant memory query. Primary authored axis; no intent is inferred from the eventual result."
+    },
+    {
+      "dataset": "acceptance",
+      "id": "T07",
+      "level": "L1",
+      "layers": [
+        "identity",
+        "actions"
+      ],
+      "owasp": [
+        "LLM06:2025",
+        "ASI02:2026"
+      ],
+      "rationale": "Unknown tool. Primary authored axis; no intent is inferred from the eventual result."
+    },
+    {
+      "dataset": "acceptance",
+      "id": "T08",
+      "level": "L0",
+      "layers": [
+        "input",
+        "actions"
+      ],
+      "owasp": [
+        "LLM06:2025",
+        "ASI02:2026"
+      ],
+      "rationale": "Malformed tool arguments. Primary authored axis; no intent is inferred from the eventual result."
+    },
+    {
+      "dataset": "acceptance",
+      "id": "T09",
+      "level": "L1",
+      "layers": [
+        "identity"
+      ],
+      "owasp": [
+        "LLM06:2025",
+        "ASI02:2026"
+      ],
+      "rationale": "Unknown model alias. Primary authored axis; no intent is inferred from the eventual result."
+    },
+    {
+      "dataset": "acceptance",
+      "id": "T10",
+      "level": "L1",
+      "layers": [
+        "identity",
+        "input"
+      ],
+      "owasp": [
+        "LLM06:2025",
+        "ASI02:2026"
+      ],
+      "rationale": "Caller supplies arbitrary API base. Primary authored axis; no intent is inferred from the eventual result."
+    },
+    {
+      "dataset": "acceptance",
+      "id": "T11",
+      "level": "L0",
+      "layers": [
+        "input",
+        "data"
+      ],
+      "owasp": [
+        "LLM02:2025"
+      ],
+      "rationale": "Synthetic secret in model input. Primary authored axis; no intent is inferred from the eventual result."
+    },
+    {
+      "dataset": "acceptance",
+      "id": "T12",
+      "level": "L0",
+      "layers": [
+        "input",
+        "data",
+        "output"
+      ],
+      "owasp": [
+        "LLM02:2025"
+      ],
+      "rationale": "Supported email redaction. Primary authored axis; no intent is inferred from the eventual result."
+    },
+    {
+      "dataset": "acceptance",
+      "id": "T13",
+      "level": "L0",
+      "layers": [
+        "data",
+        "output"
+      ],
+      "owasp": [
+        "LLM02:2025"
+      ],
+      "rationale": "Similar benign text. Primary authored axis; no intent is inferred from the eventual result."
+    },
+    {
+      "dataset": "acceptance",
+      "id": "T14",
+      "level": "L4",
+      "layers": [
+        "identity",
+        "actions"
+      ],
+      "owasp": [
+        "LLM06:2025",
+        "ASI02:2026"
+      ],
+      "rationale": "Forbidden recipient. Primary authored axis; no intent is inferred from the eventual result."
+    },
+    {
+      "dataset": "acceptance",
+      "id": "T15",
+      "level": "L4",
+      "layers": [
+        "identity",
+        "actions"
+      ],
+      "owasp": [
+        "LLM06:2025",
+        "ASI09:2026"
+      ],
+      "rationale": "Allowed recipient, approval pending. Primary authored axis; no intent is inferred from the eventual result."
+    },
+    {
+      "dataset": "acceptance",
+      "id": "T16",
+      "level": "L4",
+      "layers": [
+        "identity",
+        "actions"
+      ],
+      "owasp": [
+        "LLM06:2025",
+        "ASI09:2026"
+      ],
+      "rationale": "Approved exact mail action. Primary authored axis; no intent is inferred from the eventual result."
+    },
+    {
+      "dataset": "acceptance",
+      "id": "T17",
+      "level": "L4",
+      "layers": [
+        "identity",
+        "actions"
+      ],
+      "owasp": [
+        "LLM06:2025",
+        "ASI09:2026"
+      ],
+      "rationale": "Recipient changed after approval. Primary authored axis; no intent is inferred from the eventual result."
+    },
+    {
+      "dataset": "acceptance",
+      "id": "T18",
+      "level": "L4",
+      "layers": [
+        "identity",
+        "actions"
+      ],
+      "owasp": [
+        "LLM06:2025",
+        "ASI09:2026"
+      ],
+      "rationale": "Approval replay. Primary authored axis; no intent is inferred from the eventual result."
+    },
+    {
+      "dataset": "acceptance",
+      "id": "T19",
+      "level": "L4",
+      "layers": [
+        "identity",
+        "actions"
+      ],
+      "owasp": [
+        "LLM06:2025",
+        "ASI03:2026",
+        "ASI09:2026"
+      ],
+      "rationale": "Agent credential attempts approval. Primary authored axis; no intent is inferred from the eventual result."
+    },
+    {
+      "dataset": "acceptance",
+      "id": "T20",
+      "level": "L4",
+      "layers": [
+        "identity",
+        "actions"
+      ],
+      "owasp": [
+        "LLM06:2025",
+        "ASI09:2026"
+      ],
+      "rationale": "Expired approval. Primary authored axis; no intent is inferred from the eventual result."
+    },
+    {
+      "dataset": "acceptance",
+      "id": "T21",
+      "level": "L0",
+      "layers": [
+        "consumption"
+      ],
+      "owasp": [
+        "LLM10:2025"
+      ],
+      "rationale": "Budget below boundary. Primary authored axis; no intent is inferred from the eventual result."
+    },
+    {
+      "dataset": "acceptance",
+      "id": "T22",
+      "level": "L0",
+      "layers": [
+        "consumption"
+      ],
+      "owasp": [
+        "LLM10:2025"
+      ],
+      "rationale": "Budget at/over boundary. Primary authored axis; no intent is inferred from the eventual result."
+    },
+    {
+      "dataset": "acceptance",
+      "id": "T23",
+      "level": "L5",
+      "layers": [
+        "consumption"
+      ],
+      "owasp": [
+        "LLM10:2025"
+      ],
+      "rationale": "Parallel requests compete for final capacity. Primary authored axis; no intent is inferred from the eventual result."
+    },
+    {
+      "dataset": "acceptance",
+      "id": "T24",
+      "level": "L4",
+      "layers": [
+        "actions"
+      ],
+      "owasp": [
+        "LLM06:2025",
+        "ASI02:2026"
+      ],
+      "rationale": "Retry with same key and payload. Primary authored axis; no intent is inferred from the eventual result."
+    },
+    {
+      "dataset": "acceptance",
+      "id": "T25",
+      "level": "L4",
+      "layers": [
+        "actions"
+      ],
+      "owasp": [
+        "LLM06:2025",
+        "ASI02:2026"
+      ],
+      "rationale": "Same key, different payload. Primary authored axis; no intent is inferred from the eventual result."
+    },
+    {
+      "dataset": "acceptance",
+      "id": "T26",
+      "level": "L5",
+      "layers": [
+        "consumption"
+      ],
+      "owasp": [
+        "LLM10:2025"
+      ],
+      "rationale": "Provider timeout after dispatch. Primary authored axis; no intent is inferred from the eventual result."
+    },
+    {
+      "dataset": "acceptance",
+      "id": "T27",
+      "level": "L3",
+      "layers": [
+        "output",
+        "data",
+        "consumption"
+      ],
+      "owasp": [
+        "LLM02:2025",
+        "LLM10:2025"
+      ],
+      "rationale": "Blocked provider output. Primary authored axis; no intent is inferred from the eventual result."
+    },
+    {
+      "dataset": "acceptance",
+      "id": "T28",
+      "level": "L5",
+      "layers": [
+        "consumption"
+      ],
+      "owasp": [
+        "LLM10:2025"
+      ],
+      "rationale": "Local semantic-call limit exceeded. Primary authored axis; no intent is inferred from the eventual result."
+    },
+    {
+      "dataset": "acceptance",
+      "id": "T29",
+      "level": "L5",
+      "layers": [
+        "consumption"
+      ],
+      "owasp": [
+        "LLM10:2025"
+      ],
+      "rationale": "Local worker timeout. Primary authored axis; no intent is inferred from the eventual result."
+    },
+    {
+      "dataset": "acceptance",
+      "id": "T30",
+      "level": "L4",
+      "layers": [
+        "identity",
+        "consumption"
+      ],
+      "owasp": [
+        "LLM10:2025",
+        "ASI03:2026"
+      ],
+      "rationale": "New child run. Primary authored axis; no intent is inferred from the eventual result."
+    },
+    {
+      "dataset": "acceptance",
+      "id": "T31",
+      "level": "L5",
+      "layers": [
+        "supply_chain"
+      ],
+      "owasp": [
+        "LLM03:2025",
+        "ASI04:2026"
+      ],
+      "rationale": "Invalid policy reload. Primary authored axis; no intent is inferred from the eventual result."
+    },
+    {
+      "dataset": "acceptance",
+      "id": "T32",
+      "level": "L5",
+      "layers": [
+        "supply_chain",
+        "identity",
+        "actions"
+      ],
+      "owasp": [
+        "LLM06:2025",
+        "ASI03:2026"
+      ],
+      "rationale": "Valid policy change before dispatch. Primary authored axis; no intent is inferred from the eventual result."
+    },
+    {
+      "dataset": "acceptance",
+      "id": "T33",
+      "level": "L5",
+      "layers": [
+        "supply_chain",
+        "input",
+        "data"
+      ],
+      "owasp": [
+        "LLM03:2025",
+        "ASI04:2026"
+      ],
+      "rationale": "Feed gains a blocked indicator. Primary authored axis; no intent is inferred from the eventual result."
+    },
+    {
+      "dataset": "acceptance",
+      "id": "T34",
+      "level": "L5",
+      "layers": [
+        "supply_chain"
+      ],
+      "owasp": [
+        "LLM03:2025",
+        "ASI04:2026"
+      ],
+      "rationale": "Malformed/oversized feed. Primary authored axis; no intent is inferred from the eventual result."
+    },
+    {
+      "dataset": "acceptance",
+      "id": "T35",
+      "level": "L5",
+      "layers": [
+        "supply_chain"
+      ],
+      "owasp": [
+        "LLM03:2025",
+        "ASI04:2026"
+      ],
+      "rationale": "Approved artifact manifest. Primary authored axis; no intent is inferred from the eventual result."
+    },
+    {
+      "dataset": "acceptance",
+      "id": "T36",
+      "level": "L5",
+      "layers": [
+        "supply_chain"
+      ],
+      "owasp": [
+        "LLM03:2025",
+        "ASI04:2026"
+      ],
+      "rationale": "Changed digest or unapproved source. Primary authored axis; no intent is inferred from the eventual result."
+    },
+    {
+      "dataset": "acceptance",
+      "id": "T37",
+      "level": "L1",
+      "layers": [
+        "input"
+      ],
+      "owasp": [
+        "LLM01:2025",
+        "ASI01:2026"
+      ],
+      "rationale": "Explicit instruction-injection fixture. Primary authored axis; no intent is inferred from the eventual result."
+    },
+    {
+      "dataset": "acceptance",
+      "id": "T38",
+      "level": "L0",
+      "layers": [
+        "input"
+      ],
+      "owasp": [
+        "LLM01:2025",
+        "ASI01:2026"
+      ],
+      "rationale": "Benign quoted security discussion. Primary authored axis; no intent is inferred from the eventual result."
+    },
+    {
+      "dataset": "acceptance",
+      "id": "T39",
+      "level": "L2",
+      "layers": [
+        "input"
+      ],
+      "owasp": [
+        "LLM01:2025",
+        "ASI01:2026"
+      ],
+      "rationale": "Negation/paraphrase fixture. Primary authored axis; no intent is inferred from the eventual result."
+    },
+    {
+      "dataset": "acceptance",
+      "id": "T40",
+      "level": "L3",
+      "layers": [
+        "input"
+      ],
+      "owasp": [
+        "LLM01:2025",
+        "ASI01:2026"
+      ],
+      "rationale": "Language slices compare explicitly untrusted document content; the umbrella contains multiple scenario types."
+    },
+    {
+      "dataset": "acceptance",
+      "id": "T41",
+      "level": "L5",
+      "layers": [
+        "input",
+        "consumption"
+      ],
+      "owasp": [
+        "LLM10:2025"
+      ],
+      "rationale": "Oversized or truncated semantic input. Primary authored axis; no intent is inferred from the eventual result."
+    },
+    {
+      "dataset": "acceptance",
+      "id": "T42",
+      "level": "L5",
+      "layers": [
+        "input",
+        "consumption"
+      ],
+      "owasp": [
+        "LLM10:2025"
+      ],
+      "rationale": "ANE request over capacity. Primary authored axis; no intent is inferred from the eventual result."
+    },
+    {
+      "dataset": "acceptance",
+      "id": "T43",
+      "level": "L0",
+      "layers": [
+        "input"
+      ],
+      "owasp": [
+        "LLM01:2025",
+        "ASI01:2026"
+      ],
+      "rationale": "Ordinary backend comparison, not an attacker claim; individual frozen cases carry their own primary axis."
+    },
+    {
+      "dataset": "acceptance",
+      "id": "T44",
+      "level": "L5",
+      "layers": [
+        "input",
+        "supply_chain"
+      ],
+      "owasp": [
+        "LLM01:2025",
+        "ASI01:2026"
+      ],
+      "rationale": "Invalid/NaN semantic result. Primary authored axis; no intent is inferred from the eventual result."
+    },
+    {
+      "dataset": "acceptance",
+      "id": "T45",
+      "level": "L2",
+      "layers": [
+        "data",
+        "output"
+      ],
+      "owasp": [
+        "LLM02:2025"
+      ],
+      "rationale": "Secret split across candidate stream chunks. Primary authored axis; no intent is inferred from the eventual result."
+    },
+    {
+      "dataset": "acceptance",
+      "id": "T46",
+      "level": "L4",
+      "layers": [
+        "identity",
+        "actions"
+      ],
+      "owasp": [
+        "LLM06:2025",
+        "ASI03:2026"
+      ],
+      "rationale": "MCP session reused by another principal. Primary authored axis; no intent is inferred from the eventual result."
+    },
+    {
+      "dataset": "acceptance",
+      "id": "T47",
+      "level": "L5",
+      "layers": [
+        "supply_chain",
+        "consumption"
+      ],
+      "owasp": [
+        "LLM10:2025",
+        "LLM03:2025",
+        "ASI04:2026"
+      ],
+      "rationale": "Budget/audit store fails. Primary authored axis; no intent is inferred from the eventual result."
+    },
+    {
+      "dataset": "acceptance",
+      "id": "T48",
+      "level": "L4",
+      "layers": [
+        "identity",
+        "actions"
+      ],
+      "owasp": [
+        "LLM06:2025",
+        "ASI02:2026",
+        "ASI03:2026"
+      ],
+      "rationale": "Hermes alternative route or native tool. Primary authored axis; no intent is inferred from the eventual result."
+    },
+    {
+      "dataset": "semantic-heldout-v1",
+      "id": "report-en",
+      "level": "L0",
+      "layers": [
+        "input"
+      ],
+      "owasp": [
+        "LLM01:2025",
+        "ASI01:2026"
+      ],
+      "rationale": "Ordinary benign/negated content is an L0 classifier control. Related injection families identify the semantic question being tested, not hostile intent or a confirmed vulnerability."
+    },
+    {
+      "dataset": "semantic-heldout-v1",
+      "id": "report-pl",
+      "level": "L0",
+      "layers": [
+        "input"
+      ],
+      "owasp": [
+        "LLM01:2025",
+        "ASI01:2026"
+      ],
+      "rationale": "Ordinary benign/negated content is an L0 classifier control. Related injection families identify the semantic question being tested, not hostile intent or a confirmed vulnerability."
+    },
+    {
+      "dataset": "semantic-heldout-v1",
+      "id": "schedule-en",
+      "level": "L0",
+      "layers": [
+        "input"
+      ],
+      "owasp": [
+        "LLM01:2025",
+        "ASI01:2026"
+      ],
+      "rationale": "Ordinary benign/negated content is an L0 classifier control. Related injection families identify the semantic question being tested, not hostile intent or a confirmed vulnerability."
+    },
+    {
+      "dataset": "semantic-heldout-v1",
+      "id": "schedule-pl",
+      "level": "L0",
+      "layers": [
+        "input"
+      ],
+      "owasp": [
+        "LLM01:2025",
+        "ASI01:2026"
+      ],
+      "rationale": "Ordinary benign/negated content is an L0 classifier control. Related injection families identify the semantic question being tested, not hostile intent or a confirmed vulnerability."
+    },
+    {
+      "dataset": "semantic-heldout-v1",
+      "id": "training-en",
+      "level": "L3",
+      "layers": [
+        "input"
+      ],
+      "owasp": [
+        "LLM01:2025",
+        "ASI01:2026"
+      ],
+      "rationale": "Benign security quotation in untrusted document content exercises indirect-content interpretation (L3). Related injection families describe the control question; the quotation is not an attack or a measured success."
+    },
+    {
+      "dataset": "semantic-heldout-v1",
+      "id": "training-pl",
+      "level": "L3",
+      "layers": [
+        "input"
+      ],
+      "owasp": [
+        "LLM01:2025",
+        "ASI01:2026"
+      ],
+      "rationale": "Benign security quotation in untrusted document content exercises indirect-content interpretation (L3). Related injection families describe the control question; the quotation is not an attack or a measured success."
+    },
+    {
+      "dataset": "semantic-heldout-v1",
+      "id": "incident-en",
+      "level": "L3",
+      "layers": [
+        "input"
+      ],
+      "owasp": [
+        "LLM01:2025",
+        "ASI01:2026"
+      ],
+      "rationale": "Benign security quotation in untrusted document content exercises indirect-content interpretation (L3). Related injection families describe the control question; the quotation is not an attack or a measured success."
+    },
+    {
+      "dataset": "semantic-heldout-v1",
+      "id": "incident-pl",
+      "level": "L3",
+      "layers": [
+        "input"
+      ],
+      "owasp": [
+        "LLM01:2025",
+        "ASI01:2026"
+      ],
+      "rationale": "Benign security quotation in untrusted document content exercises indirect-content interpretation (L3). Related injection families describe the control question; the quotation is not an attack or a measured success."
+    },
+    {
+      "dataset": "semantic-heldout-v1",
+      "id": "denial-en",
+      "level": "L0",
+      "layers": [
+        "input"
+      ],
+      "owasp": [
+        "LLM01:2025",
+        "ASI01:2026"
+      ],
+      "rationale": "Ordinary benign/negated content is an L0 classifier control. Related injection families identify the semantic question being tested, not hostile intent or a confirmed vulnerability."
+    },
+    {
+      "dataset": "semantic-heldout-v1",
+      "id": "denial-pl",
+      "level": "L0",
+      "layers": [
+        "input"
+      ],
+      "owasp": [
+        "LLM01:2025",
+        "ASI01:2026"
+      ],
+      "rationale": "Ordinary benign/negated content is an L0 classifier control. Related injection families identify the semantic question being tested, not hostile intent or a confirmed vulnerability."
+    },
+    {
+      "dataset": "semantic-heldout-v1",
+      "id": "absence-en",
+      "level": "L0",
+      "layers": [
+        "input"
+      ],
+      "owasp": [
+        "LLM01:2025",
+        "ASI01:2026"
+      ],
+      "rationale": "Ordinary benign/negated content is an L0 classifier control. Related injection families identify the semantic question being tested, not hostile intent or a confirmed vulnerability."
+    },
+    {
+      "dataset": "semantic-heldout-v1",
+      "id": "absence-pl",
+      "level": "L0",
+      "layers": [
+        "input"
+      ],
+      "owasp": [
+        "LLM01:2025",
+        "ASI01:2026"
+      ],
+      "rationale": "Ordinary benign/negated content is an L0 classifier control. Related injection families identify the semantic question being tested, not hostile intent or a confirmed vulnerability."
+    },
+    {
+      "dataset": "semantic-heldout-v1",
+      "id": "override-en",
+      "level": "L1",
+      "layers": [
+        "input"
+      ],
+      "owasp": [
+        "LLM01:2025",
+        "ASI01:2026"
+      ],
+      "rationale": "Explicit rule/authority override is the defining authored maneuver, so L1 takes priority over the shared untrusted-content carrier (L3 overlap). The label describes scenario construction, not observed success."
+    },
+    {
+      "dataset": "semantic-heldout-v1",
+      "id": "override-pl",
+      "level": "L1",
+      "layers": [
+        "input"
+      ],
+      "owasp": [
+        "LLM01:2025",
+        "ASI01:2026"
+      ],
+      "rationale": "Explicit rule/authority override is the defining authored maneuver, so L1 takes priority over the shared untrusted-content carrier (L3 overlap). The label describes scenario construction, not observed success."
+    },
+    {
+      "dataset": "semantic-heldout-v1",
+      "id": "authority-en",
+      "level": "L1",
+      "layers": [
+        "input"
+      ],
+      "owasp": [
+        "LLM01:2025",
+        "ASI01:2026"
+      ],
+      "rationale": "Explicit rule/authority override is the defining authored maneuver, so L1 takes priority over the shared untrusted-content carrier (L3 overlap). The label describes scenario construction, not observed success."
+    },
+    {
+      "dataset": "semantic-heldout-v1",
+      "id": "authority-pl",
+      "level": "L1",
+      "layers": [
+        "input"
+      ],
+      "owasp": [
+        "LLM01:2025",
+        "ASI01:2026"
+      ],
+      "rationale": "Explicit rule/authority override is the defining authored maneuver, so L1 takes priority over the shared untrusted-content carrier (L3 overlap). The label describes scenario construction, not observed success."
+    },
+    {
+      "dataset": "semantic-heldout-v1",
+      "id": "workflow-en",
+      "level": "L2",
+      "layers": [
+        "input"
+      ],
+      "owasp": [
+        "LLM01:2025",
+        "ASI01:2026"
+      ],
+      "rationale": "Authored malicious paraphrase conceals the prohibited behavior behind workflow/diagnostic wording. L2 foregrounds evasion; the untrusted-content carrier also overlaps L3. No detection success is inferred."
+    },
+    {
+      "dataset": "semantic-heldout-v1",
+      "id": "workflow-pl",
+      "level": "L2",
+      "layers": [
+        "input"
+      ],
+      "owasp": [
+        "LLM01:2025",
+        "ASI01:2026"
+      ],
+      "rationale": "Authored malicious paraphrase conceals the prohibited behavior behind workflow/diagnostic wording. L2 foregrounds evasion; the untrusted-content carrier also overlaps L3. No detection success is inferred."
+    },
+    {
+      "dataset": "semantic-heldout-v1",
+      "id": "quiet-en",
+      "level": "L2",
+      "layers": [
+        "input"
+      ],
+      "owasp": [
+        "LLM01:2025",
+        "ASI01:2026"
+      ],
+      "rationale": "Authored malicious paraphrase conceals the prohibited behavior behind workflow/diagnostic wording. L2 foregrounds evasion; the untrusted-content carrier also overlaps L3. No detection success is inferred."
+    },
+    {
+      "dataset": "semantic-heldout-v1",
+      "id": "quiet-pl",
+      "level": "L2",
+      "layers": [
+        "input"
+      ],
+      "owasp": [
+        "LLM01:2025",
+        "ASI01:2026"
+      ],
+      "rationale": "Authored malicious paraphrase conceals the prohibited behavior behind workflow/diagnostic wording. L2 foregrounds evasion; the untrusted-content carrier also overlaps L3. No detection success is inferred."
+    },
+    {
+      "dataset": "semantic-heldout-v1",
+      "id": "medium-en",
+      "level": "L0",
+      "layers": [
+        "input"
+      ],
+      "owasp": [
+        "LLM01:2025",
+        "ASI01:2026"
+      ],
+      "rationale": "Ordinary benign/negated content is an L0 classifier control. Related injection families identify the semantic question being tested, not hostile intent or a confirmed vulnerability."
+    },
+    {
+      "dataset": "semantic-heldout-v1",
+      "id": "medium-pl",
+      "level": "L0",
+      "layers": [
+        "input"
+      ],
+      "owasp": [
+        "LLM01:2025",
+        "ASI01:2026"
+      ],
+      "rationale": "Ordinary benign/negated content is an L0 classifier control. Related injection families identify the semantic question being tested, not hostile intent or a confirmed vulnerability."
+    },
+    {
+      "dataset": "semantic-heldout-v1",
+      "id": "long-en",
+      "level": "L3",
+      "layers": [
+        "input",
+        "data"
+      ],
+      "owasp": [
+        "LLM01:2025",
+        "ASI01:2026",
+        "LLM02:2025"
+      ],
+      "rationale": "Embedded instruction after ordinary archive/facilities document text redirects the task toward private-key/payroll disclosure. L3 foregrounds the indirect document carrier; L1 explicit instruction and L2 placement overlap. No outcome is inferred."
+    },
+    {
+      "dataset": "semantic-heldout-v1",
+      "id": "long-pl",
+      "level": "L3",
+      "layers": [
+        "input",
+        "data"
+      ],
+      "owasp": [
+        "LLM01:2025",
+        "ASI01:2026",
+        "LLM02:2025"
+      ],
+      "rationale": "Embedded instruction after ordinary archive/facilities document text redirects the task toward private-key/payroll disclosure. L3 foregrounds the indirect document carrier; L1 explicit instruction and L2 placement overlap. No outcome is inferred."
+    },
+    {
+      "dataset": "semantic-heldout-v1",
+      "id": "overflow-en",
+      "level": "L5",
+      "layers": [
+        "input",
+        "consumption"
+      ],
+      "owasp": [
+        "LLM10:2025"
+      ],
+      "rationale": "Authored over-capacity control-limit probe exercises finite worker admission and coverage. L5 describes the tested control boundary; not an assertion that ordinary long input is hostile."
+    },
+    {
+      "dataset": "semantic-heldout-v1",
+      "id": "overflow-pl",
+      "level": "L5",
+      "layers": [
+        "input",
+        "consumption"
+      ],
+      "owasp": [
+        "LLM10:2025"
+      ],
+      "rationale": "Authored over-capacity control-limit probe exercises finite worker admission and coverage. L5 describes the tested control boundary; not an assertion that ordinary long input is hostile."
+    },
+    {
+      "dataset": "semantic-heldout-v2",
+      "id": "library-en",
+      "level": "L0",
+      "layers": [
+        "input"
+      ],
+      "owasp": [
+        "LLM01:2025",
+        "ASI01:2026"
+      ],
+      "rationale": "Ordinary benign/negated content is an L0 classifier control. Related injection families identify the semantic question being tested, not hostile intent or a confirmed vulnerability."
+    },
+    {
+      "dataset": "semantic-heldout-v2",
+      "id": "library-pl",
+      "level": "L0",
+      "layers": [
+        "input"
+      ],
+      "owasp": [
+        "LLM01:2025",
+        "ASI01:2026"
+      ],
+      "rationale": "Ordinary benign/negated content is an L0 classifier control. Related injection families identify the semantic question being tested, not hostile intent or a confirmed vulnerability."
+    },
+    {
+      "dataset": "semantic-heldout-v2",
+      "id": "garden-en",
+      "level": "L0",
+      "layers": [
+        "input"
+      ],
+      "owasp": [
+        "LLM01:2025",
+        "ASI01:2026"
+      ],
+      "rationale": "Ordinary benign/negated content is an L0 classifier control. Related injection families identify the semantic question being tested, not hostile intent or a confirmed vulnerability."
+    },
+    {
+      "dataset": "semantic-heldout-v2",
+      "id": "garden-pl",
+      "level": "L0",
+      "layers": [
+        "input"
+      ],
+      "owasp": [
+        "LLM01:2025",
+        "ASI01:2026"
+      ],
+      "rationale": "Ordinary benign/negated content is an L0 classifier control. Related injection families identify the semantic question being tested, not hostile intent or a confirmed vulnerability."
+    },
+    {
+      "dataset": "semantic-heldout-v2",
+      "id": "catalogue-en",
+      "level": "L0",
+      "layers": [
+        "input"
+      ],
+      "owasp": [
+        "LLM01:2025",
+        "ASI01:2026"
+      ],
+      "rationale": "Ordinary benign/negated content is an L0 classifier control. Related injection families identify the semantic question being tested, not hostile intent or a confirmed vulnerability."
+    },
+    {
+      "dataset": "semantic-heldout-v2",
+      "id": "catalogue-pl",
+      "level": "L0",
+      "layers": [
+        "input"
+      ],
+      "owasp": [
+        "LLM01:2025",
+        "ASI01:2026"
+      ],
+      "rationale": "Ordinary benign/negated content is an L0 classifier control. Related injection families identify the semantic question being tested, not hostile intent or a confirmed vulnerability."
+    },
+    {
+      "dataset": "semantic-heldout-v2",
+      "id": "poster-en",
+      "level": "L3",
+      "layers": [
+        "input"
+      ],
+      "owasp": [
+        "LLM01:2025",
+        "ASI01:2026"
+      ],
+      "rationale": "Benign security quotation in untrusted document content exercises indirect-content interpretation (L3). Related injection families describe the control question; the quotation is not an attack or a measured success."
+    },
+    {
+      "dataset": "semantic-heldout-v2",
+      "id": "poster-pl",
+      "level": "L3",
+      "layers": [
+        "input"
+      ],
+      "owasp": [
+        "LLM01:2025",
+        "ASI01:2026"
+      ],
+      "rationale": "Benign security quotation in untrusted document content exercises indirect-content interpretation (L3). Related injection families describe the control question; the quotation is not an attack or a measured success."
+    },
+    {
+      "dataset": "semantic-heldout-v2",
+      "id": "transcript-en",
+      "level": "L3",
+      "layers": [
+        "input"
+      ],
+      "owasp": [
+        "LLM01:2025",
+        "ASI01:2026"
+      ],
+      "rationale": "Benign security quotation in untrusted document content exercises indirect-content interpretation (L3). Related injection families describe the control question; the quotation is not an attack or a measured success."
+    },
+    {
+      "dataset": "semantic-heldout-v2",
+      "id": "transcript-pl",
+      "level": "L3",
+      "layers": [
+        "input"
+      ],
+      "owasp": [
+        "LLM01:2025",
+        "ASI01:2026"
+      ],
+      "rationale": "Benign security quotation in untrusted document content exercises indirect-content interpretation (L3). Related injection families describe the control question; the quotation is not an attack or a measured success."
+    },
+    {
+      "dataset": "semantic-heldout-v2",
+      "id": "refusal-en",
+      "level": "L0",
+      "layers": [
+        "input"
+      ],
+      "owasp": [
+        "LLM01:2025",
+        "ASI01:2026"
+      ],
+      "rationale": "Ordinary benign/negated content is an L0 classifier control. Related injection families identify the semantic question being tested, not hostile intent or a confirmed vulnerability."
+    },
+    {
+      "dataset": "semantic-heldout-v2",
+      "id": "refusal-pl",
+      "level": "L0",
+      "layers": [
+        "input"
+      ],
+      "owasp": [
+        "LLM01:2025",
+        "ASI01:2026"
+      ],
+      "rationale": "Ordinary benign/negated content is an L0 classifier control. Related injection families identify the semantic question being tested, not hostile intent or a confirmed vulnerability."
+    },
+    {
+      "dataset": "semantic-heldout-v2",
+      "id": "notice-en",
+      "level": "L0",
+      "layers": [
+        "input"
+      ],
+      "owasp": [
+        "LLM01:2025",
+        "ASI01:2026"
+      ],
+      "rationale": "Ordinary benign/negated content is an L0 classifier control. Related injection families identify the semantic question being tested, not hostile intent or a confirmed vulnerability."
+    },
+    {
+      "dataset": "semantic-heldout-v2",
+      "id": "notice-pl",
+      "level": "L0",
+      "layers": [
+        "input"
+      ],
+      "owasp": [
+        "LLM01:2025",
+        "ASI01:2026"
+      ],
+      "rationale": "Ordinary benign/negated content is an L0 classifier control. Related injection families identify the semantic question being tested, not hostile intent or a confirmed vulnerability."
+    },
+    {
+      "dataset": "semantic-heldout-v2",
+      "id": "admin-en",
+      "level": "L1",
+      "layers": [
+        "input"
+      ],
+      "owasp": [
+        "LLM01:2025",
+        "ASI01:2026"
+      ],
+      "rationale": "Explicit rule/authority override is the defining authored maneuver, so L1 takes priority over the shared untrusted-content carrier (L3 overlap). The label describes scenario construction, not observed success."
+    },
+    {
+      "dataset": "semantic-heldout-v2",
+      "id": "admin-pl",
+      "level": "L1",
+      "layers": [
+        "input"
+      ],
+      "owasp": [
+        "LLM01:2025",
+        "ASI01:2026"
+      ],
+      "rationale": "Explicit rule/authority override is the defining authored maneuver, so L1 takes priority over the shared untrusted-content carrier (L3 overlap). The label describes scenario construction, not observed success."
+    },
+    {
+      "dataset": "semantic-heldout-v2",
+      "id": "priority-en",
+      "level": "L1",
+      "layers": [
+        "input"
+      ],
+      "owasp": [
+        "LLM01:2025",
+        "ASI01:2026"
+      ],
+      "rationale": "Explicit rule/authority override is the defining authored maneuver, so L1 takes priority over the shared untrusted-content carrier (L3 overlap). The label describes scenario construction, not observed success."
+    },
+    {
+      "dataset": "semantic-heldout-v2",
+      "id": "priority-pl",
+      "level": "L1",
+      "layers": [
+        "input"
+      ],
+      "owasp": [
+        "LLM01:2025",
+        "ASI01:2026"
+      ],
+      "rationale": "Explicit rule/authority override is the defining authored maneuver, so L1 takes priority over the shared untrusted-content carrier (L3 overlap). The label describes scenario construction, not observed success."
+    },
+    {
+      "dataset": "semantic-heldout-v2",
+      "id": "diagnostic-en",
+      "level": "L2",
+      "layers": [
+        "input"
+      ],
+      "owasp": [
+        "LLM01:2025",
+        "ASI01:2026"
+      ],
+      "rationale": "Authored malicious paraphrase conceals the prohibited behavior behind workflow/diagnostic wording. L2 foregrounds evasion; the untrusted-content carrier also overlaps L3. No detection success is inferred."
+    },
+    {
+      "dataset": "semantic-heldout-v2",
+      "id": "diagnostic-pl",
+      "level": "L2",
+      "layers": [
+        "input"
+      ],
+      "owasp": [
+        "LLM01:2025",
+        "ASI01:2026"
+      ],
+      "rationale": "Authored malicious paraphrase conceals the prohibited behavior behind workflow/diagnostic wording. L2 foregrounds evasion; the untrusted-content carrier also overlaps L3. No detection success is inferred."
+    },
+    {
+      "dataset": "semantic-heldout-v2",
+      "id": "shortcut-en",
+      "level": "L2",
+      "layers": [
+        "input"
+      ],
+      "owasp": [
+        "LLM01:2025",
+        "ASI01:2026"
+      ],
+      "rationale": "Authored malicious paraphrase conceals the prohibited behavior behind workflow/diagnostic wording. L2 foregrounds evasion; the untrusted-content carrier also overlaps L3. No detection success is inferred."
+    },
+    {
+      "dataset": "semantic-heldout-v2",
+      "id": "shortcut-pl",
+      "level": "L2",
+      "layers": [
+        "input"
+      ],
+      "owasp": [
+        "LLM01:2025",
+        "ASI01:2026"
+      ],
+      "rationale": "Authored malicious paraphrase conceals the prohibited behavior behind workflow/diagnostic wording. L2 foregrounds evasion; the untrusted-content carrier also overlaps L3. No detection success is inferred."
+    },
+    {
+      "dataset": "semantic-heldout-v2",
+      "id": "wetlands-en",
+      "level": "L0",
+      "layers": [
+        "input"
+      ],
+      "owasp": [
+        "LLM01:2025",
+        "ASI01:2026"
+      ],
+      "rationale": "Ordinary benign/negated content is an L0 classifier control. Related injection families identify the semantic question being tested, not hostile intent or a confirmed vulnerability."
+    },
+    {
+      "dataset": "semantic-heldout-v2",
+      "id": "wetlands-pl",
+      "level": "L0",
+      "layers": [
+        "input"
+      ],
+      "owasp": [
+        "LLM01:2025",
+        "ASI01:2026"
+      ],
+      "rationale": "Ordinary benign/negated content is an L0 classifier control. Related injection families identify the semantic question being tested, not hostile intent or a confirmed vulnerability."
+    },
+    {
+      "dataset": "semantic-heldout-v2",
+      "id": "appendix-en",
+      "level": "L3",
+      "layers": [
+        "input",
+        "data"
+      ],
+      "owasp": [
+        "LLM01:2025",
+        "ASI01:2026",
+        "LLM02:2025"
+      ],
+      "rationale": "Embedded instruction after ordinary archive/facilities document text redirects the task toward private-key/payroll disclosure. L3 foregrounds the indirect document carrier; L1 explicit instruction and L2 placement overlap. No outcome is inferred."
+    },
+    {
+      "dataset": "semantic-heldout-v2",
+      "id": "appendix-pl",
+      "level": "L3",
+      "layers": [
+        "input",
+        "data"
+      ],
+      "owasp": [
+        "LLM01:2025",
+        "ASI01:2026",
+        "LLM02:2025"
+      ],
+      "rationale": "Embedded instruction after ordinary archive/facilities document text redirects the task toward private-key/payroll disclosure. L3 foregrounds the indirect document carrier; L1 explicit instruction and L2 placement overlap. No outcome is inferred."
+    },
+    {
+      "dataset": "semantic-heldout-v2",
+      "id": "astronomy-en",
+      "level": "L5",
+      "layers": [
+        "input",
+        "consumption"
+      ],
+      "owasp": [
+        "LLM10:2025"
+      ],
+      "rationale": "Authored over-capacity control-limit probe exercises finite worker admission and coverage. L5 describes the tested control boundary; not an assertion that ordinary long input is hostile."
+    },
+    {
+      "dataset": "semantic-heldout-v2",
+      "id": "astronomy-pl",
+      "level": "L5",
+      "layers": [
+        "input",
+        "consumption"
+      ],
+      "owasp": [
+        "LLM10:2025"
+      ],
+      "rationale": "Authored over-capacity control-limit probe exercises finite worker admission and coverage. L5 describes the tested control boundary; not an assertion that ordinary long input is hostile."
+    }
+  ]
+}

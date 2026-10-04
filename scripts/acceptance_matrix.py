@@ -6,6 +6,7 @@ import argparse
 import ast
 import hashlib
 import json
+import os
 import re
 import subprocess
 import sys
@@ -14,6 +15,8 @@ import xml.etree.ElementTree as ET
 from collections import Counter
 from datetime import UTC, datetime
 from pathlib import Path
+
+from threat_evidence import digest, load_index, reconcile, summarize
 
 ROOT = Path(__file__).resolve().parents[1]
 MANIFEST = ROOT / "docs/acceptance-inventory.json"
@@ -67,6 +70,7 @@ def load_inventory() -> dict:
             or not re.fullmatch(r"[0-9a-f]{40}", pending["head"])
         ):
             raise ValueError(f"{case['id']}: invalid pinned pending reference")
+    load_index(ROOT)
     return inventory
 
 
@@ -100,6 +104,12 @@ def source_record(inventory: dict) -> dict:
         inventory["evaluation_record"],
         "evaluation/semantic-heldout-v2.json",
         "docs/semantic-v2-evidence.md",
+        "testdata/test-cases.json",
+        "src/agentgate/threat_taxonomy.py",
+        "scripts/threat_evidence.py",
+        "scripts/acceptance_capture.py",
+        "evaluation/freeze-v1.json",
+        "evaluation/freeze-v2.json",
     }
     files.update(selector.split("::")[0] for c in inventory["cases"] for selector in c["tests"])
     return {
@@ -141,8 +151,36 @@ def run_controls(inventory: dict, output: Path) -> int:
         )
         with tempfile.TemporaryDirectory(prefix="laya-acceptance-") as directory:
             junit = Path(directory) / "controls.xml"
-            command = [sys.executable, "-m", "pytest", *selectors, f"--junitxml={junit}"]
-            result = subprocess.run(command, cwd=ROOT, check=False)
+            capture_path = Path(directory) / "capture.json"
+            command = [
+                sys.executable,
+                "-m",
+                "pytest",
+                "-o",
+                "addopts=-q --strict-markers",
+                "-p",
+                "acceptance_capture",
+                *selectors,
+                f"--junitxml={junit}",
+            ]
+            environment = dict(os.environ)
+            environment.pop("PYTEST_ADDOPTS", None)
+            environment["PYTHONPATH"] = (
+                str(ROOT / "scripts") + os.pathsep + environment.get("PYTHONPATH", "")
+            )
+            environment["AGENTGATE_ACCEPTANCE_CAPTURE"] = str(capture_path)
+            try:
+                result = subprocess.run(
+                    command, cwd=ROOT, env=environment, check=False, timeout=300
+                )
+                exit_code = result.returncode
+            except subprocess.TimeoutExpired:
+                exit_code = 124
+            capture = json.loads(capture_path.read_bytes()) if capture_path.exists() else {}
+            reconciliation = reconcile(selectors, capture, exit_code)
+            evidence = summarize(load_index(ROOT), inventory, reconciliation)
+            evidence["index_sha256"] = digest(ROOT / "testdata/test-cases.json")
+            evidence["execution"] = reconciliation
             observations = []
             if junit.exists():
                 for node in ET.parse(junit).getroot().iter("testcase"):
@@ -158,7 +196,8 @@ def run_controls(inventory: dict, output: Path) -> int:
             record.update(
                 {
                     "finished_at": datetime.now(UTC).isoformat(),
-                    "pytest_exit": result.returncode,
+                    "pytest_exit": exit_code,
+                    "threat_evidence": evidence,
                     "control_test_counts": counts,
                     "control_observations": observations,
                 }
@@ -168,7 +207,10 @@ def run_controls(inventory: dict, output: Path) -> int:
     print(f"Control observations: {counts}. Report: {output.relative_to(ROOT)}")
     print("Real inference NOT RUN. Measured, pending, partial and gap rows retain their meaning.")
     # A skip/missing execution cannot quietly satisfy the control gate.
-    return result.returncode or int(not observations or bool(counts.get("skipped")))
+    return exit_code or int(
+        bool(reconciliation["problems"])
+        or any(c["status"] != "passed" for c in reconciliation["selectors"].values())
+    )
 
 
 def main() -> int:
