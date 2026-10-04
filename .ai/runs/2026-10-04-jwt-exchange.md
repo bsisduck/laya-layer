@@ -21,11 +21,45 @@ Risks: authority and trust races, assertion ordering, rollback, bounded growth a
 
 ### Phase 1: Contracts and implementation
 
-- [ ] 1.1 Establish shared issuer contracts without changing local v1 bytes
-- [ ] 1.2 Implement bounded pinned verification and atomic exchange
+- [x] 1.1 Establish shared issuer contracts without changing local v1 bytes — 0e6c72d
+- [x] 1.2 Implement bounded pinned verification and atomic exchange — b8ab57b
 
 ### Phase 2: Evidence and handoff
 
-- [ ] 2.1 Verify generated-key behavior, concurrency, rollback and compatibility
-- [ ] 2.2 Verify installed adapters, full gate and code review
+- [x] 2.1 Verify generated-key behavior, concurrency, rollback and compatibility — b8ab57b
+- [x] 2.2 Verify installed adapters, full gate and code review
 - [ ] 2.3 Report ready local head and await final integration base before publication
+
+## Local review and verification
+
+Verdict: approve for local handoff. No unresolved blocker/major found in the
+author review against CODE_REVIEW.md, BACKWARD_COMPATIBILITY.md and the complete
+spec. This does not authorize merge: root's independent authentication review,
+installed QA, final integration base and green CI remain required.
+
+| Check | Result | Evidence |
+| --- | --- | --- |
+| Prepared-Hermes `make validate` | PASS | 942 tests in 124.85s; workflow/Cezar config, lock, Ruff lint/format, strict mypy and source/wheel packaging |
+| Issuer unit cases | PASS | 5 collected cases; exact pair identity, concurrent refresh, lock expiry and local v1 bytes |
+| Issuer functional cases | PASS | 57 collected cases; generated-key signed claims, malformed JSON, tombstones, caps and consent |
+| Issuer integration cases | PASS | 22 collected cases; MCP wire, document/memory/model/approval dispatch races, audit rollback, admission and export-v1 |
+| Installed E2E | PASS | Owned non-editable wheel: direct REST, direct MCP and actual pinned Hermes each dispatched one protected document read and two provider-fixture calls; one approved fixture outbox row with replay; complete authority/admission/audit rollback; trust-revocation nondispatch |
+| Root admission reproduction | PASS | Root independently reran unchanged quota reproduction plus 83 issuer cases at b8ab57b; concrete finding resolved, final approval pending |
+| Real semantic/model evaluation | NOT RUN | No heavy inference; all provider output above is explicitly a fixture |
+
+The full gate initially found the installed runner replacing an already-loaded
+package during in-process imports. Separate Hermes commits 0acea84/11c5c51 expose
+only agentgate through a package file spec and preserve an existing package. No
+sys.path/site-packages injection, Hermes pin/runtime or gateway SDK version changes.
+Both installed/pinned dependency regressions and an existing-package regression
+pass. Earlier failed QA fixture attempts remain uncertain budget admissions;
+the bounded temporary QA policy allowed subsequent verification without resetting
+usage and was restored. QA stopped in finally, all ephemeral token files removed.
+Ignored reports/logs remain under `.ai/qa/artifacts_issuer_exchange/`; generated
+keys, runtime state, build output and reports are not committed.
+
+Shared surfaces are additive issuer-v2 human/binding/attribution variants and
+versioned parsers. Local-v1 serialization/consent and audit export-v1 keys are
+unchanged. Migration adds issuer sidecars; old binaries must not serve the upgraded
+authority-bearing database. Root relayed safe issuer_id/trust_version names to the
+parallel department/HR consumers; integration with their final base remains pending.

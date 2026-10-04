@@ -1,7 +1,7 @@
-"""One-hop trusted local authority resolved inside the owning SQLite transaction.
+"""One-hop local/issuer authority resolved inside the owning SQLite transaction.
 
-A durable committed dispatch is the revocation boundary. This module does not
-exchange JWTs, verify corporate people, or change immutable accounting Identity.
+A durable committed dispatch is the revocation boundary. The separate optional
+issuer adapter verifies pinned assertions; accounting Identity remains immutable.
 """
 
 from __future__ import annotations

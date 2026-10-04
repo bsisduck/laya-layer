@@ -833,3 +833,35 @@ def test_integration_concurrent_valid_denials_cannot_overrun_admission(issuer):
     assert rows(issuer) == before
     with h.store.connection() as db:
         assert db.execute("SELECT count FROM issuer_admission").fetchone()[0] == 3
+
+
+def test_integration_exchange_memory_filters_before_content_and_preserves_pairs(issuer):
+    h, *_ = issuer
+    with h.store.connection() as db:
+        db.executemany(
+            "INSERT INTO memory_entries VALUES (?,?,?,?)",
+            [
+                ("tenant-a", "hr", "internal", "Quarterly permitted fixture"),
+                (
+                    "tenant-a",
+                    "finance",
+                    "internal",
+                    "Quarterly forbidden AGENTGATE_SECRET[fixture]",
+                ),
+                ("tenant-b", "hr", "internal", "Quarterly other tenant AGENTGATE_SECRET[fixture]"),
+                (
+                    "tenant-a",
+                    "hr-public",
+                    "public",
+                    "Quarterly wrong pair AGENTGATE_SECRET[fixture]",
+                ),
+            ],
+        )
+    h.token = child(issuer)
+    response = action(h, "memory.query", {"query": "Quarterly"})
+    assert response.status_code == 200
+    result = response.json()
+    assert result["executed"] is True
+    assert [entry["entry_id"] for entry in result["result"]["entries"]] == ["hr"]
+    assert "AGENTGATE_SECRET" not in response.text
+    assert "permitted fixture" in response.text

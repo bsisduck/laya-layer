@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "profiles": [{
+    "profile_id": "reviewed-person-issuer",
+    "enabled": true,
+    "issuer": "https://issuer.example.invalid/people",
+    "audience": "agentgate-person-exchange",
+    "algorithm": "RS256",
+    "keys": [{"kty": "RSA", "kid": "reviewed-key-1", "use": "sig", "alg": "RS256", "key_ops": ["verify"], "n": "REPLACE_WITH_PUBLIC_RSA_MODULUS_BASE64URL", "e": "AQAB"}],
+    "person_claim": "idtyp",
+    "person_value": "user",
+    "client_claim": "client_id",
+    "tenant_claim": "tid",
+    "groups_claim": "groups",
+    "tenants": [{"value": "signed-tenant-value", "tenant_id": "tenant-a"}],
+    "groups": [{"value": "approved-group-value", "roles": ["approved-person-role"], "department": "approved-department"}],
+    "parents": [{"parent": "REPLACE_WITH_EXACT_PARENT_CREDENTIAL_SHA256", "agent_id": "approved-agent", "tenant_id": "tenant-a", "client_id": "approved-client"}],
+    "max_assertion_age": 120,
+    "max_auth_age": 300,
+    "clock_skew": 2,
+    "child_lifetime": 120,
+    "max_active_children": 8,
+    "max_total_children": 128,
+    "exchanges_per_day": 128
+  }]
+}

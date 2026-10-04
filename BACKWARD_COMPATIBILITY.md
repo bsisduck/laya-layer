@@ -221,3 +221,22 @@ only owned ScopedTools receives actor_mode. Neither actor label nor mode derives
 from an agent payload. See
 `docs/delegated-authority.md` for bounds, migration/backup rollback, expiry/revocation
 boundary, separate human/accounting semantics and excluded JWT/resource consumers.
+
+Optional pinned person-token exchange adds `/v1/authority/exchange`, public trust
+CAS import/private exchange/revoke-human CLI commands and issuer-v1 sidecar tables.
+Local HumanSubject/DelegatedBinding/attribution v1 serialization and consent digests
+are unchanged; `parse_human`/`parse_binding` additionally decode explicit issuer v2.
+V2 immutable bindings pin exact parent/client/tenant, trust generation and per-child
+freshness; minimized attribution adds `issuer_id`/`trust_version`. Unchanged refresh
+retains human revision/consent; assertion ordering is a separate table. Whole trust
+imports invalidate all prior issuer children at entry and transactional dispatch.
+Audit export-v1 retains its allowlisted keys, excluding authority extensions;
+issuer import/issue/denial audit lives in separate minimized `issuer_events`.
+`agentgate migrate` adds sidecars without rewriting local records or approvals.
+Readiness requires them; older binaries must not serve issuer-bearing state. Stop
+serving and preserve all authority/trust/order/admission/audit tables for backup;
+rollback requires a compatible binary or reviewed pre-upgrade backup, never a live
+schema downgrade. Missing trust disables exchange and leaves legacy credentials,
+console modes, accounting and response contracts intact. See
+[issuer exchange](docs/issuer-exchange.md) for limits, revocation window, key rotation,
+fixture/installed evidence and TLS requirements. No browser OAuth flow is added.
