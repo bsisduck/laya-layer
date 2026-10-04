@@ -4,8 +4,16 @@ import {createClient} from '../../src/agentgate/web/api.js';
 import {filterEvents} from '../../src/agentgate/web/observe.js';
 import {parseEditor} from '../../src/agentgate/web/ui.js';
 import {playgroundBody} from '../../src/agentgate/web/actions.js';
+import {catalogState} from '../../src/agentgate/web/catalog.js';
 const session = {authenticated: true, csrf_token: 'test-csrf', expires_at: 9999999999};
 const response = (body, status = 200) => new Response(JSON.stringify(body), {status, headers: {'Content-Type': 'application/json'}});
+test('catalog consumer separates unsupported, missing, empty and trusted versioned metadata', () => {
+  const tool = {operation: 'mail.send', executable: true, effect: 'write', data_scope: 'Unclassified submitted text', adapter: 'local_fixture_outbox', reversibility: 'local_record_retained', affects_person: true, policy: {disposition: 'exact_approval'}, risk: {version: 'tool-policy-heuristic-v1', score: 75, band: 'high', components: {effect: 25}}};
+  const data = {version: 'approved-tools-v1', tools: [tool], examples: []};
+  assert.equal(catalogState(data), 'ready');
+  assert.equal(catalogState({...data, tools: []}), 'empty');
+  for (const invalid of [null, {}, {...data, version: 'old'}, {...data, tools: [null]}, {...data, tools: [tool, tool, tool, tool]}, {...data, tools: [{...tool, risk: null}]}, {...data, examples: [{operation: 'payments.transfer', executable: true}]}]) assert.equal(catalogState(invalid), 'missing');
+});
 test('session credential is posted once; writes use cookie and memory-only CSRF', async () => {
   const calls = [];
   const api = createClient(() => {}, async (url, options) => {calls.push({url, ...options}); return response(session);});

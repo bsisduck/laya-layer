@@ -25,6 +25,7 @@ from agentgate.contracts import ActionRequest, Reason
 from agentgate.scoped_contracts import INPUTS
 from agentgate.service import ActionService, Context, GateError
 from agentgate.storage import StorageUnavailable
+from agentgate.tool_catalog import CATALOG, mcp_annotations
 from agentgate.tool_routes import bearer_token, reject_identity_overrides
 
 
@@ -128,12 +129,9 @@ class MCPAdapter:
             tools=[
                 types.Tool(
                     name=operation,
-                    description={
-                        "documents.read": "Read an authorized tenant document.",
-                        "memory.query": "Search permitted memory in the credential tenant.",
-                        "mail.send": "Propose exact mail for human approval; writes only to a local test outbox.",
-                    }[operation],
+                    description=CATALOG[operation].description,
                     input_schema=INPUTS[operation].model_json_schema(),
+                    annotations=types.ToolAnnotations.model_validate(mcp_annotations(operation)),
                 )
                 for operation in operations
             ]

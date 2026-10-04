@@ -34,7 +34,7 @@ real inference; no new inference evaluation is performed.
 
 ### Phase 1: Trusted authority
 
-- [ ] 1.1 Implement metadata, risk, registry and approval/replay evidence
+- [x] 1.1 Implement metadata, risk, registry and approval/replay evidence — 75b088b
 
 ### Phase 2: Catalog surfaces
 
