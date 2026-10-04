@@ -292,6 +292,19 @@ def test_installed_runner_bootstrap_does_not_shadow_upstream_dependencies(tmp_pa
     assert completed.stdout.strip() != "99.99"
 
 
+def test_runner_import_preserves_loaded_adapter_package():
+    import importlib
+
+    import agentgate
+    import agentgate.tool_catalog
+
+    package = agentgate
+    catalog = agentgate.tool_catalog
+    importlib.import_module("agentgate.agents.hermes_runner")
+    assert importlib.import_module("agentgate") is package
+    assert package.tool_catalog is catalog
+
+
 @pytest.mark.skipif(
     not os.environ.get("AGENTGATE_HERMES_SOURCE"),
     reason="Prepared pinned Hermes environment not supplied",

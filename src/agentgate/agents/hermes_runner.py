@@ -20,15 +20,16 @@ import httpx
 # Expose ONLY this adapter package to the isolated upstream environment.
 # Adding its entire parent site-packages would shadow Hermes's pinned MCP/SDK
 # dependencies when this runner comes from an installed gateway wheel.
-package = Path(__file__).resolve().parents[1]
-spec = importlib.util.spec_from_file_location(
-    "agentgate", package / "__init__.py", submodule_search_locations=[str(package)]
-)
-if spec is None or spec.loader is None:
-    raise RuntimeError("Adapter package unavailable")
-adapter = importlib.util.module_from_spec(spec)
-sys.modules["agentgate"] = adapter
-spec.loader.exec_module(adapter)
+if "agentgate" not in sys.modules:
+    package = Path(__file__).resolve().parents[1]
+    spec = importlib.util.spec_from_file_location(
+        "agentgate", package / "__init__.py", submodule_search_locations=[str(package)]
+    )
+    if spec is None or spec.loader is None:
+        raise RuntimeError("Adapter package unavailable")
+    adapter = importlib.util.module_from_spec(spec)
+    sys.modules["agentgate"] = adapter
+    spec.loader.exec_module(adapter)
 from agentgate.agents.client import ALIASES, MAX_BYTES, ClientFailure, decode  # noqa: E402
 
 
