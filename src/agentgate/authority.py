@@ -1,7 +1,7 @@
-"""One-hop trusted local authority resolved inside the owning SQLite transaction.
+"""One-hop local/issuer authority resolved inside the owning SQLite transaction.
 
-A durable committed dispatch is the revocation boundary. This module does not
-exchange JWTs, verify corporate people, or change immutable accounting Identity.
+A durable committed dispatch is the revocation boundary. The separate optional
+issuer adapter verifies pinned assertions; accounting Identity remains immutable.
 """
 
 from __future__ import annotations
@@ -17,13 +17,20 @@ from typing import TYPE_CHECKING, cast
 
 from agentgate.authority_contracts import (
     AuthorityAttribution,
+    BindingRecord,
     DelegatedBinding,
     Grant,
+    HumanRecord,
     HumanSubject,
     IssuanceCeiling,
+    IssuerAttribution,
+    IssuerBinding,
+    IssuerHumanSubject,
     MailGrant,
     ModelGrant,
     RecordGrant,
+    parse_binding,
+    parse_human,
 )
 from agentgate.contracts import Identity
 from agentgate.storage import CredentialInvalid, StorageUnavailable, credential_digest
@@ -61,15 +68,18 @@ def migrate(db: sqlite3.Connection) -> None:
         "CREATE TRIGGER IF NOT EXISTS action_authority_immutable BEFORE UPDATE ON action_authority BEGIN SELECT RAISE(ABORT, 'Immutable consent authority'); END",
     ):
         db.execute(statement)
+    from agentgate.issuer_trust import migrate as migrate_issuer
+
+    migrate_issuer(db)
 
 
-def subject(db: sqlite3.Connection, subject_id: str) -> HumanSubject:
+def subject(db: sqlite3.Connection, subject_id: str) -> HumanRecord:
     row = db.execute(
         "SELECT record FROM human_subjects WHERE subject_id=?", (subject_id,)
     ).fetchone()
     if row is None:
         raise CredentialInvalid
-    human = HumanSubject.model_validate_json(row[0])
+    human = parse_human(row[0])
     if human.subject_id != subject_id:
         raise CredentialInvalid
     return human
@@ -117,7 +127,7 @@ def _credential(db: sqlite3.Connection, key: str, now: float) -> sqlite3.Row:
 
 def lifecycle(
     db: sqlite3.Connection, key: str, now: float
-) -> tuple[HumanSubject, DelegatedBinding] | None:
+) -> tuple[HumanRecord, BindingRecord] | None:
     child = _credential(db, key, now)
     if "authority_kind" not in child.keys():
         raise StorageUnavailable
@@ -132,7 +142,7 @@ def lifecycle(
     if row is None:
         raise CredentialInvalid
     try:
-        binding = DelegatedBinding.model_validate_json(row["binding"])
+        binding = parse_binding(row["binding"])
         if digest(binding.model_dump(mode="json")) != row["binding_digest"]:
             raise CredentialInvalid
         parent = _credential(db, row["parent_digest"], now)
@@ -140,7 +150,6 @@ def lifecycle(
         if (
             parent["authority_kind"] != "legacy"
             or parent["identity"] != child["identity"]
-            or binding.version != 1
             or binding.child != key
             or binding.parent != row["parent_digest"]
             or binding.subject != human.subject_id
@@ -151,10 +160,20 @@ def lifecycle(
             or not now < binding.expires <= parent["expires_at"]
             or child["expires_at"] != binding.expires
             or binding.expires > binding.issued + MAX_LIFETIME
-            or binding.deadline != human.assertion_deadline
+            or binding.version != human.version
+            or (
+                isinstance(binding, DelegatedBinding)
+                and binding.deadline != human.assertion_deadline
+            )
             or (human.assertion_deadline is not None and binding.expires > human.assertion_deadline)
         ):
             raise CredentialInvalid
+        if isinstance(binding, IssuerBinding):
+            from agentgate.issuer_trust import check_binding
+
+            if not isinstance(human, IssuerHumanSubject):
+                raise CredentialInvalid
+            check_binding(db, binding, human, Identity.model_validate_json(child["identity"]))
         return human, binding
     except (KeyError, TypeError, ValueError) as error:
         raise CredentialInvalid from error
@@ -181,8 +200,8 @@ def matches(
 @dataclass(frozen=True)
 class EffectiveAuthority:
     identity: Identity
-    human: HumanSubject | None = None
-    binding: DelegatedBinding | None = None
+    human: HumanRecord | None = None
+    binding: BindingRecord | None = None
     human_grants: tuple[Grant, ...] = ()
     agent_grants: tuple[Grant, ...] = ()
     ceiling: IssuanceCeiling | None = None
@@ -225,9 +244,22 @@ class EffectiveAuthority:
         return " AND ".join(groups), values
 
     @property
-    def attribution(self) -> AuthorityAttribution | None:
+    def attribution(self) -> AuthorityAttribution | IssuerAttribution | None:
         if self.human is None or self.binding is None:
             return None
+        if isinstance(self.human, IssuerHumanSubject) and isinstance(self.binding, IssuerBinding):
+            return IssuerAttribution(
+                accounting_principal=self.identity.principal_id,
+                human_subject=self.human.subject_id,
+                agent_id=self.identity.agent_id,
+                delegation_id=digest(self.binding.model_dump(mode="json")),
+                subject_revision=self.human.revision,
+                department=self.human.department,
+                issuer_id=self.human.issuer_profile,
+                trust_version=self.binding.trust_generation,
+            )
+        if not isinstance(self.human, HumanSubject):
+            raise CredentialInvalid
         return AuthorityAttribution(
             accounting_principal=self.identity.principal_id,
             human_subject=self.human.subject_id,
@@ -242,7 +274,7 @@ class EffectiveAuthority:
         if self.human is None:
             return None
         return {
-            "version": 1,
+            "version": self.human.version,
             "delegation": self.binding.model_dump(mode="json") if self.binding else None,
             "human": self.human.model_dump(mode="json"),
             "human_grants": [g.model_dump(mode="json") for g in self.human_grants],
@@ -307,7 +339,11 @@ def issue_child(
             raise ValueError("Children cannot delegate or renew")
         identity = Identity.model_validate_json(parent["identity"])
         human = subject(db, subject_id)
-        if human.revoked or human.tenant_id != identity.tenant_id:
+        if (
+            not isinstance(human, HumanSubject)
+            or human.revoked
+            or human.tenant_id != identity.tenant_id
+        ):
             raise CredentialInvalid
         expires = min(
             now + lifetime,

@@ -179,6 +179,9 @@ def create_app(
     from agentgate.tool_routes import attach_tool_routes
 
     attach_tool_routes(app, service)
+    from agentgate.issuer_routes import attach_exchange
+
+    attach_exchange(app, service)
     if enable_mcp:
         from agentgate.mcp_adapter import attach_mcp
 

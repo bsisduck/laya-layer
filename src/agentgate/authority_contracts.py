@@ -110,3 +110,68 @@ class DelegatedBinding(Contract):
     issuance_policy: Annotated[str, Field(pattern=r"^[a-f0-9]{64}$")]
     trust_version: Literal[1] = 1
     ceiling: IssuanceCeiling
+
+
+class IssuerHumanSubject(Contract):
+    """Version two has no mutable assertion timestamp in its consent bytes."""
+
+    version: Literal[2] = 2
+    subject_id: Identifier
+    provenance: Literal["issuer_asserted"] = "issuer_asserted"
+    tenant_id: Identifier
+    roles: Annotated[tuple[Identifier, ...], Field(max_length=32)]
+    department: Identifier
+    revision: Annotated[int, Field(ge=1, le=2147483647)]
+    revoked: bool = False
+    assertion_deadline: float | None = None
+    issuer_profile: Identifier
+
+
+class IssuerBinding(Contract):
+    version: Literal[2] = 2
+    child: Annotated[str, Field(pattern=r"^[a-f0-9]{64}$")]
+    parent: Annotated[str, Field(pattern=r"^[a-f0-9]{64}$")]
+    subject: Identifier
+    revision: Annotated[int, Field(ge=1)]
+    identity: Annotated[str, Field(max_length=32768)]
+    issued: float
+    expires: float
+    deadline: float
+    issuance_policy: Annotated[str, Field(pattern=r"^[a-f0-9]{64}$")]
+    ceiling: IssuanceCeiling
+    issuer_profile: Identifier
+    trust_generation: Annotated[int, Field(ge=1)]
+    client_claim: Identifier
+    client_id: Annotated[str, Field(min_length=1, max_length=256)]
+    assertion_expires: Annotated[int, Field(ge=0, le=253402300799)]
+    assertion_iat: Annotated[int, Field(ge=0, le=253402300799)]
+    assertion_auth_time: Annotated[int, Field(ge=0, le=253402300799)]
+
+
+class IssuerAttribution(Contract):
+    version: Literal[2] = 2
+    accounting_principal: Identifier
+    human_subject: Identifier
+    agent_id: Identifier
+    delegation_id: Annotated[str, Field(pattern=r"^[a-f0-9]{64}$")]
+    provenance: Literal["issuer_asserted"] = "issuer_asserted"
+    subject_revision: Annotated[int, Field(ge=1)]
+    department: Identifier
+    issuer_id: Identifier
+    trust_version: Annotated[int, Field(ge=1)]
+
+
+HumanRecord = HumanSubject | IssuerHumanSubject
+BindingRecord = DelegatedBinding | IssuerBinding
+
+
+def parse_human(raw: str) -> HumanRecord:
+    from pydantic import TypeAdapter
+
+    return TypeAdapter(Annotated[HumanRecord, Field(discriminator="version")]).validate_json(raw)
+
+
+def parse_binding(raw: str) -> BindingRecord:
+    from pydantic import TypeAdapter
+
+    return TypeAdapter(Annotated[BindingRecord, Field(discriminator="version")]).validate_json(raw)

@@ -207,6 +207,19 @@ class Store:
                     is None
                 ):
                     return False
+                if (
+                    connection.execute(
+                        "SELECT version FROM issuer_schema WHERE version=1"
+                    ).fetchone()
+                    is None
+                ):
+                    return False
+                connection.execute("SELECT id,generation,config FROM issuer_trust LIMIT 0")
+                connection.execute(
+                    "SELECT subject_id,assertion_iat,authority_digest FROM issuer_assertion_order LIMIT 0"
+                )
+                connection.execute("SELECT parent_digest,day,count FROM issuer_admission LIMIT 0")
+                connection.execute("SELECT timestamp,kind,generation FROM issuer_events LIMIT 0")
                 connection.execute("SELECT authority_kind FROM credentials LIMIT 0")
                 connection.execute("SELECT subject_id,record FROM human_subjects LIMIT 0")
                 connection.execute(

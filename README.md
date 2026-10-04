@@ -120,6 +120,11 @@ Restricted direct and pinned upstream Hermes clients are included; see
 Their recorded local generation cycles used semantic inspection off; native host
 access remains outside the client profile boundary.
 
+An optional [pinned issuer person-token exchange](docs/issuer-exchange.md) issues
+short-lived children for those existing clients. Its generated-key and provider
+fixtures prove deterministic boundaries; browser login and real-model evaluation
+are separate.
+
 See [two-axis threat evidence](docs/threat-model.md) for the authored L0–L5 ladder, exact seven
 layers, strict frozen-corpus sidecar and unknown live-level contract. The taxonomy
 adds classification/evidence presentation, not new enforcement or inference results.
