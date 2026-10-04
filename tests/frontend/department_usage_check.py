@@ -16,6 +16,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 import httpx
+from navigation import navigation
 from playwright.sync_api import expect, sync_playwright
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -399,7 +400,7 @@ def main(local_console=False):
                 errors = []
                 page.on("pageerror", lambda error: errors.append(str(error)))
                 shell_started = time.monotonic()
-                page.goto(base)
+                page.goto(base + "/#overview?section=usage")
                 if local_console:
                     expect(page.get_by_label("Operator credential")).to_be_hidden()
                 else:
@@ -427,14 +428,16 @@ def main(local_console=False):
                 expect(section.get_by_role("row").filter(has_text="Support")).to_have_count(1)
                 expect(section.get_by_text("Unknown / unassigned", exact=True)).to_be_visible()
                 expect(section).to_contain_text("local_demo · trusted local demo subject")
+                section.screenshot(path=str(artifacts / "desktop.png"))
+                navigation(page).get_by_role("link", name="Standards evidence", exact=True).click()
                 expect(
                     page.get_by_role("heading", name="Standards controls, evidence and gaps")
                 ).to_be_visible()
-                section.screenshot(path=str(artifacts / "desktop.png"))
-                page.get_by_role("button", name="Refresh", exact=False).click()
-                page.get_by_text("Full budget evidence", exact=True).click()
+                navigation(page).get_by_role("link", name="Overview", exact=True).click()
+                page.get_by_text("Resource ledger", exact=True).press("Enter")
                 expect(page.locator("pre").filter(has_text=exact)).to_be_visible()
-                # Reload exact period after refreshing the overview shell.
+                navigation(page).get_by_role("link", name="Department usage", exact=True).click()
+                # Reload the selected tenant after returning from operational evidence.
                 page.get_by_label("Department report tenant").fill(tenant)
                 page.get_by_role("button", name="Load usage", exact=True).click()
                 held = []
@@ -477,6 +480,10 @@ def main(local_console=False):
                 standards = page.locator(".standards-evidence-panel")
                 mobile_tables = {}
                 for name, target in (("department", section), ("standards", standards)):
+                    if name == "standards":
+                        navigation(page).get_by_role(
+                            "link", name="Standards evidence", exact=True
+                        ).click()
                     expect(target.locator(".table-scroll-hint")).to_be_visible()
                     records = target.get_by_role("region", name="Scrollable records")
                     geometry = records.evaluate(
@@ -522,6 +529,10 @@ def main(local_console=False):
                         )
                     records.evaluate("wrap => wrap.scrollLeft = 0")
                 assert page.evaluate("document.documentElement.scrollWidth <= innerWidth + 1")
+                navigation(page).get_by_role("link", name="Department usage", exact=True).click()
+                page.get_by_label("Department report tenant").fill(tenant)
+                page.get_by_role("button", name="Load usage", exact=True).click()
+                expect(section).to_contain_text(exact)
                 section.screenshot(path=str(artifacts / "mobile.png"))
                 assert (
                     not errors
@@ -531,6 +542,7 @@ def main(local_console=False):
                     == 0
                 )
                 if not local_console:
+                    navigation(page)
                     page.get_by_role("button", name="Lock & sign out").click()
             except Exception:
                 page.screenshot(path=str(artifacts / "failure.png"), full_page=True)

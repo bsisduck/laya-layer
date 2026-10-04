@@ -33,15 +33,13 @@ def main(local_console=False):
     admin = None
     csrf = None
     try:
-        subprocess.run(
-            [
-                str(ROOT / ".ai/scripts/test-env-up.sh"),
-                "--force-rebuild",
-                "--local-console" if local_console else "--no-local-console",
-            ],
-            cwd=ROOT,
-            check=True,
-        )
+        bootstrap = [
+            str(ROOT / ".ai/scripts/test-env-up.sh"),
+            "--local-console" if local_console else "--no-local-console",
+        ]
+        if not (ROOT / ".runtime/qa-install/data/agentgate.sqlite3").exists():
+            bootstrap.append("--force-rebuild")
+        subprocess.run(bootstrap, cwd=ROOT, check=True)
         descriptor = json.loads((ROOT / ".ai/qa/test-env.json").read_text())
         assert descriptor["source"] == str(ROOT) and descriptor["startedByThisRepo"]
         assert descriptor["consoleMode"] == ("local" if local_console else "credential")
