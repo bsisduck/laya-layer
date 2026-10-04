@@ -44,6 +44,8 @@ menuButton.addEventListener('click', openMenu);
 $('#close-menu').addEventListener('click', () => closeMenu());
 backdrop.addEventListener('click', () => closeMenu());
 mobile.addEventListener('change', () => {
+  // A queued breakpoint event must not close a drawer opened at the new mobile width.
+  if (mobile.matches && menuOpen) return;
   const wasInMenu = rail.contains(document.activeElement);
   closeMenu(false);
   if (wasInMenu && mobile.matches) $('#workspace').focus();

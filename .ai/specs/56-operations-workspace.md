@@ -12,8 +12,9 @@ This is a presentation change; no backend, policy, identity or schema changes.
 - Empty/unknown hashes open Overview → Operations. Existing hashes, trace queries
   and overview usage/standards/controls queries remain reachable. Workspace,
   Controls and Utilities group local SVG navigation. The mobile menu traps focus,
-  makes the workspace inert, closes on Escape/backdrop/navigation/resize, and
-  returns focus to its opener or workspace as appropriate.
+  makes the workspace inert, closes on Escape/backdrop/navigation or returning
+  to desktop, and returns focus to its opener or workspace as appropriate. A
+  delayed breakpoint callback preserves a drawer opened at the current mobile width.
 - Operations uses `/admin/overview` plus the latest eight `/admin/events` rows.
   Allowed/redacted/denied counts retain their bounded terminal-event window.
   Pending approvals are global unexpired DB records, with tenant-a inbox links
@@ -52,7 +53,9 @@ Known standard/v2/enforce HR false positives (#51) remain actual denial evidence
 ## Acceptance and validation
 
 Desktop source/draft actions must be simultaneously visible. Keyboard menu tests
-cover Tab/ShiftTab, Escape/backdrop, same route, focus, resize and browser Back.
+cover Tab/ShiftTab, Escape/backdrop, same route, focus, resize and browser Back,
+including a delayed native breakpoint callback. Dirty-editor cancellation awaits
+the actual confirmation and restored route before checking draft/focus retention.
 Async overview partial errors must never invent counts or service health.
 Existing HR negative, expiry, exact approval, replay, withholding, no-mutation-retry
 and DB-side-effect assertions remain. Installed-wheel QA and mocked presentation

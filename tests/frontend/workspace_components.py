@@ -107,6 +107,24 @@ def main():
     with sync_playwright() as pw:
         browser = pw.chromium.launch(headless=True)
         page = browser.new_page(viewport={"width": 1440, "height": 900}, reduced_motion="reduce")
+        # Deliver an actual native media change after opening the mobile drawer.
+        # Holding the callback makes the otherwise intermittent ordering deterministic.
+        page.add_init_script("""(() => {
+            window.__deferMenuResize = false;
+            window.__pendingMenuResize = [];
+            const nativeMatchMedia = window.matchMedia.bind(window);
+            window.matchMedia = query => {
+                const media = nativeMatchMedia(query);
+                if (query !== '(max-width: 760px)') return media;
+                const add = media.addEventListener.bind(media);
+                media.addEventListener = (type, listener, options) => add(type, event => {
+                    const deliver = () => listener.call(media, event);
+                    if (window.__deferMenuResize) window.__pendingMenuResize.push(deliver);
+                    else deliver();
+                }, options);
+                return media;
+            };
+        })();""")
         page.on("pageerror", lambda e: errors.append(str(e)))
         page.route("**/admin/**", handle)
         try:
@@ -209,6 +227,29 @@ def main():
             expect(page.locator(".main-shell")).not_to_have_attribute("inert", "")
             scenarios.append("mobile menu focus trap, Escape, backdrop, same hash and resize")
 
+            page.evaluate("window.__deferMenuResize = true")
+            page.set_viewport_size({"width": 390, "height": 844})
+            page.wait_for_function("() => window.__pendingMenuResize.length === 1")
+            opener.press("Enter")
+            expect(dialog).to_be_visible()
+            page.evaluate("""() => {
+                window.__deferMenuResize = false;
+                window.__pendingMenuResize.splice(0).forEach(deliver => deliver());
+            }""")
+            expect(dialog).to_be_visible()
+            expect(opener).to_have_attribute("aria-expanded", "true")
+            expect(page.locator(".main-shell")).to_have_attribute("inert", "")
+            expect(dialog.get_by_role("button", name="Close navigation")).to_be_focused()
+            page.screenshot(path=str(args.artifacts / "menu-delayed-resize-390.png"))
+            dialog.get_by_role("link", name="Policy studio").press("Enter")
+            expect(page.get_by_label("Policy JSON")).to_be_visible()
+            expect(page.locator("#workspace")).to_be_focused()
+            page.set_viewport_size({"width": 1440, "height": 900})
+            expect(page.locator("#navigation-rail")).not_to_have_attribute("hidden", "")
+            scenarios.append(
+                "delayed native resize preserves the newly opened drawer and Policy link"
+            )
+
             for route, active in [
                 ("overview?section=standards", "Standards evidence"),
                 ("overview?section=unknown", "Overview"),
@@ -231,11 +272,14 @@ def main():
             editor.fill('{"revision": 2}')
             page.once("dialog", lambda event: event.dismiss())
             opener.press("Enter")
-            dialog.get_by_role("link", name="Overview", exact=True).press("Enter")
+            with page.expect_event("dialog") as discard:
+                dialog.get_by_role("link", name="Overview", exact=True).press("Enter")
+            assert discard.value.type == "confirm"
+            assert discard.value.message == "Discard the unsaved editor changes?"
+            expect(page).to_have_url(base + "/#policy")
             expect(editor).to_have_value('{"revision": 2}')
             expect(page.locator("#workspace")).to_be_focused()
             expect(opener).to_have_attribute("aria-expanded", "false")
-            assert page.url.endswith("#policy")
             assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
             scenarios.append(
                 "overview query normalization, browser Back and dirty-editor cancellation focus"
