@@ -13,6 +13,7 @@ import uuid
 from pathlib import Path
 
 import httpx
+from catalog_flows import catalog_flow
 from local_console_state import snapshot
 from mcp import ClientSession
 from mcp.client.streamable_http import streamable_http_client
@@ -165,6 +166,14 @@ def main():
             expect(page.get_by_role("heading", name="Service state")).to_be_visible()
             assert writes.count("/admin/session/bootstrap") == 1
 
+            catalog_flow(
+                page,
+                lambda name: navigate(page, name),
+                state,
+                args.artifacts,
+                console_mode="local",
+            )
+            no_credentials(page, state)
             assert authority_before == snapshot(database, preserved)
             navigate(page, "Playground")
             allowed = run_action(page)
