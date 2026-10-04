@@ -104,6 +104,8 @@ def wire_totals(totals: dict[str, int]) -> dict[str, int | str]:
 def report(
     store: Store, tenant: str, start: int, end: int, departments: int = MAX_DEPARTMENTS
 ) -> dict[str, object]:
+    if any(type(value) is not int for value in (start, end, departments)):
+        raise ValueError("UTC seconds and department limit must be integers")
     if not 0 <= start < end <= 4102444800 or end - start > MAX_PERIOD:
         raise ValueError("Select a UTC period of at most 31 days")
     if not 1 <= departments <= MAX_DEPARTMENTS:

@@ -376,6 +376,54 @@ def test_snapshot_is_coherent_during_concurrent_settlement(model, monkeypatch):
     assert projection(model)["totals"]["settled"] == 1
 
 
+def test_department_and_provenance_caps_preserve_unknown_bucket_and_denominators(
+    model, monkeypatch
+):
+    assert model.call().status_code == 200
+    with model.store.connection() as db:
+        for index, department in enumerate(("HR", "Finance", "HR")):
+            action = f"act-mixed-{index}"
+            db.execute(
+                "INSERT INTO model_attempts SELECT ?,tenant_id,state,created_at,tariff_revision,input_bound,output_bound,input_tariff,output_tariff FROM model_attempts LIMIT 1",
+                (action,),
+            )
+            db.execute(
+                "INSERT INTO model_settlement SELECT ?,version,input_tokens,output_tokens,simulated_micro_usd,over_bound FROM model_settlement LIMIT 1",
+                (action,),
+            )
+            attr = TrustedAttribution(
+                version=1 + index,
+                human_subject=f"human-{index}",
+                department=department,
+                provenance="local_demo" if index == 0 else "verified_issuer",
+                subject_revision=1,
+            ).model_dump_json()
+            db.execute(
+                "INSERT INTO model_attribution VALUES (?,1,?,?)",
+                (action, model.identity.principal_id, attr),
+            )
+    mixed = projection(model, departments=1)
+    assert mixed["totals"]["attempts"] == 4
+    assert len(mixed["departments"]) == 1
+    assert mixed["departments"][0]["bucket"] == "unknown_unassigned"
+    assert mixed["completeness"]["returned_department_attempts"] == 1
+    assert mixed["completeness"]["departments_truncated"]
+    assert mixed["completeness"]["status"] == "truncated"
+    monkeypatch.setattr("agentgate.department_usage.MAX_PROVENANCE", 1)
+    mixed = projection(model)
+    hr = next(b for b in mixed["departments"] if b["department"] == "HR")
+    assert hr["totals"]["attempts"] == 2 and len(hr["provenance"]) == 1
+    assert hr["provenance_truncated"] and mixed["completeness"]["provenance_truncated"]
+    assert mixed["completeness"]["returned_department_attempts"] == 4
+
+
+@pytest.mark.parametrize("field", ["start", "end", "departments"])
+@pytest.mark.parametrize("value", [True, False, 1000.0, "1000"])
+def test_trusted_report_rejects_non_integer_period_and_limits(model, field, value):
+    with pytest.raises(ValueError):
+        projection(model, **{field: value})
+
+
 def test_admin_report_requires_operator_and_bounds_inputs(model):
     controls = ControlPlane(model.store, model.actions.clock)
     controls.initialize(model.actions.policy)
