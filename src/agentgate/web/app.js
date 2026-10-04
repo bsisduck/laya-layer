@@ -1,8 +1,12 @@
 import {createClient} from './api.js';
+import {createLocalRecovery} from './session.js';
 import {el, empty, timestamp} from './ui.js';
 import {overview, timeline} from './observe.js';
 const $ = selector => document.querySelector(selector);
 const lockscreen = $('#lockscreen');
+const serviceScreen = $('#service-screen');
+let mode = null;
+let recoveryRunning = false;
 const shell = $('#console');
 const view = $('#view');
 const notice = $('#notice');
@@ -11,21 +15,22 @@ let revision = 0;
 let expiryTimer;
 let dirty = false;
 let drafts = {};
-const api = createClient(() => lock('Session expired or credential denied. Unlock to continue.'));
+const api = createClient(expired);
+const recoverLocal = createLocalRecovery(api);
 const titles = {overview: ['LIVE OPERATIONS', 'Overview'], timeline: ['CORRELATED EVIDENCE', 'Security timeline'], catalog: ['REVIEWED TOOL AUTHORITY', 'Catalog'], playground: ['BOUNDED DEMO ACTIONS', 'Playground'], policy: ['VERSIONED CONTROLS', 'Policy studio'], feed: ['DATA-ONLY INDICATORS', 'Threat feed'], approvals: ['EXACT ACTION REVIEW', 'Approvals'], outbox: ['LOCAL DELIVERY EVIDENCE', 'Test outbox'], export: ['BOUNDED SECURITY RECORDS', 'Audit export']};
 let currentRoute = 'overview';
 function lock(message = 'Console locked. Use your operator credential to continue.') {
   authenticated = false; dirty = false; drafts = {}; revision++; clearTimeout(expiryTimer); api.clear();
   view.replaceChildren(); notice.textContent = ''; $('#session-expiry').textContent = '';
-  shell.hidden = true; lockscreen.hidden = false; $('#credential').value = '';
+  serviceScreen.hidden = true; shell.hidden = true; lockscreen.hidden = false; $('#credential').value = '';
   $('#login-status').textContent = message; $('#credential').focus();
 }
 function unlock(session) {
-  authenticated = true; lockscreen.hidden = true; shell.hidden = false;
+  authenticated = true; serviceScreen.hidden = true; lockscreen.hidden = true; shell.hidden = false;
   $('#credential').value = ''; $('#login-status').textContent = '';
   $('#session-expiry').textContent = `SESSION UNTIL ${timestamp(session.expires_at)}`;
   clearTimeout(expiryTimer);
-  expiryTimer = setTimeout(() => lock('Session expired. Unlock to continue.'), Math.max(0, session.expires_at * 1000 - Date.now()));
+  expiryTimer = setTimeout(expired, Math.max(0, session.expires_at * 1000 - Date.now()));
   navigate();
 }
 async function navigate() {
@@ -78,11 +83,54 @@ $('#logout').addEventListener('click', async () => {
 $('#refresh').addEventListener('click', navigate);
 window.addEventListener('hashchange', navigate);
 window.addEventListener('beforeunload', event => { if (dirty) { event.preventDefault(); event.returnValue = ''; } });
-window.addEventListener('pageshow', event => { if (event.persisted) { lock('Checking session…'); restore(); } });
-async function restore() {
+function expired() {
+  if (mode === 'local') {
+    if (!recoveryRunning) restoreLocal('Session restored. Review the current state and deliberately retry any expired action.');
+  } else lock('Session expired or credential denied. Unlock to continue.');
+}
+function serviceState(message, retry = false) {
+  authenticated = false; dirty = false; drafts = {}; revision++; clearTimeout(expiryTimer); api.clear();
+  view.replaceChildren(); notice.textContent = ''; $('#session-expiry').textContent = '';
+  shell.hidden = true; lockscreen.hidden = true; serviceScreen.hidden = false;
+  $('#credential').value = '';
+  $('#service-status').textContent = message; $('#retry-session').hidden = !retry;
+  $('#retry-session').disabled = !retry;
+  if (retry) $('#retry-session').focus();
+}
+async function restoreLocal(message = '') {
+  if (recoveryRunning) return;
+  recoveryRunning = true;
+  serviceState('Opening a bounded local session…');
+  try {
+    const session = await recoverLocal();
+    unlock(session);
+    if (message) notice.textContent = message;
+  } catch {
+    // Fixed diagnostic: server/transport details never reach the startup screen.
+    serviceState('Cannot open the local console. Check the gateway with ./laya status, then retry the connection or reload this page. No action has been retried.', true);
+  } finally { recoveryRunning = false; }
+}
+async function restoreCredential() {
+  lock('Checking session…');
   const submit = $('#login-form button'); submit.disabled = true;
   try { unlock(await api.restore()); }
   catch (error) { $('#login-status').textContent = error.status === 401 ? 'Enter your operator credential to continue.' : error.message; }
   finally {submit.disabled = false;}
 }
-restore();
+async function startup() {
+  if (recoveryRunning) return;
+  serviceState('Checking the operator service…');
+  try {
+    mode = (await api.config()).mode;
+    $('#logout').hidden = mode === 'local';
+    $('#console-mode').textContent = mode === 'local' ? 'Local console / trusted computer' : 'OPERATOR WORKSPACE';
+    $('#service-mode').textContent = mode === 'local' ? 'Local console / trusted computer' : 'OPERATOR WORKSPACE';
+    if (mode === 'local') await restoreLocal();
+    else await restoreCredential();
+  } catch {
+    serviceState('Cannot reach the operator service. Check the gateway with ./laya status, then retry the connection or reload this page.', true);
+  }
+}
+$('#retry-session').addEventListener('click', () => mode === 'local' ? restoreLocal() : startup());
+window.addEventListener('pageshow', event => { if (event.persisted) startup(); });
+startup();

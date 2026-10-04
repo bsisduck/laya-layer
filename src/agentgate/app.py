@@ -95,10 +95,14 @@ def create_app(
     models: "ModelService | None" = None,
     *,
     admin_origin: str | None = None,
+    local_console: bool = False,
+    serving_address: tuple[str, int] | None = None,
     enable_mcp: bool = False,
     telemetry_config: "TelemetryConfig | None" = None,
     telemetry_token_file: Path | None = None,
 ) -> FastAPI:
+    if local_console and admin_origin is None:
+        raise ValueError("Local console requires an admin origin")
     if (telemetry_config is None) != (telemetry_token_file is None):
         raise ValueError("Telemetry configuration and credential file must be supplied together")
     app = FastAPI(
@@ -181,7 +185,13 @@ def create_app(
     if admin_origin is not None:
         from agentgate.admin import attach_admin_routes
 
-        attach_admin_routes(app, service, origin=admin_origin)
+        attach_admin_routes(
+            app,
+            service,
+            origin=admin_origin,
+            local_console=local_console,
+            serving_address=serving_address,
+        )
     if telemetry_config is not None and telemetry_token_file is not None:
         from agentgate.telemetry_runtime import attach_sender
 

@@ -10,7 +10,19 @@
 </head>
 <body>
   <a class="skip-link" href="#workspace">Skip to workspace</a>
-  <div id="lockscreen" class="lockscreen">
+  <div id="service-screen" class="lockscreen">
+    <section class="lock-art" aria-label="Laya Sec Layer">
+      <div class="wordmark"><span class="brand-symbol" aria-hidden="true">L/</span> LAYA<span class="muted">SEC LAYER</span></div>
+      <div class="lock-statement"><p class="eyebrow">CONTROL / OBSERVE / VERIFY</p><h1>Every action.<br>A visible<br><em>boundary.</em></h1></div>
+    </section>
+    <section class="lock-form">
+      <p class="eyebrow" id="service-mode">OPERATOR WORKSPACE</p><h2>Opening your workspace</h2>
+      <p id="service-status" role="status" aria-live="polite">Checking the local service…</p>
+      <button id="retry-session" class="primary" hidden>Retry connection ↗</button>
+      <noscript>This console requires JavaScript. No external scripts are loaded.</noscript>
+    </section>
+  </div>
+  <div id="lockscreen" class="lockscreen" hidden>
     <section class="lock-art" aria-label="Laya Sec Layer">
       <div class="wordmark"><span class="brand-symbol" aria-hidden="true">L/</span> LAYA<span class="muted">SEC LAYER</span></div>
       <div class="lock-statement"><p class="eyebrow">CONTROL / OBSERVE / VERIFY</p><h1>Every action.<br>A visible<br><em>boundary.</em></h1><p>Policy, execution and evidence.<br>One operator workspace.</p></div>
@@ -32,7 +44,7 @@
   <div id="console" class="console" hidden>
     <aside class="rail">
       <a class="wordmark" href="#overview" aria-label="Laya Sec Layer overview"><span class="brand-symbol" aria-hidden="true">L/</span><span>LAYA<small>SEC LAYER</small></span></a>
-      <div class="rail-caption">OPERATOR WORKSPACE</div>
+      <div id="console-mode" class="rail-caption">OPERATOR WORKSPACE</div>
       <nav aria-label="Main navigation">
         <a href="#overview"><span>01</span>Overview</a>
         <a href="#timeline"><span>02</span>Security timeline</a>

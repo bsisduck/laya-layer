@@ -41,6 +41,7 @@ from agentgate.contracts import (
     Reason,
 )
 from agentgate.control_plane import ControlConflict, ControlPlane, ThreatFeed
+from agentgate.local_console import local_request, validate_local_console
 from agentgate.models import ChatRequest, ModelService
 from agentgate.policy import Policy
 from agentgate.scoped_contracts import REGISTRY_DIGEST
@@ -116,6 +117,10 @@ async def body_model[T: BaseModel](request: Request, model: type[T], maximum: in
         raise AdminError(422, "Invalid request") from error
 
 
+class EmptyBootstrap(Contract):
+    pass
+
+
 class Login(Contract):
     token: Annotated[str, Field(pattern=r"^[A-Za-z0-9_-]{43}$")]
 
@@ -187,13 +192,24 @@ class OperatorAuth:
     def login(self, token: str, previous: str | None) -> tuple[str, OperatorSession]:
         if TOKEN_PATTERN.fullmatch(token) is None:
             raise AdminError(401, "Invalid operator credential")
-        digest = credential_digest(token)
+        return self._issue(credential_digest(token), previous)
+
+    def bootstrap(self, previous: str | None) -> tuple[str, OperatorSession]:
+        if previous is not None:
+            try:
+                return previous, self.resolve(previous)
+            except AdminError:
+                pass
+        return self._issue(None, previous)
+
+    def _issue(self, digest: str | None, previous: str | None) -> tuple[str, OperatorSession]:
         with self.service.store.connection() as db:
             db.execute("BEGIN IMMEDIATE")
             now = self.service.clock()
             row = db.execute("SELECT digest FROM operator_credentials WHERE id=1").fetchone()
-            if row is None or not hmac.compare_digest(digest, row[0]):
+            if row is None or (digest is not None and not hmac.compare_digest(digest, row[0])):
                 raise AdminError(401, "Invalid operator credential")
+            digest = row[0]
             # Operator credentials must never acquire agent authority, or vice versa.
             if db.execute("SELECT 1 FROM credentials WHERE digest=?", (digest,)).fetchone():
                 raise AdminError(401, "Invalid operator credential")
@@ -300,8 +316,16 @@ class ApprovalDecision(Contract):
 
 
 def attach_admin_routes(
-    app: FastAPI, service: ActionService, *, origin: str, tools: OperatorTools | None = None
+    app: FastAPI,
+    service: ActionService,
+    *,
+    origin: str,
+    tools: OperatorTools | None = None,
+    local_console: bool = False,
+    serving_address: tuple[str, int] | None = None,
 ) -> None:
+    if local_console:
+        validate_local_console(origin, serving_address)
     parsed = urlsplit(origin)
     if (
         parsed.scheme not in ("http", "https")
@@ -339,7 +363,11 @@ def attach_admin_routes(
         if not (request.url.path == "/admin" or request.url.path.startswith("/admin/")):
             return await call_next(request)
         try:
-            for header in ("origin", "host", "x-csrf-token", "authorization"):
+            if local_console and (
+                serving_address is None or not local_request(request, origin, serving_address)
+            ):
+                raise AdminError(403, "Trusted loopback serving required")
+            for header in ("origin", "host", "x-csrf-token", "authorization", "sec-fetch-site"):
                 if len(request.headers.getlist(header)) > 1:
                     raise AdminError(403, "Invalid operator request")
             if request.headers.get("host") != parsed.netloc:
@@ -357,7 +385,13 @@ def attach_admin_routes(
             write = request.method not in ("GET", "HEAD", "OPTIONS")
             if write and supplied_origin != origin:
                 raise AdminError(403, "Same-origin request required")
-            if request.method == "POST" and request.url.path == "/admin/session":
+            public = request.method == "GET" and request.url.path == "/admin/config"
+            bootstrap = local_console and request.url.path == "/admin/session/bootstrap"
+            if (
+                public
+                or bootstrap
+                or (request.method == "POST" and request.url.path == "/admin/session")
+            ):
                 query(request, set())
             else:
                 session = await run_in_threadpool(auth.resolve, request.cookies.get(COOKIE))
@@ -383,12 +417,11 @@ def attach_admin_routes(
             "csrf_token": session.csrf_token,
         }
 
-    @router.post("/session")
-    async def login(request: Request) -> Response:
-        body = await body_model(request, Login, 1024)
-        token, session = await run_in_threadpool(
-            auth.login, body.token, request.cookies.get(COOKIE)
-        )
+    @router.get("/config")
+    def console_config() -> dict[str, str]:
+        return {"mode": "local" if local_console else "credential"}
+
+    def session_response(token: str, session: OperatorSession) -> Response:
         response = JSONResponse(session_body(session))
         response.set_cookie(
             COOKIE,
@@ -400,6 +433,22 @@ def attach_admin_routes(
             path="/admin",
         )
         return response
+
+    if local_console:
+
+        @router.post("/session/bootstrap")
+        async def bootstrap(request: Request) -> Response:
+            await body_model(request, EmptyBootstrap, 1024)
+            token, session = await run_in_threadpool(auth.bootstrap, request.cookies.get(COOKIE))
+            return session_response(token, session)
+
+    @router.post("/session")
+    async def login(request: Request) -> Response:
+        body = await body_model(request, Login, 1024)
+        token, session = await run_in_threadpool(
+            auth.login, body.token, request.cookies.get(COOKIE)
+        )
+        return session_response(token, session)
 
     @router.get("/session")
     def introspect(request: Request) -> dict[str, object]:
@@ -726,7 +775,7 @@ def attach_admin_routes(
             action_id=action_id,
             fingerprint=body.fingerprint,
             approve=body.approve,
-            actor="operator",
+            actor="local-console" if local_console else "operator",
         )
         status = response_status(result) if isinstance(result, ActionResponse) else 200
         return JSONResponse(jsonable_encoder(result), status_code=status)

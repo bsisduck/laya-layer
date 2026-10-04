@@ -12,12 +12,12 @@ export function createClient(onUnauthorized = () => {}, transport = globalThis.f
     for (const controller of pending) controller.abort();
     pending.clear();
   }
-  async function request(path, { method = 'GET', body, decision = false, download = false } = {}) {
+  async function request(path, { method = 'GET', body, decision = false, download = false, notifyUnauthorized = true } = {}) {
     if (!path.startsWith('/admin/') || path.includes('#') || path.includes('\\')) {
       throw new ApiError(0, 'Invalid operator endpoint.');
     }
     const write = method !== 'GET';
-    if (write && path !== '/admin/session' && !csrf) throw new ApiError(401, 'Unlock the console first.');
+    if (write && path !== '/admin/session' && path !== '/admin/session/bootstrap' && !csrf) throw new ApiError(401, 'Unlock the console first.');
     const epoch = generation;
     const controller = new AbortController();
     pending.add(controller);
@@ -47,7 +47,7 @@ export function createClient(onUnauthorized = () => {}, transport = globalThis.f
         // operator session remains valid and can explicitly renew that scope.
         if (decision && data?.decision === 'deny' && data?.executed === false &&
             Array.isArray(data.reason_codes) && typeof data.action_id === 'string') return data;
-        clear(); onUnauthorized();
+        clear(); if (notifyUnauthorized) onUnauthorized();
         throw new ApiError(401, 'Session expired or credential denied. Unlock to continue.');
       }
       if (!response.ok) {
@@ -66,7 +66,7 @@ export function createClient(onUnauthorized = () => {}, transport = globalThis.f
     } finally { clearTimeout(timeout); pending.delete(controller); }
   }
   function acceptSession(data) {
-    if (data?.authenticated !== true || typeof data.csrf_token !== 'string' || !Number.isFinite(data.expires_at)) {
+    if (data?.authenticated !== true || typeof data.csrf_token !== 'string' || !Number.isFinite(data.expires_at) || data.expires_at * 1000 <= Date.now()) {
       throw new ApiError(0, 'Invalid session response.');
     }
     csrf = data.csrf_token;
@@ -74,7 +74,13 @@ export function createClient(onUnauthorized = () => {}, transport = globalThis.f
   }
   return {
     request, clear,
-    async restore() { return acceptSession(await request('/admin/session')); },
+    async config() {
+      const data = await request('/admin/config', {notifyUnauthorized: false});
+      if (!['credential', 'local'].includes(data?.mode)) throw new ApiError(0, 'Invalid console configuration.');
+      return data;
+    },
+    async restore() { return acceptSession(await request('/admin/session', {notifyUnauthorized: false})); },
+    async bootstrap() { return acceptSession(await request('/admin/session/bootstrap', {method: 'POST', body: {}, notifyUnauthorized: false})); },
     async login(token) { return acceptSession(await request('/admin/session', {method: 'POST', body: {token}})); },
     async logout() { await request('/admin/session', {method: 'DELETE'}); clear(); },
   };
