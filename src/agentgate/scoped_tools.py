@@ -21,6 +21,7 @@ from agentgate.contracts import ActionRequest, ActionResponse, Identity, Reason
 from agentgate.policy import Policy
 from agentgate.scoped_contracts import ALIASES, REGISTRY_DIGEST, MailArguments, MemoryArguments
 from agentgate.storage import CredentialInvalid
+from agentgate.tool_catalog import CATALOG, disposition
 
 if TYPE_CHECKING:
     from agentgate.service import ActionService, Context
@@ -123,7 +124,11 @@ class ScopedTools:
             "memory.query": policy.scoped_tools.memory_roles,
             "mail.send": policy.scoped_tools.mail_roles,
         }.get(operation, ())
-        return operation in identity.operations and bool(set(identity.roles).intersection(roles))
+        return (
+            operation in identity.operations
+            and bool(set(identity.roles).intersection(roles))
+            and disposition(operation) != "deny"
+        )
 
     def discover(self, context: Context) -> list[str]:
         from agentgate.service import GateError
@@ -131,11 +136,7 @@ class ScopedTools:
         if context.identity is None:
             raise GateError(401, Reason.AUTHENTICATION_REQUIRED)
         policy = self.snapshot(context).policy
-        return [
-            op
-            for op in ("documents.read", "memory.query", "mail.send")
-            if self.allowed(context.identity, policy, op)
-        ]
+        return [op for op in CATALOG if self.allowed(context.identity, policy, op)]
 
     def execute(self, context: Context, request: ActionRequest) -> ActionResponse:
         from agentgate.service import GateError
@@ -150,6 +151,10 @@ class ScopedTools:
             raise GateError(403, Reason.UNKNOWN_OPERATION)
         context.operation = "memory.query" if operation == "memory.query" else "mail.send"
         if not self.allowed(identity, snapshot.policy, operation):
+            raise GateError(403, Reason.OPERATION_NOT_ALLOWED)
+        if disposition(operation) != (
+            "automatic_read" if operation == "memory.query" else "exact_approval"
+        ):
             raise GateError(403, Reason.OPERATION_NOT_ALLOWED)
         try:
             if operation == "memory.query":

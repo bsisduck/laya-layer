@@ -237,6 +237,10 @@ class ActionService:
             denial = policy.authorize(identity, metadata)
             if denial is not None:
                 raise GateError(403, denial)
+            from agentgate.tool_catalog import disposition
+
+            if disposition(operation) != "automatic_read":
+                raise GateError(403, Reason.OPERATION_NOT_ALLOWED)
             try:
                 snapshot.inspect("tool_action", request.model_dump_json())
             except ThreatBlocked as error:
