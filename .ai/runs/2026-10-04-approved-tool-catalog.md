@@ -30,6 +30,9 @@ real inference; no new inference evaluation is performed.
 
 ## Progress
 
+PR: #41
+Issue: #38
+
 > Convention: `- [ ]` pending, `- [x]` done. Append commit SHA when a step lands.
 
 ### Phase 1: Trusted authority
@@ -42,8 +45,27 @@ real inference; no new inference evaluation is performed.
 
 ### Phase 3: Verification
 
-- [ ] 3.1 Complete docs, full validation, review and installed browser QA
+- [x] 3.1 Complete docs, full validation, review and installed browser QA — 556de79
 
 ### Phase 4: Draft delivery
 
-- [ ] 4.1 Publish draft PR and report exact head, evidence and limits
+- [x] 4.1 Publish draft PR and report exact head, evidence and limits — PR #41
+
+## Delivery evidence
+
+Runtime head 556de794fda60c5fcd11a82ba42d58be22946db3: retained pinned Hermes
+`make validate` passed 714 tests without skips; lint, strict mypy and packaging
+passed. JS: 9 passed. Acceptance: 140 deterministic control observations; not
+semantic successes. Rebuilt installed credential-mode browser catalog/REST/SQLite,
+approval/replay/outbox and baseline taxonomy QA passed; mocked consumer states are
+reported separately. Wheel hashes matched source; owned services stopped in finally.
+Artifacts remain ignored in `.ai/qa/artifacts_catalog/` and `reports/generated/`.
+
+Root independently reviewed/tested 743c869 (712 tests, installed and mocked browser
+suites; no blocker/major found). Delta 556de79 makes the fixed idempotency/closed-world
+MCP hints explicit immutable registry fields, with two rejection tests, documentation
+and a screenshot scroll adjustment. No scores, permissions or executor behavior changed.
+The delivery head adds only this progress record; exact final-head validation and
+CI results are recorded on the draft PR. No author merge or self-approval; root
+owns final delta review and integration. Real inference, bank/GitLab/SMTP connections
+and explicit local-console mode are outside this task's evidence.
