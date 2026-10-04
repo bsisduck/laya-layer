@@ -1,4 +1,4 @@
-import {el, empty, panel, pairs, tag} from './ui.js';
+import {el, empty, panel, pairs, tag, details} from './ui.js';
 
 // Accept a known catalog contract only; partial/old metadata never implies authority.
 export function catalogState(data) {
@@ -30,19 +30,22 @@ export async function catalogView(api) {
   const state = catalogState(data);
   if (state === 'missing') return empty('Catalog metadata is unavailable or incompatible. Refresh after updating the gateway.');
   if (state === 'empty') return empty('No implemented tools reported by this catalog.');
-  return el('div', {class: 'stack'},
-    panel('Approved tool catalog',
-      el('p', {class: 'hint'}, 'Risk describes potential operation exposure. Your credential and the active policy still determine access to each resource. Scores do not grant permission or remove approval.'),
-      pairs({catalog_version: data.version, policy_version: data.policy_version, registry_digest: data.registry_digest}),
-      el('p', {class: 'hint'}, 'Local policy heuristic · not probability, PII classification, semantic inference, OWASP level or AI Act legal classification.')),
-    ...data.tools.map(tool => panel(tool.operation,
-      el('p', {class: 'hint'}, tool.description),
-      el('div', {class: 'actions'}, tag(tool.effect), tag(`${tool.risk.band} · ${tool.risk.score}/100`), tag('implemented')),
-      el('p', {class: 'hint'}, approvalLabel(tool.policy.disposition)),
+  const tools = data.tools.map(tool => {
+    const disclosure = el('details', {}, el('summary', {}, `Scope, risk and policy · ${tool.operation}`),
       pairs({adapter_scope: tool.adapter, potential_data: tool.potential_data, data_scope: tool.data_scope,
         reversibility: tool.reversibility, may_affect_person: tool.affects_person ? 'Yes · potential consequence' : 'No direct person effect declared'}),
-      el('details', {}, el('summary', {}, `Risk components and policy · ${tool.operation}`),
-        el('div', {class: 'stack'}, pairs(tool.risk.components), pairs(tool.policy), el('p', {class: 'hint'}, tool.risk.version))))),
+      el('h3', {}, 'Risk components'), pairs(tool.risk.components),
+      el('h3', {}, 'Active policy'), pairs(tool.policy), el('p', {class: 'hint'}, tool.risk.version));
+    return panel(tool.operation, el('p', {class: 'hint'}, tool.description),
+      el('div', {class: 'actions'}, tag(tool.effect), tag(`${tool.risk.band} · ${tool.risk.score}/100`), tag('implemented')),
+      el('p', {class: 'hint'}, approvalLabel(tool.policy.disposition)), disclosure);
+  });
+  return el('div', {class: 'stack catalog-workspace'},
+    panel('Approved tool catalog',
+      el('p', {class: 'hint'}, `${data.tools.length} implemented operations. Credentials and active policy determine access; risk scores confer no authority.`),
+      details('Catalog provenance', {catalog_version: data.version, policy_version: data.policy_version, registry_digest: data.registry_digest}),
+      el('p', {class: 'hint'}, 'Local policy heuristic · not probability, PII classification, semantic inference, OWASP level or AI Act legal classification.')),
+    el('div', {class: 'catalog-tools'}, tools),
     panel('Proposed examples · unavailable', el('p', {class: 'hint'}, 'These examples cannot execute through REST or MCP. No GitLab or bank connection is installed.'),
       ...data.examples.map(row => el('section', {class: 'catalog-example'}, el('h3', {}, `${row.category} · ${row.operation}`), tag('unavailable'), el('p', {class: 'hint'}, row.description)))));
 }

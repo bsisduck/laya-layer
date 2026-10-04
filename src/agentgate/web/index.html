@@ -42,25 +42,33 @@
     </section>
   </div>
   <div id="console" class="console" hidden>
-    <aside class="rail">
-      <a class="wordmark" href="#overview" aria-label="Laya Sec Layer overview"><span class="brand-symbol" aria-hidden="true">L/</span><span>LAYA<small>SEC LAYER</small></span></a>
+    <button id="nav-backdrop" class="nav-backdrop" aria-label="Close navigation" hidden tabindex="-1"></button>
+    <aside id="navigation-rail" class="rail">
+      <div class="rail-brand"><a class="wordmark" href="#overview" aria-label="Laya Sec Layer overview"><span class="brand-symbol" aria-hidden="true">L/</span><span>LAYA<small>SEC LAYER</small></span></a><button id="close-menu" class="quiet" aria-label="Close navigation">×</button></div>
       <div id="console-mode" class="rail-caption">OPERATOR WORKSPACE</div>
       <nav aria-label="Main navigation">
-        <a href="#hr"><span>00</span>HR workspace</a>
-        <a href="#overview"><span>01</span>Overview</a>
-        <a href="#timeline"><span>02</span>Security timeline</a>
-        <a href="#playground"><span>03</span>Playground</a>
-        <a href="#policy"><span>04</span>Policy studio</a>
-        <a href="#feed"><span>05</span>Threat feed</a>
-        <a href="#approvals"><span>06</span>Approvals</a>
-        <a href="#outbox"><span>07</span>Test outbox</a>
-        <a href="#export"><span>08</span>Audit export</a>
-        <a href="#catalog"><span>09</span>Catalog</a>
+        <div class="nav-group"><p class="nav-label">Workspace</p>
+        <a href="#overview"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3h7v7H3z M14 3h7v7h-7z M3 14h7v7H3z M14 14h7v7h-7z"/></svg>Overview</a>
+        <a href="#hr"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2 M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8 M22 21v-2a4 4 0 0 0-3-3.87 M16 3.13a4 4 0 0 1 0 7.75"/></svg>HR workspace</a>
+        <a href="#approvals"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 12l2 2 4-4 M5 4h14v17H5z M9 4V2h6v2"/></svg>Approvals</a>
+        <a href="#timeline"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>Security timeline</a>
+        </div><div class="nav-group"><p class="nav-label">Controls</p>
+        <a href="#catalog"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h6v6H4z M14 4h6v6h-6z M4 14h6v6H4z M14 14h6v6h-6z"/></svg>Catalog</a>
+        <a href="#policy"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 3v6c0 5-8 9-8 9s-8-4-8-9V6z"/></svg>Policy studio</a>
+        <a href="#feed"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16 M4 12h10 M4 18h7 M18 15v6 M15 18h6"/></svg>Threat feed</a>
+        </div><div class="nav-group"><p class="nav-label">Utilities</p>
+        <a href="#overview?section=standards"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h10l4 4v14H5z M14 3v5h5 M8 12h8 M8 16h5"/></svg>Standards evidence</a>
+        <a href="#overview?section=controls"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 3v6c0 5-8 9-8 9s-8-4-8-9V6z"/></svg>Threat controls</a>
+        <a href="#overview?section=usage"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V10 M12 20V4 M20 20v-7"/></svg>Department usage</a>
+        <a href="#export"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12 M8 11l4 4 4-4 M4 16v5h16v-5"/></svg>Audit export</a>
+        <a href="#outbox"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18v14H3z M3 5l9 7 9-7"/></svg>Test outbox</a>
+        <a href="#playground"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4l12 8-12 8z"/></svg>Playground</a>
+        </div>
       </nav>
-      <div class="rail-bottom"><p class="mono">AGENTGATE / LOCAL</p><p>Inspect the evidence.<br>Know the limits.</p><button id="logout" class="quiet">Lock &amp; sign out ↗</button></div>
+      <div class="rail-bottom"><p class="mono">AGENTGATE / LOCAL</p><button id="logout" class="quiet">Lock &amp; sign out ↗</button></div>
     </aside>
     <div class="main-shell">
-      <header class="topbar"><span id="topbar-mode" class="eyebrow">ENFORCEMENT CONTROL ROOM</span><span id="session-expiry" class="mono"></span></header>
+      <header class="topbar"><button id="open-menu" class="secondary" aria-label="Open navigation" aria-controls="navigation-rail" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16 M4 12h16 M4 18h16"/></svg></button><span id="topbar-mode" class="eyebrow">ENFORCEMENT CONTROL ROOM</span><span id="session-expiry" class="mono"></span></header>
       <main id="workspace" tabindex="-1">
         <div class="page-heading"><div><p class="eyebrow" id="page-kicker">LIVE OPERATIONS</p><h1 id="page-title">Overview</h1></div><button id="refresh" class="secondary">Refresh ↻</button></div>
         <p id="notice" role="status" aria-live="polite"></p>

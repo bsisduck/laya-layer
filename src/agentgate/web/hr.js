@@ -38,10 +38,10 @@ export async function hrView(api, memory) {
   const draftStatus = status();
   const readResult = el('div', {class: 'hr-feedback', 'aria-live': 'polite'});
   const draftResult = el('div', {class: 'hr-feedback', 'aria-live': 'polite'});
-  const steps = el('ol', {class: 'hr-steps', 'aria-label': 'HR workflow progress'});
+  const steps = el('div', {class: 'hr-state-strip', role: 'group', 'aria-label': 'HR workbench status'});
   const next = el('p', {class: 'hr-next', role: 'status'});
   const bindingView = el('div');
-  const actions = el('div');
+  const actions = el('div', {class: 'hr-panes'});
   const approval = el('div');
   const controls = [];
   const running = new Set();
@@ -80,8 +80,8 @@ export async function hrView(api, memory) {
     bindingView.replaceChildren(el('p', {class: 'hr-identity'}, 'Requester: Local HR business partner', el('span', {}, `Agent: ${data.identity.agent_id}`), el('span', {}, active ? `Expires: ${timestamp(memory.binding.expires_at)}` : 'No active HR session')));
     const progress = hrProgress(memory, active);
     if (data.configured && data.parent.state !== 'active') progress[0] = `Authority ${data.parent.state}`;
-    steps.replaceChildren(...['Start HR session', 'Read / summarize', 'Draft / review'].map((label, i) => el('li', {}, el('strong', {}, label), el('span', {}, progress[i]))));
-    next.textContent = !data.configured ? 'Next: preview the HR setup, then activate the reviewed changes.' : data.parent.state === 'expired' ? 'Next: renew the expired HR authority below, then deliberately start a new HR session.' : data.parent.state !== 'active' ? 'Next: inspect the inactive HR authority and current policy before continuing.' : !active ? 'Next: start a bounded HR session to enable the actions below.' : memory.effects === 1 ? 'One local message recorded. Inspect the outbox or deliberately start a new draft.' : memory.reviewState === 'approved' ? 'Next: resume the exact approved message to create one local outbox record.' : memory.reviewState === 'pending' ? 'Next: review the exact recipient and content below.' : memory.read === 'released' ? 'Next: draft a follow-up for exact human review.' : 'Next: select a source and read it or request a model summary.';
+    steps.replaceChildren(...['Session', 'Source', 'Message'].map((label, i) => el('span', {}, el('span', {class: 'muted'}, `${label}: `), progress[i])));
+    next.textContent = !data.configured ? 'Preview the HR setup, then activate the reviewed changes.' : data.parent.state === 'expired' ? 'Renew the expired HR authority below, then deliberately start a new HR session.' : data.parent.state !== 'active' ? 'Inspect the inactive HR authority and current policy before continuing.' : !active ? 'Start a bounded HR session to enable the actions below.' : memory.effects === 1 ? 'One local message recorded. Inspect the outbox or deliberately start a new draft.' : memory.reviewState === 'approved' ? 'Resume the exact approved message to create one local outbox record.' : memory.reviewState === 'pending' ? 'Review the exact recipient and content below.' : memory.read === 'released' ? 'Draft a follow-up for exact human review.' : 'Select a source and read it or request a model summary.';
     for (const {control, needsBinding} of controls) control.disabled = running.size > 0 || (needsBinding ? !active : data.parent.state !== 'active');
     if (sourceSelection) sourceSelection.disabled = running.size > 0;
     if (startControl) startControl.textContent = memory.binding ? 'Start a new HR session' : 'Start HR session';
@@ -147,9 +147,6 @@ export async function hrView(api, memory) {
     approval.append(card); bindingStatus();
   }
 
-  root.append(panel('Synthetic candidate workspace',
-    el('p', {class: 'eyebrow'}, 'HR / LOCAL DEMO'),
-    el('p', {}, 'Read a fictional candidate record, then draft a follow-up for exact review. Local outbox only; no hiring decision or real email.'), steps, next));
 
   if (!data.configured) {
     const setup = panel('Set up the reviewed HR preset',
@@ -179,7 +176,7 @@ export async function hrView(api, memory) {
     grants.prepend(el('p', {class: 'hint'}, 'Local operator-provisioned demo. Active policy, human/agent grants and budgets are checked on each action. Starting another session invalidates previous proposals. Expiry, reload and recovery never replay a mutation.'), pairs({department: data.requester.department, accounting_owner: data.identity.principal_id, preset_read_examples: data.effective_documents.map(hrResourceLabel)}));
     // Keep the disclosure label first for native keyboard and screen-reader behavior.
     grants.prepend(grants.querySelector('summary'));
-    const authority = panel('1. Bounded HR session', bindingView, el('div', {class: 'hr-buttons'}, startControl, end), lifecycle, grants);
+    const authority = el('section', {class: 'panel hr-session', 'aria-label': 'HR session context'}, el('div', {class: 'hr-session-toolbar'}, bindingView, el('div', {class: 'hr-buttons'}, startControl, end)), steps, lifecycle, grants);
     if (data.parent.state === 'expired') {
       const renew = button('Renew expired HR parent', () => busy(renew, lifecycle, async () => {
         await write('parent/renew', {expected_epoch: data.parent.epoch}); clearHR(memory); root.replaceChildren(await hrView(api, memory));
@@ -199,10 +196,11 @@ export async function hrView(api, memory) {
       evidence(response, readResult, path === 'summary' ? 'summary' : 'read');
       readStatus.textContent = `${path === 'summary' ? 'Summary request checked' : 'Read decision received'}: ${hrResourceLabel(resource)}.`;
     }
-    actions.append(panel('2. Read / summarize', field('Synthetic source', selection),
+    const sourcePane = panel('Source & results', el('p', {class: 'hint pane-intro'}, 'Synthetic records · protected reads and model output.'), field('Synthetic source', selection),
       el('div', {class: 'hr-buttons'}, controlled('Read selected source', readStatus, () => read('read'), 'primary'),
       controlled('Request model summary', readStatus, () => read('summary'))), inactiveHint(), readStatus, readResult,
-      details('Source and model availability', {model: data.model_configured ? 'Policy configured; provider availability is checked on invocation. No substitute summary.' : 'Model policy unavailable; no substitute summary.', semantic: `${data.semantic_required ? 'required' : 'not required by active policy'} / ${data.semantic_mode}`, limits: 'CV decisions are actual pipeline results. Classifier efficacy requires separate real-worker evidence.'})));
+      details('Source and model availability', {model: data.model_configured ? 'Policy configured; provider availability is checked on invocation. No substitute summary.' : 'Model policy unavailable; no substitute summary.', semantic: `${data.semantic_required ? 'required' : 'not required by active policy'} / ${data.semantic_mode}`, limits: 'CV decisions are actual pipeline results. Classifier efficacy requires separate real-worker evidence.'}));
+    sourcePane.classList.add('hr-source-pane'); actions.append(sourcePane);
     const recipient = el('input', {id: 'hr-recipient', type: 'email', required: true, maxlength: '254', value: memory.draft?.recipient ?? 'candidate@demo.internal'});
     const subject = el('input', {id: 'hr-subject', required: true, maxlength: '200', value: memory.draft?.subject ?? 'Synthetic candidate follow-up'});
     const body = el('textarea', {id: 'hr-message', required: true, maxlength: '8192'}, memory.draft?.body ?? 'Thank you for your interest. This is a synthetic follow-up for the local demonstration.');
@@ -228,8 +226,9 @@ export async function hrView(api, memory) {
     form.addEventListener('submit', event => { event.preventDefault(); propose.click(); });
     const fresh = controlled('Start new draft', draftStatus, async () => { memory.key = crypto.randomUUID(); delete memory.proposal; delete memory.reviewState; delete memory.effects; approval.replaceChildren(); draftResult.replaceChildren(); editHint.textContent = ''; draftStatus.textContent = 'New draft started with your entered content. Submit it for a fresh exact review.'; recipient.focus(); });
     form.append(field('Message recipient', recipient), field('Message subject', subject), field('Message content', body), el('div', {class: 'hr-buttons'}, propose, fresh), inactiveHint(), editHint);
-    actions.append(panel('3. Draft / review follow-up', form, el('p', {class: 'hint'}, 'Submit the exact recipient and content for review. To change a stored proposal, start a new draft. Delivery creates one local fixture outbox record.'), draftStatus, draftResult, approval));
-    root.append(actions);
+    const draftPane = panel('Draft & review', form, el('p', {class: 'hint'}, 'Submit the exact recipient and content for review. To change a stored proposal, start a new draft. Delivery creates one local fixture outbox record.'), draftStatus, draftResult, approval);
+    draftPane.classList.add('hr-draft-pane'); actions.append(draftPane);
+    root.append(next, actions);
     bindingStatus(); await review();
   }
   root.append(el('div', {class: 'hr-links'}, el('a', {href: '#catalog'}, 'Approved catalog →'), el('a', {href: '#overview?section=usage'}, 'Measured usage →'), el('a', {href: '#timeline'}, 'Audit timeline →')),

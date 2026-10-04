@@ -17,6 +17,7 @@ from catalog_flows import catalog_flow
 from local_console_state import snapshot
 from mcp import ClientSession
 from mcp.client.streamable_http import streamable_http_client
+from navigation import navigation
 from playwright.sync_api import expect, sync_playwright
 
 from agentgate.storage import credential_digest
@@ -47,7 +48,7 @@ def call(page, path, body=None):
 
 
 def navigate(page, name):
-    link = page.get_by_role("navigation").get_by_role("link", name=name, exact=False)
+    link = navigation(page).get_by_role("link", name=name, exact=False)
     link.focus()
     page.keyboard.press("Enter")
     expect(page.locator("#workspace")).to_be_focused()
@@ -160,16 +161,14 @@ def main():
             )
             started = time.monotonic()
             page.goto(base)
-            expect(
-                page.get_by_role("heading", name="Synthetic candidate workspace")
-            ).to_be_visible()
+            expect(page.get_by_role("heading", name="Service & controls")).to_be_visible()
             startup_ms = round((time.monotonic() - started) * 1000)
             expect(page.locator("#console-mode")).to_be_visible()
             no_credentials(page, state)
             assert writes.count("/admin/session/bootstrap") == 1
             assert "/admin/hr/setup" not in writes and "/admin/hr/bind" not in writes
             navigate(page, "Overview")
-            expect(page.get_by_role("heading", name="Service state")).to_be_visible()
+            expect(page.get_by_role("heading", name="Service & controls")).to_be_visible()
             assert startup_before == snapshot(database, startup_before.keys())
             cookie = next(
                 c
@@ -181,7 +180,7 @@ def main():
             )
             page.screenshot(path=str(args.artifacts / "overview.png"), full_page=True)
             page.reload()
-            expect(page.get_by_role("heading", name="Service state")).to_be_visible()
+            expect(page.get_by_role("heading", name="Service & controls")).to_be_visible()
             assert writes.count("/admin/session/bootstrap") == 1
 
             catalog_flow(
@@ -220,9 +219,10 @@ def main():
             pending = run_action(page)
             assert pending["executed"] is False and pending["action_state"] == "pending"
             navigate(page, "Approvals")
-            expect(page.get_by_role("heading", name="Exact mail actions")).to_be_visible()
+            expect(page.get_by_role("heading", name="Approval inbox")).to_be_visible()
             card = page.locator(".approval").filter(has_text=pending["action_id"])
             # Existing UI uses one labelled review checkbox and explicit approve control.
+            card.get_by_text("Review exact payload & authority", exact=True).click()
             card.get_by_label(
                 "I reviewed the exact payload, identity, expiry and fingerprint."
             ).check()
@@ -243,10 +243,11 @@ def main():
                 card.get_by_role("button", name="Approve exact action").click()
             assert event.value.status == 401
             expect(page.get_by_text("Session restored.", exact=False)).to_be_visible()
-            expect(page.get_by_role("heading", name="Exact mail actions")).to_be_visible()
+            expect(page.get_by_role("heading", name="Approval inbox")).to_be_visible()
             assert writes.count(decision_path) == 1
             assert snapshot(database, before.keys()) == before
             card = page.locator(".approval").filter(has_text=pending["action_id"])
+            card.get_by_text("Review exact payload & authority", exact=True).click()
             card.get_by_label(
                 "I reviewed the exact payload, identity, expiry and fingerprint."
             ).check()
@@ -390,9 +391,7 @@ def main():
                         [(digest,) for digest in fault_rows],
                     )
                 p.get_by_role("button", name="Retry connection").press("Enter")
-                expect(
-                    p.get_by_role("heading", name="Synthetic candidate workspace")
-                ).to_be_visible()
+                expect(p.get_by_role("heading", name="Service & controls")).to_be_visible()
                 assert len(failures) == 2
                 assert all(url.endswith("/admin/session/bootstrap") for url in failures)
                 failure.close()

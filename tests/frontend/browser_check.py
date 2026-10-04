@@ -12,6 +12,7 @@ from pathlib import Path
 
 from catalog_flows import catalog_flow
 from fullstack_flows import model_generation, observe_delivery, restore_controls, tools_and_renewal
+from navigation import navigation
 from playwright.sync_api import expect, sync_playwright
 
 
@@ -50,7 +51,7 @@ def main() -> None:
         page.get_by_label("Operator credential").press("Tab")
         expect(page.get_by_role("button", name="Unlock console")).to_be_focused()
         page.keyboard.press("Enter")
-        expect(page.get_by_role("heading", name="Service state")).to_be_visible()
+        expect(page.get_by_role("heading", name="Service & controls")).to_be_visible()
         with restore_controls(context, args.url.rstrip("/"), args.state_dir):
             cookies = context.cookies(args.url + "/admin/session")
             cookie = next(item for item in cookies if item["name"] == "agentgate_operator")
@@ -58,10 +59,10 @@ def main() -> None:
             assert page.evaluate("Object.keys(localStorage).length") == 0
             assert page.evaluate("Object.keys(sessionStorage).length") == 0
             page.reload()
-            expect(page.get_by_role("heading", name="Service state")).to_be_visible()
+            expect(page.get_by_role("heading", name="Service & controls")).to_be_visible()
 
             def navigate(name: str) -> None:
-                page.get_by_role("navigation").get_by_role("link", name=name, exact=False).click()
+                navigation(page).get_by_role("link", name=name, exact=False).click()
                 expect(page.locator("#workspace")).to_be_focused()
 
             catalog_flow(page, navigate, args.state_dir, args.artifacts)
@@ -162,7 +163,7 @@ def main() -> None:
             expect(page.locator(".result")).to_contain_text("THREAT")
 
             navigate("Approvals")
-            expect(page.get_by_role("heading", name="Exact mail actions")).to_be_visible()
+            expect(page.get_by_role("heading", name="Approval inbox")).to_be_visible()
             navigate("Test outbox")
             expect(page.get_by_role("heading", name="Local test outbox")).to_be_visible()
             navigate("Audit export")
@@ -176,7 +177,7 @@ def main() -> None:
 
             observe_delivery(page, args.state_dir, action, args.artifacts)
             navigate("Overview")
-            expect(page.get_by_role("heading", name="Service state")).to_be_visible()
+            expect(page.get_by_role("heading", name="Service & controls")).to_be_visible()
             page.screenshot(path=str(args.artifacts / "overview.png"), full_page=True)
             for width in (390, 768):
                 page.set_viewport_size({"width": width, "height": 844})

@@ -5,6 +5,7 @@ import json
 import time
 from urllib.parse import parse_qs, urlsplit
 
+from navigation import navigation
 from playwright.sync_api import expect, sync_playwright
 
 from agentgate.policy import Policy
@@ -168,7 +169,7 @@ def main() -> None:
             content_type="application/json",
             body=json.dumps({"counts": {"allow": 7}, "services": {"gateway": "ready"}}),
         )
-        expect(page.get_by_role("heading", name="Service state")).to_be_visible()
+        expect(page.get_by_role("heading", name="Service & controls")).to_be_visible()
         expect(page.locator(".stat.allow strong")).to_have_text("7")
         expect(page.locator(".stat.deny strong")).to_have_text("—")
         sections = page.get_by_role("group", name="Overview sections")
@@ -190,14 +191,16 @@ def main() -> None:
         expect(totals).to_contain_text("selected attempts")
         expect(totals).to_contain_text("Unknown")
         assert page.get_by_role("heading", name="Resource ledger").count() == 0
-        expect(page.get_by_role("link", name="Department usage", exact=True)).to_have_attribute(
+        expect(sections.get_by_role("link", name="Department usage", exact=True)).to_have_attribute(
             "aria-current", "page"
         )
         assert page.url.endswith("#overview?section=usage")
         expect(
-            page.get_by_role("navigation").get_by_role("link", name="Overview")
+            page.locator("nav").get_by_role(
+                "link", name="Department usage", exact=True, include_hidden=True
+            )
         ).to_have_attribute("aria-current", "page")
-        page.get_by_role("link", name="Standards evidence", exact=True).press("Enter")
+        sections.get_by_role("link", name="Standards evidence", exact=True).press("Enter")
         expect(
             page.get_by_role("heading", name="Standards controls, evidence and gaps")
         ).to_be_visible()
@@ -205,7 +208,7 @@ def main() -> None:
         page.go_back()
         expect(page.get_by_role("heading", name="Department model usage")).to_be_visible()
         page.go_back()
-        expect(page.get_by_role("heading", name="Service state")).to_be_visible()
+        expect(page.get_by_role("heading", name="Service & controls")).to_be_visible()
         page.goto(args.url.rstrip("/") + "/#overview?section=standards")
         expect(
             page.get_by_role("heading", name="Standards controls, evidence and gaps")
@@ -213,7 +216,7 @@ def main() -> None:
         assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
 
         def navigate(name):
-            page.get_by_role("navigation").get_by_role("link", name=name, exact=False).click()
+            navigation(page).get_by_role("link", name=name, exact=False).click()
 
         state["catalog"] = "loading"
         with page.expect_request(lambda request: request.url.endswith("/admin/catalog")):
@@ -245,6 +248,7 @@ def main() -> None:
         page.get_by_role("button", name="Run governed action").click()
         expect(page.locator(".result")).to_contain_text("Execution is not confirmed")
         navigate("Approvals")
+        page.get_by_text("Review exact payload & authority", exact=True).press("Enter")
         expect(page.get_by_label("Exact immutable mail payload")).to_contain_text(
             json.dumps(hostile)[1:-1]
         )

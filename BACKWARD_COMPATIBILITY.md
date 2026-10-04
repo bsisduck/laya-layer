@@ -1,3 +1,10 @@
+The packaged console now defaults empty/unknown hashes to Overview → Operations.
+`#hr` explicitly opens HR; all existing route hashes, timeline trace queries and
+`#overview?section=usage|standards|controls` remain. Presentation labels and layout
+change without backend/auth/schema/policy/provider changes. Browser consumers use
+explicit section links; pending approvals retain the global unexpired-record count,
+separate from bounded terminal decisions. See [workspace validation](docs/operations-workspace-validation.md).
+
 # Contract status
 
 Measured usage adds protected `GET /admin/department-usage` and schema-2

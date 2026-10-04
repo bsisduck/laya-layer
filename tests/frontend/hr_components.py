@@ -6,6 +6,7 @@ import time
 from pathlib import Path
 from urllib.parse import urlsplit
 
+from navigation import navigation
 from playwright.sync_api import expect, sync_playwright
 
 
@@ -87,16 +88,30 @@ def main():
 
     with sync_playwright() as pw:
         browser = pw.chromium.launch(headless=True)
-        page = browser.new_page(viewport={"width": 390, "height": 844}, reduced_motion="reduce")
+        page = browser.new_page(viewport={"width": 1440, "height": 900}, reduced_motion="reduce")
         page.on("pageerror", lambda e: errors.append(str(e)))
         page.route("**/admin/**", handle)
         try:
             page.goto(args.url.rstrip("/") + "/#hr")
+            source = page.get_by_role("heading", name="Source & results").locator("../..")
+            draft = page.get_by_role("heading", name="Draft & review").locator("../..")
+            expect(source).to_be_visible()
+            expect(draft).to_be_visible()
+            left, right = source.bounding_box(), draft.bounding_box()
+            assert left["x"] + left["width"] <= right["x"] and left["y"] == right["y"]
+            for label in ["Read selected source", "Propose exact message"]:
+                box = page.get_by_role("button", name=label).bounding_box()
+                assert box["y"] + box["height"] <= 900
+            assert page.locator(".hr-session").bounding_box()["height"] < 180
+            page.screenshot(path=str(args.artifacts / "hr-workbench-1440.png"))
+            page.set_viewport_size({"width": 390, "height": 844})
+            left, right = source.bounding_box(), draft.bounding_box()
+            assert left["y"] + left["height"] <= right["y"]
             start = page.get_by_role("button", name="Start HR session", exact=True)
             read = page.get_by_role("button", name="Read selected source", exact=True)
             selection = page.get_by_label("Synthetic source")
-            progress = page.get_by_role("list", name="HR workflow progress")
-            expect(progress.get_by_role("listitem")).to_have_count(3)
+            progress = page.get_by_role("group", name="HR workbench status")
+            expect(progress.locator(":scope > span")).to_have_count(3)
             expect(read).to_be_disabled()
             assert read.evaluate("e => getComputedStyle(e).cursor") == "not-allowed"
             start.focus()
@@ -184,10 +199,8 @@ def main():
             assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
             page.screenshot(path=str(args.artifacts / "hr-states-390.png"), full_page=True)
             # Navigation resets selected source and read progress together.
-            page.get_by_role("navigation").get_by_role("link", name="Catalog", exact=False).click()
-            page.get_by_role("navigation").get_by_role(
-                "link", name="HR workspace", exact=False
-            ).click()
+            navigation(page).get_by_role("link", name="Catalog", exact=False).click()
+            navigation(page).get_by_role("link", name="HR workspace", exact=False).click()
             expect(selection).to_have_value("hr-candidate-001")
             expect(progress).not_to_contain_text("Output released")
             expect(page.get_by_role("heading", name="Provider summary")).to_have_count(0)

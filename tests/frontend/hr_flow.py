@@ -20,6 +20,7 @@ from pathlib import Path
 
 import httpx
 from fullstack_flows import api
+from navigation import navigation
 from playwright.sync_api import expect, sync_playwright
 
 
@@ -97,7 +98,7 @@ def click(page, label, path):
 
 
 def navigate(page, name):
-    control = page.get_by_role("navigation").get_by_role("link", name=name, exact=False)
+    control = navigation(page).get_by_role("link", name=name, exact=False)
     control.focus()
     page.keyboard.press("Enter")
     expect(page.locator("#workspace")).to_be_focused()
@@ -232,8 +233,8 @@ def run():
             "request",
             lambda r: writes.append(r.url.removeprefix(base)) if r.method == "POST" else None,
         )
-        page.goto(base)
-        expect(page.get_by_role("heading", name="Synthetic candidate workspace")).to_be_visible()
+        page.goto(base + "/#hr")
+        expect(page.get_by_role("heading", name="HR workspace", exact=True)).to_be_visible()
         expect(page.get_by_label("Operator credential")).to_be_hidden()
         assert snapshot(database) == before_start  # Opening only creates operator session.
         assert "/admin/hr/setup" not in writes and "/admin/hr/bind" not in writes
@@ -246,11 +247,11 @@ def run():
         _, allowed = click(page, "Read selected source", "/admin/hr/read")
         assert allowed["executed"] and "Synthetic candidate" in allowed["result"]["content"]
         read_panel = page.locator("section.panel").filter(
-            has=page.get_by_role("heading", name="2. Read / summarize", exact=True)
+            has=page.get_by_role("heading", name="Source & results", exact=True)
         )
         expect(read_panel.get_by_role("heading", name="Source decision")).to_be_visible()
         expect(read_panel).to_contain_text(allowed["result"]["content"])
-        expect(page.locator(".hr-steps")).to_contain_text("Output released")
+        expect(page.locator(".hr-state-strip")).to_contain_text("Output released")
         effects = {
             t: rows(database, t) for t in ("tool_reservations", "tool_outbox", "model_attempts")
         }
@@ -270,7 +271,7 @@ def run():
         page.get_by_label("Synthetic source").select_option(label="Synthetic candidate record")
         subject = "Installed HR " + uuid.uuid4().hex[:12]
         draft_panel = page.locator("section.panel").filter(
-            has=page.get_by_role("heading", name="3. Draft / review follow-up", exact=True)
+            has=page.get_by_role("heading", name="Draft & review", exact=True)
         )
         attempts = writes.count("/admin/hr/propose")
         for label, invalid, valid in (
@@ -445,7 +446,7 @@ def run():
         page = second.new_page()
         # Install before navigation so the binding's expiry timer belongs to this clock.
         page.clock.install()
-        page.goto(base)
+        page.goto(base + "/#hr")
         expect(page.get_by_role("button", name="Start HR session", exact=True)).to_be_visible()
         frozen = snapshot(database)
         restarted = api(
@@ -528,7 +529,7 @@ def run():
 
         def expire_during_read(route):
             expect(page.get_by_label("Synthetic source")).to_be_disabled()
-            expect(page.locator(".hr-steps")).not_to_contain_text("Output released")
+            expect(page.locator(".hr-state-strip")).not_to_contain_text("Output released")
             response = route.fetch()
             assert response.status == 200  # Actual authorized release, held before browser receipt.
             page.clock.fast_forward(6000)

@@ -99,10 +99,9 @@ def tools_and_renewal(page, navigate, state, artifacts):
 
     assert count() == 0
     navigate("Approvals")
-    card = page.locator("article.approval").filter(
-        has=page.get_by_role("heading", name=action, exact=True)
-    )
+    card = page.locator("article.approval").filter(has=page.get_by_text(action, exact=True))
     expect(card).to_be_visible()
+    card.get_by_text("Review exact payload & authority", exact=True).press("Enter")
     assert json.loads(card.get_by_label("Exact immutable mail payload").inner_text()) == payload | {
         "idempotency_key": key
     }

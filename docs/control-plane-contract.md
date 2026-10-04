@@ -110,21 +110,24 @@ GET `/admin/overview` returns:
   "controls":{"authentication":true,"document_authorization":true,
     "redact_emails":true,"semantic_required":false,"semantic_mode":"enforce",
     "threat_feed_indicators":0},
-  "counts":{"allow":0,"redact":0,"deny":0,"pending":null},
+  "counts":{"allow":0,"redact":0,"deny":0,"pending":0},
   "count_window":{"status":"measured","audit_rows":0,"limit":1000,
-    "scope":"latest audit rows; terminal events only"},
+    "scope":"latest audit rows; terminal events only",
+    "pending_scope":"all unexpired pending approval records"},
   "budgets":{"status":"measured","tool_counters":[],"limit":1000,"model":null},
   "services":{"gateway":"ready","semantic":"not_configured"},
   "latency":{"status":"unknown","reason":"Gateway latency is not recorded"},
   "coverage":{"enforced":["documents.read"],
     "not_implemented":["models","memory","mail","approvals","mcp"],
-    "real_model_evaluation":"not_run","pending_approvals":"unknown"}
+    "real_model_evaluation":"not_run","pending_approvals":0}
 }
 ```
 
 Values above illustrate an empty database, not demo telemetry. `counts` measures
-terminal audit events in the latest 1000 rows; pending is unknown until approval
-integration. `tool_counters` retains `scope`, `scope_key`, `reserved`, `spent`.
+allow/redact/deny terminal audit events in the latest 1000 rows. `counts.pending`
+and `coverage.pending_approvals` report all unexpired pending approval records
+across tenants; `count_window.pending_scope` names that distinct scope.
+`tool_counters` retains `scope`, `scope_key`, `reserved`, `spent`.
 Semantic service values are `not_configured`, `ready`, `unavailable`. Integration
 owners update coverage for genuinely attached capabilities; no fabricated metrics.
 
