@@ -165,7 +165,8 @@ def main() -> None:
             page.get_by_role("navigation").get_by_role("link", name=name, exact=False).click()
 
         state["catalog"] = "loading"
-        navigate("Catalog")
+        with page.expect_request(lambda request: request.url.endswith("/admin/catalog")):
+            navigate("Catalog")
         expect(page.get_by_text("Loading operator state…")).to_be_visible()
         expect(page.locator("#view")).to_have_attribute("aria-busy", "true")
         assert held
