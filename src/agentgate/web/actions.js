@@ -140,7 +140,7 @@ async function editorView(kind, api, setDirty) {
 }
 function tenantSelector() {return el('input', {id: 'tenant-filter', value: 'tenant-a', required: true, pattern: '[a-zA-Z0-9][a-zA-Z0-9._-]{0,95}', maxlength: '96'});}
 function scopedList(kind, api) {
-  const root = panel(kind === 'approvals' ? 'Exact mail actions' : 'Local test outbox');
+  const root = panel(kind === 'approvals' ? 'Approval inbox' : 'Local test outbox');
   const tenant = tenantSelector(); const output = status(); const rows = el('div');
   const load = el('button', {type: 'submit', class: 'secondary'}, 'Load tenant');
   const form = el('form', {class: 'filters'}, field('Tenant', tenant), load);
@@ -157,9 +157,11 @@ function scopedList(kind, api) {
       if (!entries.length) rows.append(empty('No approval records for this tenant.'));
       for (const item of entries) {
         const response = el('div'); const rowStatus = status();
-        const card = el('article', {class: 'panel approval'}, el('div', {class: 'section-head'}, el('h3', {}, text(item.action_id)), tag(item.state)),
+        const review = el('details', {class: 'approval-review'}, el('summary', {}, 'Review exact payload & authority'),
           pairs({tenant: item.tenant_id, accounting_owner: item.principal_id, human_requester: item.authority?.human_subject ?? 'Unattributed legacy agent', authority_provenance: item.authority?.provenance ?? 'legacy', department: item.authority?.department ?? 'unassigned', root_run: item.root_run_id, operation: item.operation, policy: item.policy_version, created: timestamp(item.created_at), expires: timestamp(item.expires_at), fingerprint: item.fingerprint, payload_digest: item.payload_digest, policy_digest: item.policy_digest, registry_digest: item.registry_digest, reason: item.reason, decided_by: item.decided_by}),
-          el('pre', {'aria-label': 'Exact immutable mail payload'}, pretty(item.payload)), response, rowStatus);
+          el('pre', {'aria-label': 'Exact immutable mail payload'}, pretty(item.payload)));
+        const card = el('article', {class: 'approval'}, el('div', {class: 'section-head'}, el('div', {}, el('h3', {}, text(item.payload?.subject ?? item.operation)), el('p', {class: 'footnote'}, text(item.action_id))), tag(item.state)),
+          el('div', {class: 'approval-summary'}, el('span', {}, `To ${text(item.payload?.recipient)}`), el('span', {}, `Requester ${text(item.authority?.human_subject ?? item.principal_id)}`), el('span', {}, `Expires ${timestamp(item.expires_at)}`)), review, response, rowStatus);
         if (item.state === 'pending' && typeof item.fingerprint === 'string' && typeof item.action_id === 'string') {
           const check = el('input', {id: `review-${rows.childElementCount}`, type: 'checkbox'});
           const controls = el('div', {class: 'actions'});
@@ -178,7 +180,7 @@ function scopedList(kind, api) {
             control.disabled = true; controls.append(control);
           }
           check.addEventListener('change', () => controls.querySelectorAll('button').forEach(b => {b.disabled = !check.checked;}));
-          card.append(el('label', {for: check.id}, check, 'I reviewed the exact payload, identity, expiry and fingerprint.'), controls);
+          review.append(el('label', {for: check.id}, check, 'I reviewed the exact payload, identity, expiry and fingerprint.'), controls);
         }
         rows.append(card);
       }
