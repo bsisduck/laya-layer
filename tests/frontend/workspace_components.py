@@ -1,4 +1,4 @@
-"""Mocked operations/menu/inbox presentation against installed wheel assets; no inference."""
+"""Mocked operations/top navigation/inbox presentation against installed wheel assets; no inference."""
 
 import argparse
 import json
@@ -6,6 +6,7 @@ import time
 from pathlib import Path
 from urllib.parse import urlsplit
 
+from navigation import navigation
 from playwright.sync_api import expect, sync_playwright
 
 
@@ -107,28 +108,10 @@ def main():
     with sync_playwright() as pw:
         browser = pw.chromium.launch(headless=True)
         page = browser.new_page(viewport={"width": 1440, "height": 900}, reduced_motion="reduce")
-        # Deliver an actual native media change after opening the mobile drawer.
-        # Holding the callback makes the otherwise intermittent ordering deterministic.
-        page.add_init_script("""(() => {
-            window.__deferMenuResize = false;
-            window.__pendingMenuResize = [];
-            const nativeMatchMedia = window.matchMedia.bind(window);
-            window.matchMedia = query => {
-                const media = nativeMatchMedia(query);
-                if (query !== '(max-width: 760px)') return media;
-                const add = media.addEventListener.bind(media);
-                media.addEventListener = (type, listener, options) => add(type, event => {
-                    const deliver = () => listener.call(media, event);
-                    if (window.__deferMenuResize) window.__pendingMenuResize.push(deliver);
-                    else deliver();
-                }, options);
-                return media;
-            };
-        })();""")
         page.on("pageerror", lambda e: errors.append(str(e)))
         page.route("**/admin/**", handle)
         try:
-            page.goto(base)
+            page.goto(base + "/#overview")
             expect(page.get_by_role("heading", name="Recent audit activity")).to_be_visible()
             expect(page.get_by_role("link", name="Operations", exact=True)).to_have_attribute(
                 "aria-current", "page"
@@ -141,7 +124,9 @@ def main():
             assert "Healthy" not in page.locator("#view").inner_text()
             assert page.get_by_role("heading", name="Department model usage").count() == 0
             assert page.locator(".threat-ladder").count() == 0
-            assert page.get_by_role("navigation").locator(".nav-group").count() == 3
+            expect(
+                page.get_by_role("navigation", name="Main navigation").get_by_role("link")
+            ).to_have_count(3)
             for name in ["Review approvals · tenant-a", "Open HR workbench"]:
                 box = page.get_by_role("link", name=name, exact=False).bounding_box()
                 assert box["y"] + box["height"] < 900
@@ -167,7 +152,7 @@ def main():
             state["activity"], state["hold"] = 200, True
             page.get_by_role("button", name="Refresh").click()
             expect(page.locator("#view")).to_have_attribute("aria-busy", "true")
-            page.locator("nav").get_by_role("link", name="Approvals", exact=True).click()
+            navigation(page).get_by_role("link", name="Approvals", exact=True).click()
             expect(page.get_by_role("heading", name="Approval inbox")).to_be_visible()
             held.pop().fulfill(status=200, json=summary)
             expect(page.get_by_role("heading", name="Approval inbox")).to_be_visible()
@@ -198,92 +183,57 @@ def main():
             page.screenshot(path=str(args.artifacts / "approval-expanded-390.png"), full_page=True)
             scenarios.append("progressive exact approval details and consent-bound payload")
 
-            opener = page.get_by_role("button", name="Open navigation", exact=True)
-            opener.press("Enter")
-            dialog = page.get_by_role("dialog", name="Navigation menu")
-            expect(dialog).to_be_visible()
-            expect(page.locator(".main-shell")).to_have_attribute("inert", "")
-            first = dialog.get_by_role("link", name="Laya Sec Layer overview", exact=True)
-            first.focus()
-            first.press("Shift+Tab")
-            expect(dialog.get_by_role("link", name="Playground", exact=True)).to_be_focused()
-            page.keyboard.press("Tab")
-            expect(first).to_be_focused()
-            page.screenshot(path=str(args.artifacts / "menu-390.png"))
-            page.keyboard.press("Escape")
-            expect(opener).to_be_focused()
-            expect(page.locator(".main-shell")).not_to_have_attribute("inert", "")
-            opener.press("Enter")
-            page.locator("#nav-backdrop").click(position={"x": 370, "y": 400})
-            expect(opener).to_be_focused()
-            opener.press("Enter")
-            dialog.get_by_role("link", name="Approvals", exact=True).press("Enter")
+            primary = page.get_by_role("navigation", name="Main navigation")
+            for width in [360, 390, 768, 1440]:
+                page.set_viewport_size({"width": width, "height": 900})
+                expect(primary.get_by_role("link")).to_have_count(3)
+                for name in ["Chat", "Logs", "Workflow"]:
+                    link = primary.get_by_role("link", name=name, exact=True)
+                    box = link.bounding_box()
+                    assert 0 <= box["x"] and box["x"] + box["width"] <= width
+                assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
+            primary.get_by_role("link", name="Workflow", exact=True).focus()
+            page.keyboard.press("Enter")
+            expect(
+                page.get_by_role("heading", name="From intent to permitted output")
+            ).to_be_visible()
             expect(page.locator("#workspace")).to_be_focused()
-            expect(opener).to_have_attribute("aria-expanded", "false")
-            opener.press("Enter")
-            page.set_viewport_size({"width": 1440, "height": 900})
-            expect(page.locator("#navigation-rail")).to_be_visible()
-            expect(page.locator("#navigation-rail")).not_to_have_attribute("role", "dialog")
-            expect(page.locator(".main-shell")).not_to_have_attribute("inert", "")
-            scenarios.append("mobile menu focus trap, Escape, backdrop, same hash and resize")
-
-            page.evaluate("window.__deferMenuResize = true")
-            page.set_viewport_size({"width": 390, "height": 844})
-            page.wait_for_function("() => window.__pendingMenuResize.length === 1")
-            opener.press("Enter")
-            expect(dialog).to_be_visible()
-            page.evaluate("""() => {
-                window.__deferMenuResize = false;
-                window.__pendingMenuResize.splice(0).forEach(deliver => deliver());
-            }""")
-            expect(dialog).to_be_visible()
-            expect(opener).to_have_attribute("aria-expanded", "true")
-            expect(page.locator(".main-shell")).to_have_attribute("inert", "")
-            expect(dialog.get_by_role("button", name="Close navigation")).to_be_focused()
-            page.screenshot(path=str(args.artifacts / "menu-delayed-resize-390.png"))
-            dialog.get_by_role("link", name="Policy studio").press("Enter")
-            expect(page.get_by_label("Policy JSON")).to_be_visible()
-            expect(page.locator("#workspace")).to_be_focused()
-            page.set_viewport_size({"width": 1440, "height": 900})
-            expect(page.locator("#navigation-rail")).not_to_have_attribute("hidden", "")
-            scenarios.append(
-                "delayed native resize preserves the newly opened drawer and Policy link"
-            )
+            scenarios.append("three visible keyboard-accessible top links at all target widths")
 
             for route, active in [
-                ("overview?section=standards", "Standards evidence"),
-                ("overview?section=unknown", "Overview"),
-                ("unknown", "Overview"),
+                ("overview?section=standards", "Workflow"),
+                ("overview?section=unknown", "Logs"),
+                ("unknown", "Chat"),
             ]:
                 page.goto(base + "/#" + route)
                 expect(page.locator("#view")).not_to_have_attribute("aria-busy", "true")
-                current = page.locator("nav a[aria-current=page]")
+                current = primary.locator("a[aria-current=page]")
                 expect(current).to_have_count(1)
                 expect(current).to_have_text(active)
-            page.locator("nav").get_by_role("link", name="Approvals", exact=True).click()
-            expect(page.get_by_role("heading", name="Approval inbox")).to_be_visible()
+            primary.get_by_role("link", name="Logs", exact=True).click()
+            expect(page.get_by_role("heading", name="Security timeline")).to_be_visible()
             page.go_back()
-            expect(page.get_by_role("heading", name="Recent audit activity")).to_be_visible()
+            expect(page.get_by_role("heading", name="Example conversations")).to_be_visible()
+            page.go_forward()
+            expect(page.get_by_role("heading", name="Security timeline")).to_be_visible()
             page.set_viewport_size({"width": 390, "height": 844})
-            opener.press("Enter")
-            dialog.get_by_role("link", name="Policy studio").press("Enter")
+            navigation(page).get_by_role("link", name="Policy studio").press("Enter")
             editor = page.get_by_label("Policy JSON")
             expect(editor).to_be_visible()
             editor.fill('{"revision": 2}')
             page.once("dialog", lambda event: event.dismiss())
-            opener.press("Enter")
             with page.expect_event("dialog") as discard:
-                dialog.get_by_role("link", name="Overview", exact=True).press("Enter")
+                primary.get_by_role("link", name="Chat", exact=True).press("Enter")
             assert discard.value.type == "confirm"
             assert discard.value.message == "Discard the unsaved editor changes?"
             expect(page).to_have_url(base + "/#policy")
             expect(editor).to_have_value('{"revision": 2}')
             expect(page.locator("#workspace")).to_be_focused()
-            expect(opener).to_have_attribute("aria-expanded", "false")
-            assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
-            scenarios.append(
-                "overview query normalization, browser Back and dirty-editor cancellation focus"
+            expect(primary.get_by_role("link", name="Workflow", exact=True)).to_have_attribute(
+                "aria-current", "page"
             )
+            assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
+            scenarios.append("deep-link parents, back/forward and dirty-editor cancellation")
             assert not errors, errors
         except Exception:
             page.screenshot(path=str(args.artifacts / "failure.png"), full_page=True)

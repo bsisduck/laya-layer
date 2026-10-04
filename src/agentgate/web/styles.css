@@ -227,7 +227,7 @@ footer {border-top:1px solid var(--line);display:flex;justify-content:space-betw
 .product-header {background:var(--ink);color:var(--paper);display:flex;align-items:center;justify-content:space-between;gap:32px;padding:18px max(28px,calc((100vw - 1544px)/2));}
 .product-header .wordmark {flex:none;}
 .primary-nav {display:flex;gap:8px;padding:0;overflow:visible;}
-.primary-nav a {font-size:15px;min-height:46px;padding:10px 25px;border-radius:5px;color:#d1ddd4;}
+.primary-nav a {text-decoration:none;font-size:15px;min-height:46px;padding:10px 25px;border-radius:5px;color:#d1ddd4;}
 .primary-nav a[aria-current=page] {background:var(--paper);color:var(--ink);box-shadow:inset 0 -3px var(--orange);}
 .primary-nav a:hover {background:#48614f;color:white;}
 .primary-nav a[aria-current=page]:hover {background:#fff;color:var(--ink);}
@@ -238,7 +238,7 @@ footer {border-top:1px solid var(--line);display:flex;justify-content:space-betw
 main {max-width:1544px;padding-top:26px;}
 .page-heading h1 {font-family:Georgia,'Times New Roman',serif;font-size:38px;font-weight:400;letter-spacing:-1.2px;}
 .context-nav {display:flex;flex-wrap:wrap;gap:4px 22px;overflow:visible;padding:0;margin-bottom:24px;border-bottom:1px solid #cfd7cb;}
-.context-nav a {font-size:12px;padding:8px 0;min-height:40px;border-radius:0;border-bottom:2px solid transparent;color:var(--muted);}
+.context-nav a {text-decoration:none;font-size:12px;padding:8px 0;min-height:40px;border-radius:0;border-bottom:2px solid transparent;color:var(--muted);}
 .context-nav a[aria-current=page] {background:transparent;box-shadow:none;color:var(--ink);border-color:var(--orange);}
 .context-nav a:hover {background:transparent;color:var(--orange);}
 .chat-workspace {display:grid;grid-template-columns:300px minmax(0,1fr);border:1px solid #cdd6c9;border-radius:12px;overflow:hidden;background:#fffefa;box-shadow:0 12px 35px #233c3207;}
@@ -320,3 +320,4 @@ main {max-width:1544px;padding-top:26px;}
   .layer-detail {padding:22px 18px;}.layer-detail .kv {display:block;}.layer-detail dt {margin:16px 0 6px;}
   .policy-associations {padding:22px 0;}.policy-context-grid,.gdpr-cards {grid-template-columns:1fr;gap:20px;}
 }
+.conversation-heading .tag {flex:none;white-space:nowrap;}
