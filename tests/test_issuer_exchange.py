@@ -865,3 +865,45 @@ def test_integration_exchange_memory_filters_before_content_and_preserves_pairs(
     assert [entry["entry_id"] for entry in result["result"]["entries"]] == ["hr"]
     assert "AGENTGATE_SECRET" not in response.text
     assert "permitted fixture" in response.text
+
+
+def test_integration_exchanged_child_captures_minimized_department_settlement(issuer):
+    from agentgate.department_usage import report
+
+    h, _, _, _, provider = issuer
+    h.token = child(issuer)
+    assert chat(h).status_code == 200
+    with h.store.connection() as db:
+        row = db.execute(
+            "SELECT accounting_principal,attribution FROM model_attribution"
+        ).fetchone()
+        assert row["accounting_principal"] == h.identity.principal_id
+        attribution = json.loads(row["attribution"])
+        assert attribution == {
+            "version": 2,
+            "human_subject": subject_id("https://issuer.invalid/people", "exact-person"),
+            "department": "HR",
+            "provenance": "issuer_asserted",
+            "subject_revision": 1,
+            "issuer_id": "fixture-issuer",
+            "trust_version": 1,
+        }
+        settlement = db.execute("SELECT * FROM model_settlement").fetchone()
+        assert settlement["input_tokens"] == 20 and settlement["output_tokens"] == 3
+    before = report(h.store, "tenant-a", 999, 1001)
+    assert before["totals"]["attributed"] == before["totals"]["settled"] == 1
+    assert before["totals"]["known_input_tokens"] == 20
+    assert before["departments"][0]["provenance"] == [
+        {
+            "source": "issuer_asserted",
+            "authority_version": 2,
+            "issuer_id": "fixture-issuer",
+            "trust_version": 1,
+        }
+    ]
+    serialized = json.dumps(before)
+    assert "human_subject" not in serialized and "exact-person" not in serialized
+    assert "https://issuer.invalid" not in serialized
+    revoke_subject(h.store, attribution["human_subject"], 1)
+    assert chat(h).status_code == 401 and len(provider.calls) == 1
+    assert report(h.store, "tenant-a", 999, 1001) == before

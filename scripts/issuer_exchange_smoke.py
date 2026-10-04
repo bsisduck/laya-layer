@@ -403,6 +403,33 @@ def installed_run(state, base, hermes_source):
                         "generator": "provider-fixture",
                     }
                 )
+            # The existing department consumer receives the transactional v2
+            # attribution and actual settlement; its report never exposes people.
+            measured = admin.get(
+                "/admin/department-usage",
+                params={
+                    "tenant_id": identity["tenant_id"],
+                    "start": now,
+                    "end": int(time.time()) + 1,
+                },
+            )
+            assert measured.status_code == 200
+            usage = measured.json()
+            assert usage["totals"]["attempts"] == usage["totals"]["attributed"] == 6
+            assert usage["totals"]["settled"] == 6
+            assert usage["totals"]["known_input_tokens"] == 120
+            assert usage["totals"]["known_output_tokens"] == 18
+            assert usage["departments"][0]["provenance"] == [
+                {
+                    "source": "issuer_asserted",
+                    "authority_version": 2,
+                    "issuer_id": profile["profile_id"],
+                    "trust_version": generation + 1,
+                }
+            ]
+            assert "human_subject" not in measured.text and issuer not in measured.text
+            assert "fixture-person-" not in measured.text
+            report["department_consumer"] = "minimized_v2_actual_settlement_pass"
             # Exact approved effect and replay proof in the installed outbox.
             arguments = {
                 "recipient": "fixture@demo.internal",
