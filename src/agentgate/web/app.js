@@ -101,7 +101,7 @@ window.addEventListener('hashchange', navigate);
 // Activating the current destination still restores workspace focus and state.
 shell.addEventListener('click', event => {
   const link = event.target.closest('nav a');
-  if (link && link.hash === location.hash) { event.preventDefault(); navigate(); }
+  if (link && link.hash === location.hash && event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) { event.preventDefault(); navigate(); }
 });
 window.addEventListener('beforeunload', event => { if (dirty) { event.preventDefault(); event.returnValue = ''; } });
 function expired() {
