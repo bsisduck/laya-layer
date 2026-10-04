@@ -303,3 +303,9 @@ checkpoint/config publication can be retried without resetting delivery history.
 A busy sender, unknown origin/tenant, invalid source anchor or missing private
 collector database is rejected. This operation does not authorize migration to an
 arbitrary remote destination.
+
+For an explicitly trusted computer, `./laya install --local-console` opts into the
+[login-free local console](local-console.md). New/legacy installations stay in
+credential mode by default; reinstalls remember the choice. Stop and reinstall
+with `--no-local-console` to disable it without resetting private authority or
+budgets. This capability is loopback-only and trusts same-host OS clients.

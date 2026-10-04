@@ -228,3 +228,103 @@ def test_invalid_local_serving_configuration_refused(harness, origin, address):
         create_app(
             harness.service, admin_origin=origin, local_console=True, serving_address=address
         )
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/admin/policy/activate",
+        "/admin/feed",
+        "/admin/playground",
+        "/admin/approvals/act-review/decision",
+        "/admin/playground/credential/renew",
+    ],
+)
+def test_missing_csrf_and_expired_operator_never_write(local, path):
+    client, harness, _ = local
+    session = bootstrap(client).json()
+    before = effects(harness)
+    assert client.post(path, headers={"Origin": ORIGIN}, json={}).status_code == 403
+    harness.now[0] += 900
+    assert (
+        client.post(
+            path, headers={"Origin": ORIGIN, "X-CSRF-Token": session["csrf_token"]}, json={}
+        ).status_code
+        == 401
+    )
+    assert bootstrap(client).status_code == 200
+    assert effects(harness) == before and harness.executor.calls == []
+
+
+def test_local_exact_approval_actor_and_zero_forbidden_outbox_effects(local):
+    client, harness, _ = local
+    session = bootstrap(client).json()
+    headers = {"Origin": ORIGIN, "X-CSRF-Token": session["csrf_token"]}
+    payload = {
+        "mode": "mail",
+        "recipient": "reviewer@demo.internal",
+        "subject": "Review",
+        "body": "Synthetic notes",
+        "idempotency_key": "local-reviewed",
+    }
+    result = client.post("/admin/playground", headers=headers, json=payload)
+    assert result.status_code == 202 and result.json()["executed"] is False
+    action = client.get("/admin/approvals?tenant_id=tenant-a").json()["approvals"][0]
+    path = f"/admin/approvals/{action['action_id']}/decision"
+    body = {"tenant_id": "tenant-a", "fingerprint": action["fingerprint"], "approve": True}
+    assert client.post(path, json=body, headers={"Origin": ORIGIN}).status_code == 403
+    assert client.get("/admin/outbox?tenant_id=tenant-a").json()["messages"] == []
+    assert client.post(path, json=body, headers=headers).status_code == 202
+    with harness.store.connection() as db:
+        actor = db.execute(
+            "SELECT decided_by FROM tool_actions WHERE action_id=?", (action["action_id"],)
+        ).fetchone()[0]
+    assert actor == "local-console"
+    assert client.get("/admin/outbox?tenant_id=tenant-a").json()["messages"] == []
+    assert (
+        client.post(
+            "/admin/playground", headers=headers, json=payload | {"body": "changed"}
+        ).status_code
+        == 409
+    )
+    assert client.get("/admin/outbox?tenant_id=tenant-a").json()["messages"] == []
+    sent = client.post("/admin/playground", headers=headers, json=payload)
+    assert sent.status_code == 200 and sent.json()["executed"] is True
+    assert (
+        client.post("/admin/playground", headers=headers, json=payload).json()["result"]
+        == sent.json()["result"]
+    )
+    assert len(client.get("/admin/outbox?tenant_id=tenant-a").json()["messages"]) == 1
+    assert any(
+        event.executed and event.operation == "mail.send" for event in harness.store.events()
+    )
+
+
+def test_local_operator_cookie_never_authenticates_mcp(local):
+    client, harness, _ = local
+    app = create_app(
+        harness.service,
+        admin_origin=ORIGIN,
+        local_console=True,
+        serving_address=ADDRESS,
+        enable_mcp=True,
+    )
+    with TestClient(app, base_url=ORIGIN) as wire:
+        assert bootstrap(wire).status_code == 200
+        for headers in ({}, {"Authorization": f"Bearer {wire.cookies.get(COOKIE)}"}):
+            result = wire.post(
+                "/mcp",
+                headers=headers | {"Accept": "application/json, text/event-stream"},
+                json={
+                    "jsonrpc": "2.0",
+                    "id": 1,
+                    "method": "initialize",
+                    "params": {
+                        "protocolVersion": "2025-11-25",
+                        "capabilities": {},
+                        "clientInfo": {"name": "local", "version": "1"},
+                    },
+                },
+            )
+            assert result.status_code == 401
+        assert harness.executor.calls == []

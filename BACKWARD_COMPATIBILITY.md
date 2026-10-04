@@ -181,3 +181,14 @@ fails the command. Actual collected parametrized node IDs and all execution phas
 must reconcile; ambient PYTEST_ADDOPTS cannot narrow the gate. Readers that ignore
 the additive object retain old fields. New consumers distinguish declaration,
 execution and readiness; no semantic measurements are imported or recomputed.
+The opt-in local console adds boolean `local_console` to version-1 owned installation
+metadata (missing defaults false), `install --local-console|--no-local-console`,
+`serve --local-console`, and optional default-false adapter configuration with an
+explicit validated serving address. Credential mode, agent API auth, operator
+credentials/epochs and database schemas are retained. Additive `GET /admin/config`
+is minimized/public; `POST /admin/session/bootstrap` exists only in trusted loopback
+local mode and creates/reuses existing bounded operator sessions. Local approval
+actor is `local-console`, not an individually authenticated human. Old installations
+stay credential mode and omitted reinstall flags preserve deliberate choices.
+See [local console](docs/local-console.md) for boundaries, off switch, embedding,
+expiry/retry and rollback limits; stop before switching/upgrading binaries.
