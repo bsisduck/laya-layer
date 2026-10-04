@@ -7,6 +7,7 @@ import socket
 import subprocess
 import sys
 import time
+from contextlib import closing
 from pathlib import Path
 
 import pytest
@@ -717,3 +718,55 @@ def test_unknown_installed_question_profile_never_prepares_authority(installatio
     save_json(state / "installation.json", settings | {"question_set": "invented-v3"})
     with pytest.raises(LifecycleError, match="question set"):
         installer.services(state)
+
+
+def test_local_console_defaults_upgrade_remembered_choice_and_off_switch(installation_fixture):
+    import sqlite3
+
+    installer, root, state, options = installation_fixture
+    installer.install(root, state, **options)
+    assert configuration(state)["local_console"] is False
+    assert "--local-console" not in installer.services(state)[-1].command
+    # A real old version-1 metadata file gets the safe backward default.
+    settings = configuration(state)
+    del settings["local_console"]
+    save_json(state / "installation.json", settings)
+    assert configuration(state)["local_console"] is False
+    tokens = {p.name: p.read_bytes() for p in (state / "data").glob("*.token")}
+
+    def authority():
+        with closing(sqlite3.connect(state / "data/agentgate.sqlite3")) as db:
+            tables = [
+                row[0]
+                for row in db.execute("SELECT name FROM sqlite_master WHERE type='table'")
+                if row[0] not in ("health_probe", "sqlite_sequence")
+            ]
+            return {table: db.execute(f'SELECT * FROM "{table}"').fetchall() for table in tables}
+
+    before = authority()
+    installer.install(root, state, **options, local_console=True)
+    assert configuration(state)["local_console"] is True
+    assert "--local-console" in installer.services(state)[-1].command
+    assert json.loads((state / "installation.json").read_bytes())["local_console"] is True
+    # Omission means retain the explicit choice, including on a source upgrade.
+    installer.install(root, state, **options)
+    assert configuration(state)["local_console"] is True
+    (root / "src/agentgate/web/index.html").write_text("updated packaged shell")
+    installer.install(root, state, **options)
+    assert configuration(state)["local_console"] is True
+    # Disabling is explicit and also remembered; no authority is reissued or reset.
+    installer.install(root, state, **options, local_console=False)
+    installer.install(root, state, **options)
+    assert configuration(state)["local_console"] is False
+    assert "--local-console" not in installer.services(state)[-1].command
+    assert tokens == {p.name: p.read_bytes() for p in (state / "data").glob("*.token")}
+    assert authority() == before
+
+
+@pytest.mark.parametrize("value", ["true", 1, None, {}, []])
+def test_invalid_persisted_local_console_is_refused(state, value):
+    settings = configuration(state)
+    settings["local_console"] = value
+    save_json(state / "installation.json", settings)
+    with pytest.raises(LifecycleError, match="local console"):
+        configuration(state)

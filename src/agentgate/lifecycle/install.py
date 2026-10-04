@@ -8,6 +8,7 @@ import secrets
 import subprocess
 import tempfile
 import time
+from contextlib import closing
 from pathlib import Path
 from typing import Any
 
@@ -71,6 +72,9 @@ def configuration(state: Path) -> dict[str, Any]:
         )
     if value.get("semantic") not in ("off", "standard", "coreml"):
         raise LifecycleError("Invalid semantic profile")
+    value.setdefault("local_console", False)
+    if type(value["local_console"]) is not bool:
+        raise LifecycleError("Invalid local console mode")
     value.setdefault("question_set", "content-role-v1")
     if value["question_set"] not in ("content-role-v1", "content-role-v2"):
         raise LifecycleError("Invalid semantic question set")
@@ -127,8 +131,11 @@ def install(
     offline: bool,
     collector_port: int = 8095,
     question_set: str = "content-role-v1",
+    local_console: bool | None = None,
 ) -> None:
     os.umask(0o077)
+    if local_console is not None and type(local_console) is not bool:
+        raise LifecycleError("Invalid local console mode")
     if question_set not in ("content-role-v1", "content-role-v2"):
         raise LifecycleError("Invalid semantic question set")
     if len({port, proxy_port, worker_port, collector_port}) != 4 or any(
@@ -155,8 +162,10 @@ def install(
                 "question_set",
             )
         )
-        changed = wanted != existing
+        local_console = settings["local_console"] if local_console is None else local_console
+        changed = wanted != existing or local_console != settings["local_console"]
     else:
+        local_console = False if local_console is None else local_console
         changed = False
         for value in (port, proxy_port, worker_port, collector_port):
             available_port(value)
@@ -174,6 +183,7 @@ def install(
                 "collector_port": collector_port,
                 "semantic": semantic,
                 "question_set": question_set,
+                "local_console": local_console,
                 "prepared": False,
             },
         )
@@ -282,8 +292,8 @@ def install(
             backup = data / f"before-migrate-{time.time_ns()}.sqlite3"
             write_new(backup, b"")
             with (
-                sqlite3.connect(data / "agentgate.sqlite3") as source,
-                sqlite3.connect(backup) as target,
+                closing(sqlite3.connect(data / "agentgate.sqlite3")) as source,
+                closing(sqlite3.connect(backup)) as target,
             ):
                 source.backup(target)
             run([gateway, "--state-dir", str(data), "migrate"])
@@ -320,6 +330,7 @@ def install(
             collector_port=collector_port,
             semantic=semantic,
             question_set=question_set,
+            local_console=local_console,
             prepared=True,
             root=str(root),
             installed_at=time.time(),
@@ -423,6 +434,8 @@ def services(state: Path) -> list[Service]:
         str(data / "litellm.token"),
         "--mcp",
     ]
+    if settings["local_console"]:
+        command.append("--local-console")
     semantic = settings["semantic"]
     if semantic != "off":
         verify_assets(state, semantic)

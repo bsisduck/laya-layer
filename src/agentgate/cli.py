@@ -72,6 +72,11 @@ def main() -> None:
     serve.add_argument(
         "--admin-origin", help="Exact operator browser origin; defaults to loopback URL"
     )
+    serve.add_argument(
+        "--local-console",
+        action="store_true",
+        help="Trust this loopback computer for automatic operator sessions",
+    )
     serve.add_argument("--policy", type=Path, default=Path("config/policy.yaml"))
     serve.add_argument("--port", type=int, default=8000)
     serve.add_argument("--mcp", action="store_true", help="Enable /mcp (install the mcp extra)")
@@ -178,12 +183,15 @@ def main() -> None:
                     models=models,
                     enable_mcp=args.mcp,
                     admin_origin=args.admin_origin or f"http://127.0.0.1:{args.port}",
+                    local_console=args.local_console,
+                    serving_address=("127.0.0.1", args.port),
                     telemetry_config=telemetry_config,
                     telemetry_token_file=args.telemetry_token_file,
                 ),
                 host="127.0.0.1",
                 port=args.port,
                 access_log=False,
+                proxy_headers=False,
             )
         elif args.command == "semantic-worker":
             from agentgate.semantic_quota import SemanticQuota

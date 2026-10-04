@@ -7,7 +7,7 @@ import time
 from playwright.sync_api import expect
 
 
-def catalog_flow(page, navigate, state, artifacts):
+def catalog_flow(page, navigate, state, artifacts, *, console_mode="credential"):
     database = state / "agentgate.sqlite3"
 
     def effects():
@@ -98,7 +98,7 @@ def catalog_flow(page, navigate, state, artifacts):
                 "catalog": catalog,
                 "render_ms": render_ms,
                 "zero_effects_for_view_and_forbidden_calls": True,
-                "scope": "actual rebuilt installed app; credential-mode browser + REST + SQLite; no inference",
+                "scope": f"actual rebuilt installed app; {console_mode}-mode browser + REST + SQLite; no inference",
             },
             indent=2,
         )

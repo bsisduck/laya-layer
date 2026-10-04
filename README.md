@@ -123,3 +123,9 @@ access remains outside the client profile boundary.
 See [two-axis threat evidence](docs/threat-model.md) for the authored L0–L5 ladder, exact seven
 layers, strict frozen-corpus sidecar and unknown live-level contract. The taxonomy
 adds classification/evidence presentation, not new enforcement or inference results.
+
+An explicit [trusted-computer local console](docs/local-console.md) is available
+through `./laya install --local-console`; omitted options retain credential mode
+on new installations. Reinstalls remember the choice. The mode uses bounded
+HttpOnly sessions and existing CSRF/agent enforcement, with no login screen or
+browser credentials. Stop and reinstall with `--no-local-console` to disable it.

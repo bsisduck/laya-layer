@@ -33,6 +33,12 @@ def main() -> None:
     parser.add_argument("--proxy-port", type=int)
     parser.add_argument("--worker-port", type=int)
     parser.add_argument("--collector-port", type=int)
+    parser.add_argument(
+        "--local-console",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help="Install a trusted loopback console without credential entry (default: credential mode)",
+    )
     parser.add_argument("--semantic", choices=["off", "standard", "coreml"])
     parser.add_argument("--question-set", choices=["content-role-v1", "content-role-v2"])
     parser.add_argument(
@@ -49,6 +55,8 @@ def main() -> None:
     root = Path(__file__).resolve().parents[3]
     os.umask(0o077)
     try:
+        if args.local_console is not None and args.command != "install":
+            raise LifecycleError("Local console mode can only be selected during install")
         if args.command == "install":
             saved = configuration(state) if state.exists() else {}
             args.port = args.port if args.port is not None else saved.get("port", 8080)
@@ -75,6 +83,7 @@ def main() -> None:
                 semantic=args.semantic,
                 question_set=args.question_set,
                 offline=args.offline,
+                local_console=args.local_console,
             )
             if args.no_start:
                 print("Installation prepared; run ./laya start with the same state directory.")
@@ -86,7 +95,10 @@ def main() -> None:
             result = launch(state, configured)
             print(json.dumps(result))
             print(f"Open http://127.0.0.1:{configuration(state)['port']}/")
-            print(f"Operator credential file: {state / 'data/operator.token'}")
+            if configuration(state)["local_console"]:
+                print("Local console / trusted computer: automatic bounded operator sessions.")
+            else:
+                print(f"Operator credential file: {state / 'data/operator.token'}")
             print(f"Agent credential file: {state / 'data/client.token'}")
         elif args.command == "status":
             settings = configuration(state)

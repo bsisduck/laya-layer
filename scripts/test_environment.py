@@ -91,8 +91,13 @@ def deep_probe(base):
             return json.loads(content)
 
     assert request("/health/ready")["status"] == "ready"
-    session = request(
-        "/admin/session", "POST", {"token": (STATE / "data/operator.token").read_text().strip()}
+    mode = request("/admin/config")["mode"]
+    session = (
+        request("/admin/session/bootstrap", "POST", {})
+        if mode == "local"
+        else request(
+            "/admin/session", "POST", {"token": (STATE / "data/operator.token").read_text().strip()}
+        )
     )
     try:
         overview = request("/admin/overview")
@@ -136,6 +141,7 @@ def main():
 
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("command", choices=("up", "down"))
+    parser.add_argument("--local-console", action=argparse.BooleanOptionalAction, default=None)
     parser.add_argument("--force", action="store_true")
     parser.add_argument("--force-rebuild", action="store_true")
     args = parser.parse_args()
@@ -187,6 +193,10 @@ def main():
                 and previous.get("fingerprint") == digest
                 and modified <= previous.get("startedEpoch", 0)
                 and 0 <= time.time() - previous.get("startedEpoch", 0) <= ttl
+                and (
+                    args.local_console is None
+                    or configuration(STATE)["local_console"] == args.local_console
+                )
                 and not args.force
                 and not args.force_rebuild
             )
@@ -202,6 +212,10 @@ def main():
                 if running:
                     product("stop", quiet=True)
                 options = []
+                if args.local_console is not None:
+                    options.append(
+                        "--local-console" if args.local_console else "--no-local-console"
+                    )
                 if not STATE.exists():
                     with ExitStack() as stack:
                         sockets = [stack.enter_context(socket.socket()) for _ in range(4)]
@@ -231,6 +245,7 @@ def main():
                     "source": str(ROOT),
                     "status": "running",
                     "mode": "discovered",
+                    "consoleMode": "local" if settings["local_console"] else "credential",
                     "baseUrl": base,
                     "startedByThisRepo": True,
                     "startScript": ".ai/scripts/test-env-up.sh",
@@ -259,10 +274,14 @@ def main():
                     "fingerprint": digest,
                     "notes": "Uses product install/cache/ownership. Shared Ollama is prepared separately. Semantic evaluation runs separately. No manual server boot needed.",
                 }
-                token = (STATE / "data/operator.token").read_text().strip()
-                if not token.replace("_", "").replace("-", "").isalnum():
-                    raise ValueError("Invalid QA credential format")
-                save(QA / "test-env.env", f"TEST_ADMIN_PASSWORD='{token}'\n")
+                if settings["local_console"]:
+                    descriptor["credentials"] = []
+                    descriptor.pop("credentialsFile", None)
+                else:
+                    token = (STATE / "data/operator.token").read_text().strip()
+                    if not token.replace("_", "").replace("-", "").isalnum():
+                        raise ValueError("Invalid QA credential format")
+                    save(QA / "test-env.env", f"TEST_ADMIN_PASSWORD='{token}'\n")
             descriptor["lastBootstrapSeconds"] = round(time.monotonic() - started, 3)
             descriptor["lastBootstrapReused"] = reusable
             save(DESCRIPTOR, descriptor)

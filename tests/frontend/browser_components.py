@@ -65,7 +65,9 @@ def main() -> None:
             calls.append((url.path, request.method, body, request.headers, parse_qs(url.query)))
             code = 200
             data = {}
-            if url.path == "/admin/session":
+            if url.path == "/admin/config":
+                data = {"mode": "credential"}
+            elif url.path == "/admin/session":
                 data = {
                     "authenticated": True,
                     "csrf_token": "component-nonce",

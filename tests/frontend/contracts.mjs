@@ -67,7 +67,8 @@ test('expired playground authority retains the separate operator session for exp
 });
 test('conflicts/missing routes/network writes never become successes', async () => {
   for (const [status, message] of [[409, /Version conflict/], [404, /unavailable/], [501, /unavailable/]]) {
-    const api = createClient(() => {}, async () => response({detail: 'safe detail'}, status));
+    const api = createClient(() => {}, async url => response(url === '/admin/session' ? session : {detail: 'safe detail'}, url === '/admin/session' ? 200 : status));
+    await api.restore();
     await assert.rejects(api.request('/admin/policy'), message);
   }
   const api = createClient(() => {}, async () => {throw new Error('connection');});
@@ -118,4 +119,75 @@ test('taxonomy consumers reject invented OWASP families and invalid ordered lege
     owasp: ['LLM99:2025','ASI00:2026','LLM00:2025','ASI11:2026','LLM01:2026','ASI01:2025',null,{},'LLM02:2025','LLM02:2025','ASI10:2026']};
   assert.deepEqual(eventContext({threat_context: context}).owasp, ['LLM02:2025','ASI10:2026']);
   assert.deepEqual(eventContext({threat_context: context}).layers, ['data']);
+});
+
+test('local bootstrap sends only empty JSON and preserves memory-only CSRF', async () => {
+  const calls = [];
+  const api = createClient(() => {}, async (url, options) => {
+    calls.push({url, ...options});
+    return response(url === '/admin/config' ? {mode: 'local'} : session);
+  });
+  assert.deepEqual(await api.config(), {mode: 'local'});
+  await api.bootstrap();
+  assert.equal(calls[1].url, '/admin/session/bootstrap');
+  assert.equal(calls[1].body, '{}');
+  assert.equal(calls[1].headers.Authorization, undefined);
+  await api.request('/admin/policy/activate', {method: 'POST', body: {}});
+  assert.equal(calls[2].headers['X-CSRF-Token'], session.csrf_token);
+});
+
+import {createLocalRecovery} from '../../src/agentgate/web/session.js';
+test('local recovery is one attempt, coalesced and does not renew credentials or replay mutations', async () => {
+  for (const path of ['/admin/playground', '/admin/approvals/act-one/decision', '/admin/policy/activate', '/admin/feed']) {
+    const calls = []; let recoveries = 0; let recovery;
+    const api = createClient(() => {recoveries++; recovery = recover();}, async (url, options) => {
+      calls.push({url, ...options});
+      if (url === '/admin/session/bootstrap') return response(session);
+      return response({detail: 'Operator session required'}, 401);
+    });
+    const recover = createLocalRecovery(api);
+    await api.bootstrap();
+    await assert.rejects(api.request(path, {method: 'POST', body: {reviewed: true}}), /expired/);
+    await recovery;
+    assert.equal(recoveries, 1);
+    assert.deepEqual(calls.map(x => x.url), ['/admin/session/bootstrap', path, '/admin/session', '/admin/session/bootstrap']);
+    assert.equal(calls.filter(x => x.url === path).length, 1);
+    assert.equal(calls.filter(x => /credential\/renew/.test(x.url)).length, 0);
+  }
+  let restoreCalls = 0; let bootstrapCalls = 0; let release;
+  const recover = createLocalRecovery({
+    restore: () => {restoreCalls++; return new Promise(done => {release = done;});},
+    bootstrap: async () => {bootstrapCalls++; return session;},
+  });
+  const a = recover(); const b = recover(); assert.equal(a, b);
+  release(session); await a;
+  assert.equal(restoreCalls, 1); assert.equal(bootstrapCalls, 0);
+});
+test('local outage never loops or bootstraps after non-401 and bootstrap failure', async () => {
+  for (const status of [0, 503, 401]) {
+    let restores = 0; let bootstraps = 0;
+    const recover = createLocalRecovery({
+      restore: async () => {restores++; throw {status};},
+      bootstrap: async () => {bootstraps++; throw {status: 503};},
+    });
+    await assert.rejects(recover());
+    assert.equal(restores, 1);
+    assert.equal(bootstraps, status === 401 ? 1 : 0);
+  }
+});
+
+test('an expired action follow-up cannot interrupt session recovery', async () => {
+  const calls = []; let bootstrapDone; let recovery;
+  const api = createClient(() => {recovery = recover();}, async url => {
+    calls.push(url);
+    if (url === '/admin/session/bootstrap' && calls.length > 1) return new Promise(done => {bootstrapDone = () => done(response(session));});
+    return response(url === '/admin/session/bootstrap' ? session : {detail: 'expired'}, url === '/admin/session/bootstrap' ? 200 : 401);
+  });
+  const recover = createLocalRecovery(api);
+  await api.bootstrap();
+  await assert.rejects(api.request('/admin/playground', {method: 'POST', body: {}, decision: true}));
+  await new Promise(done => setImmediate(done));
+  await assert.rejects(api.request('/admin/playground/credential?scope=tools'), /session unavailable/);
+  bootstrapDone(); await recovery;
+  assert.deepEqual(calls, ['/admin/session/bootstrap', '/admin/playground', '/admin/session', '/admin/session/bootstrap']);
 });
