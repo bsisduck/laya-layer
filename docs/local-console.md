@@ -78,7 +78,7 @@ contracts are also run through `tests/test_web.py`. For owned installed QA:
 
 ```sh
 .ai/scripts/test-env-up.sh --local-console
-uv run --locked --with playwright python tests/frontend/local_console_check.py \
+uv run --locked --extra mcp --with playwright python tests/frontend/local_console_check.py \
   --descriptor .ai/qa/test-env.json --artifacts .ai/qa/artifacts_local_console
 .ai/scripts/test-env-down.sh
 ```

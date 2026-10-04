@@ -181,6 +181,7 @@ fails the command. Actual collected parametrized node IDs and all execution phas
 must reconcile; ambient PYTEST_ADDOPTS cannot narrow the gate. Readers that ignore
 the additive object retain old fields. New consumers distinguish declaration,
 execution and readiness; no semantic measurements are imported or recomputed.
+
 The opt-in local console adds boolean `local_console` to version-1 owned installation
 metadata (missing defaults false), `install --local-console|--no-local-console`,
 `serve --local-console`, and optional default-false adapter configuration with an

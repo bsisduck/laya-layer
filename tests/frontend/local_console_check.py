@@ -68,6 +68,8 @@ def run_action(page):
 
 
 def no_credentials(page, state):
+    expect(page.locator("#topbar-mode")).to_have_text("Local console / trusted computer")
+    expect(page.locator("#topbar-mode")).to_be_visible()
     expect(page.get_by_label("Operator credential")).to_be_hidden()
     expect(page.get_by_role("button", name="Unlock console")).to_be_hidden()
     expect(page.get_by_role("button", name="Lock & sign out")).to_be_hidden()

@@ -51,6 +51,7 @@ and verifies durable audit/no outbox effect, unknown level and overlapping layer
 filters, keyboard/mobile behavior, old payload safe text, loading/error states and
 invalid ordered metadata. Screenshots/result stay in `.ai/qa/artifacts_threat_ladder`;
 append-only QA audit observations remain. It logs out and closes its browser.
+
 For login-free console QA, run `.ai/scripts/test-env-up.sh --local-console`.
 The helper discovers `/admin/config`, probes empty-JSON bootstrap in local mode,
 and omits browser credential references. `--no-local-console` explicitly restores
