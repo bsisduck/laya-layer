@@ -195,6 +195,13 @@ def main():
                 state["parent"] = parent
                 page.get_by_role("button", name="Refresh").click()
                 expect(page.get_by_role("button", name="Start a new HR session")).to_be_disabled()
+                for label in [
+                    "Read selected source",
+                    "Request model summary",
+                    "Propose exact message",
+                    "End HR session",
+                ]:
+                    expect(page.get_by_role("button", name=label, exact=True)).to_be_disabled()
                 if parent == "expired":
                     expect(
                         page.get_by_role("button", name="Renew expired HR parent")

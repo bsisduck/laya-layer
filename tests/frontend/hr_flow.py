@@ -548,7 +548,9 @@ def run():
         ):
             expect(page.get_by_role("button", name=label, exact=True)).to_be_disabled()
         expect(
-            page.get_by_text("HR session expired. Old approvals cannot transfer.", exact=False)
+            page.locator(".hr-identity")
+            .locator("..")
+            .get_by_text("HR session expired. Old approvals cannot transfer.", exact=False)
         ).to_be_visible()
         restore(admin, saved)
         assert (

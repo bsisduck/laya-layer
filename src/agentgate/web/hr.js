@@ -76,7 +76,7 @@ export async function hrView(api, memory) {
   }
   function bindingStatus() {
     clearTimeout(expiryTimer);
-    const active = data.parent.state === 'active' && !!memory.binding && memory.binding.expires_at * 1000 > Date.now();
+    const active = data.configured && data.parent.state === 'active' && !!memory.binding && memory.binding.expires_at * 1000 > Date.now();
     bindingView.replaceChildren(el('p', {class: 'hr-identity'}, 'Requester: Local HR business partner', el('span', {}, `Agent: ${data.identity.agent_id}`), el('span', {}, active ? `Expires: ${timestamp(memory.binding.expires_at)}` : 'No active HR session')));
     const progress = hrProgress(memory, active);
     if (data.configured && data.parent.state !== 'active') progress[0] = `Authority ${data.parent.state}`;
