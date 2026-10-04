@@ -60,7 +60,7 @@ def catalog_flow(page, navigate, state, artifacts, *, console_mode="credential")
     expect(
         page.get_by_text("No GitLab or bank connection is installed.", exact=False)
     ).to_be_visible()
-    summary = page.locator("summary").filter(has_text="Risk components and policy · mail.send")
+    summary = page.locator("summary").filter(has_text="Scope, risk and policy · mail.send")
     summary.focus()
     page.keyboard.press("Enter")
     expect(summary.locator("..")).to_have_attribute("open", "")

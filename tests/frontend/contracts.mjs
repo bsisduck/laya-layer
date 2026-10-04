@@ -6,7 +6,7 @@ import {parseEditor} from '../../src/agentgate/web/ui.js';
 import {playgroundBody} from '../../src/agentgate/web/actions.js';
 import {catalogState} from '../../src/agentgate/web/catalog.js';
 import {hrResourceLabel, hrDecision, hrProgress} from '../../src/agentgate/web/hr.js';
-import {overviewSection} from '../../src/agentgate/web/observe.js';
+import {overviewSection, pendingApprovals} from '../../src/agentgate/web/observe.js';
 import {exactMoney, knownMeasure, usageState} from '../../src/agentgate/web/departments.js';
 import {standardsEvidence} from '../../src/agentgate/web/standards.js';
 test('department money stays exact past JS and SQLite integer bounds with contributing counts', () => {
@@ -268,4 +268,12 @@ test('HR can retain actual 503 evidence while ordinary unavailable behavior stay
   current = {action_id: 'actual-denied', trace_id: 'actual-trace', decision: 'deny', executed: false, reason_codes: ['REQUIRED_SEMANTIC_UNAVAILABLE']};
   assert.deepEqual(await api.request('/admin/hr/summary', {method: 'POST', body: {}, decision: true, evidence: true}), current);
   await assert.rejects(api.request('/admin/playground', {decision: true}), /unavailable/i);
+});
+
+test('pending approvals use explicit global evidence, never a bounded decision count', () => {
+  assert.equal(pendingApprovals({coverage: {pending_approvals: 17}, counts: {pending: 2}}), 17);
+  assert.equal(pendingApprovals({count_window: {pending_scope: 'all unexpired pending approval records'}, counts: {pending: 4}}), 4);
+  assert.equal(pendingApprovals({counts: {pending: 9}}), null);
+  assert.equal(pendingApprovals({coverage: {pending_approvals: -1}}), null);
+  assert.equal(pendingApprovals({coverage: {pending_approvals: '12'}}), null);
 });

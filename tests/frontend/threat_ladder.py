@@ -12,6 +12,7 @@ import time
 import uuid
 from pathlib import Path
 
+from navigation import navigation
 from playwright.sync_api import expect, sync_playwright
 
 
@@ -36,7 +37,7 @@ def main():
         started = time.monotonic()
         try:
             assert context.request.get(base + "/admin/threat-taxonomy").status == 401
-            page.goto(base + "/#overview")
+            page.goto(base + "/#overview?section=controls")
             expect(page.get_by_role("button", name="Unlock console")).to_be_enabled()
             shell_ms = round((time.monotonic() - started) * 1000, 1)
             page.get_by_label("Operator credential").fill((state / "operator.token").read_text())
@@ -88,9 +89,7 @@ def main():
                     ).fetchone()[0]
                     == 0
                 )
-            page.get_by_role("navigation").get_by_role(
-                "link", name="Security timeline", exact=False
-            ).click()
+            navigation(page).get_by_role("link", name="Security timeline", exact=False).click()
             expect(page.get_by_label("Live level", exact=True)).to_be_visible()
             expect(page.locator("#workspace")).to_be_focused()
             page.get_by_label("Decision", exact=True).select_option("deny")
@@ -120,7 +119,7 @@ def main():
             page.keyboard.press("ArrowRight")
             page.screenshot(path=str(args.artifacts / "timeline-mobile.png"), full_page=True)
             assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
-            page.get_by_role("navigation").get_by_role("link", name="Overview", exact=False).click()
+            navigation(page).get_by_role("link", name="Threat controls", exact=True).click()
             expect(heading).to_be_visible()
             page.screenshot(path=str(args.artifacts / "ladder-mobile.png"), full_page=True)
             assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
@@ -135,9 +134,7 @@ def main():
                 route.fulfill(response=response, json=value)
 
             page.route("**/admin/events?limit=100", old_payload)
-            page.get_by_role("navigation").get_by_role(
-                "link", name="Security timeline", exact=False
-            ).click()
+            navigation(page).get_by_role("link", name="Security timeline", exact=False).click()
             expect(page.get_by_label("Live level", exact=True)).to_be_visible()
             expect(page.locator("tbody tr").first).to_contain_text("<img src=x onerror=alert(1)>")
             assert page.locator("#view img").count() == 0
@@ -153,7 +150,7 @@ def main():
                 route.fulfill(response=response, json=value)
 
             page.route("**/admin/threat-taxonomy", malformed)
-            page.get_by_role("navigation").get_by_role("link", name="Overview", exact=False).click()
+            navigation(page).get_by_role("link", name="Threat controls", exact=True).click()
             expect(page.get_by_text("Ladder unavailable:", exact=False)).to_be_visible()
             expect(page.locator(".threat-ladder li")).to_have_count(0)
             page.unroute("**/admin/threat-taxonomy", malformed)
@@ -161,18 +158,14 @@ def main():
                 "**/admin/events?limit=100",
                 lambda route: route.fulfill(status=503, json={"detail": "Unavailable"}),
             )
-            page.get_by_role("navigation").get_by_role(
-                "link", name="Security timeline", exact=False
-            ).click()
+            navigation(page).get_by_role("link", name="Security timeline", exact=False).click()
             expect(page.get_by_text("No current data to display.", exact=False)).to_be_visible()
             page.unroute("**/admin/events?limit=100")
             # Hold only the taxonomy response; the real shell must report loading.
             held = []
             page.route("**/admin/threat-taxonomy", lambda route: held.append(route))
             with page.expect_request("**/admin/threat-taxonomy"):
-                page.get_by_role("navigation").get_by_role(
-                    "link", name="Overview", exact=False
-                ).click()
+                navigation(page).get_by_role("link", name="Threat controls", exact=True).click()
             expect(page.get_by_text("Loading operator state…", exact=True)).to_be_visible()
             expect(page.locator("#view")).to_have_attribute("aria-busy", "true")
             assert held

@@ -106,6 +106,10 @@ tbody tr:last-child td {border-bottom:0;}
 .service-row:last-child {border:0;}
 .stack {display:grid;gap:14px;}
 .stack>.panel+.panel {margin-top:0;}
+.catalog-tools {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;align-items:start;}
+.catalog-tools>.panel+.panel {margin-top:0;}
+.catalog-tools .section-head {margin-bottom:8px;}
+.catalog-tools .kv {margin:10px 0;}
 .catalog-example+.catalog-example {border-top:1px solid var(--line);margin-top:14px;padding-top:14px;}
 .actions,.filters {display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
 .filters {margin:14px 0;}
@@ -142,9 +146,9 @@ footer {border-top:1px solid var(--line);display:flex;justify-content:space-betw
 .recent-activity .table-wrap {max-height:400px;}
 .recent-activity td:last-child {font:10px/1.5 var(--mono);max-width:140px;}
 .panel-link {display:inline-block;margin-top:14px;font-size:12px;}
-.operation-links {display:flex;flex-wrap:wrap;gap:10px 24px;margin:16px 0;font-size:12px;font-weight:600;}
+.operation-links {display:flex;flex-wrap:wrap;gap:8px 16px;margin:0 0 12px;font-size:12px;font-weight:600;}
 .operation-links a {display:inline-flex;align-items:center;min-height:40px;}
-.operations-evidence {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0 16px;}
+.operations-evidence {margin-top:16px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0 16px;}
 .operations-evidence>.section-head {grid-column:1/-1;margin-bottom:4px;}
 .operations-evidence details {margin-top:0;}
 .operations-evidence details[open] {grid-column:1/-1;}
@@ -194,7 +198,7 @@ footer {border-top:1px solid var(--line);display:flex;justify-content:space-betw
   .console {grid-template-columns:200px minmax(0,1fr);}
   main {padding:22px;}
   .topbar,footer {padding-left:22px;padding-right:22px;}
-  .grid,.operations-grid {grid-template-columns:1fr;}
+  .grid,.operations-grid,.catalog-tools {grid-template-columns:1fr;}
   .operations-evidence {grid-template-columns:1fr 1fr;}
   .hr-session-toolbar {flex-wrap:wrap;}
   .hr-panes {grid-template-columns:1fr;}

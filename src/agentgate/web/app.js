@@ -43,7 +43,11 @@ function openMenu() {
 menuButton.addEventListener('click', openMenu);
 $('#close-menu').addEventListener('click', () => closeMenu());
 backdrop.addEventListener('click', () => closeMenu());
-mobile.addEventListener('change', () => closeMenu(false));
+mobile.addEventListener('change', () => {
+  const wasInMenu = rail.contains(document.activeElement);
+  closeMenu(false);
+  if (wasInMenu && mobile.matches) $('#workspace').focus();
+});
 rail.addEventListener('click', event => { if (event.target.closest('a') && menuOpen) { closeMenu(false); $('#workspace').focus(); } });
 document.addEventListener('keydown', event => {
   if (!menuOpen) return;

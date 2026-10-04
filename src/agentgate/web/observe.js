@@ -30,13 +30,12 @@ export async function overview(api) {
       el('p', {class: 'footnote'}, key === 'pending' ? 'Global · all unexpired records' : 'Bounded terminal decisions')))));
     root.append(el('p', {class: 'hint count-window'}, data.count_window ? `Decision window: ${text(data.count_window.scope)} · ${text(data.count_window.audit_rows)} / ${text(data.count_window.limit)} audit rows. — means unknown.` : 'Decision window not reported. — means unknown.'));
     const services = Object.entries(data.services || {});
-    const service = panel('Service & controls', services.length ? services.map(([key, value]) => el('div', {class: 'service-row'}, el('span', {}, key.replaceAll('_', ' ')), tag(value))) : empty('No service state reported.'),
+    const service = panel('Service & controls', services.length ? services.map(([key, value]) => el('div', {class: 'service-row'}, el('span', {}, ({gateway: 'Gateway', model: 'Model routing', scoped_tools: 'Tool gateway', mcp: 'MCP', semantic: 'Semantic inspection'})[key] ?? key.replaceAll('_', ' ')), tag(value))) : empty('No service state reported.'),
       el('div', {class: 'service-row'}, el('span', {}, 'Audit delivery'), tag(data.telemetry?.status ?? 'unknown')),
       details('Active controls', data.controls || {}),
       el('p', {class: 'hint'}, 'Reported state only. Configured services do not establish model efficacy.'));
     const activityPane = recentActivity(activity);
     root.append(el('div', {class: 'operations-grid'}, activityPane, service));
-    root.append(el('div', {class: 'operation-links'}, el('a', {href: '#approvals'}, 'Review approvals · tenant-a →'), el('a', {href: '#hr'}, 'Open HR workbench →')));
     const evidence = panel('Operational evidence',
       details('Protection coverage', data.coverage || {status: 'unknown'}),
       details('Resource ledger', data.budgets || {status: 'unknown'}),
@@ -51,6 +50,7 @@ export async function overview(api) {
 }
 function recentActivity(result) {
   const root = panel('Recent audit activity'); root.classList.add('recent-activity');
+  root.append(el('div', {class: 'operation-links'}, el('a', {href: '#approvals'}, 'Review approvals · tenant-a →'), el('a', {href: '#hr'}, 'Open HR workbench →')));
   if (result.status === 'rejected' || !Array.isArray(result.value?.events)) {
     root.append(empty('Recent activity unavailable. Refresh to retry.')); return root;
   }

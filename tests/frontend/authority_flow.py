@@ -13,6 +13,7 @@ import uuid
 from pathlib import Path
 
 import httpx
+from navigation import navigation
 from playwright.sync_api import expect, sync_playwright
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -212,13 +213,12 @@ def main(local_console=False):
                             (state / "operator.token").read_text().strip()
                         )
                         page.get_by_role("button", name="Unlock console").click()
-                    page.get_by_role("navigation").get_by_role(
-                        "link", name="Approvals", exact=False
-                    ).click()
+                    navigation(page).get_by_role("link", name="Approvals", exact=False).click()
                     card = page.locator("article.approval").filter(
-                        has=page.get_by_role("heading", name=action_id, exact=True)
+                        has=page.get_by_text(action_id, exact=True)
                     )
                     expect(card).to_be_visible()
+                    card.get_by_text("Review exact payload & authority", exact=True).press("Enter")
                     expect(card).to_contain_text(subject)
                     expect(card).to_contain_text("analyst-demo")
                     expect(card).to_contain_text("local_demo")
