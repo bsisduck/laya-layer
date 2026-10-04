@@ -12,6 +12,7 @@ export const workflowLayers = [
 export const actionPaths = {
   read: ['Scope + policy + data checks', 'Reserve + durable intent', 'Execute → inspect output → audit → release'],
   consequential: ['Evaluate hard policy restrictions', 'Hard deny → stop; no override', 'If permitted and review required → exact human review', 'Server approval + revalidation → explicit resume → dispatch → audit'],
+  destructive: 'Blocked · no reviewed executor',
   undeclared: 'Undeclared write, destructive or irreversible operations → denied / unimplemented',
 };
 const officialLink = (label, href) => el('a', {href, target: '_blank', rel: 'noopener noreferrer'}, label);
@@ -43,7 +44,8 @@ export function workflowView() {
     el('div', {class: 'request-path'}, workflowLayers.slice(0, 5).map((layer, index) => control(layer, index))),
     el('section', {class: 'action-branches', 'aria-label': 'Action policy branches'},
       el('div', {class: 'branch read-branch'}, el('h3', {}, 'Non-destructive / read'), el('ol', {}, actionPaths.read.map(step => el('li', {}, step))), el('p', {class: 'hint'}, 'A read is never authorized solely by classification.')),
-      el('div', {class: 'branch write-branch'}, el('h3', {}, 'Write / consequential'), el('p', {class: 'hint'}, 'Writes can affect a person without being destructive. Destructive / irreversible proposals require their own declared operation and policy.'), el('ol', {}, actionPaths.consequential.map(step => el('li', {}, step))))),
+      el('div', {class: 'branch write-branch'}, el('h3', {}, 'Write / consequential'), el('p', {class: 'hint'}, 'Writes can affect a person without being destructive. Destructive / irreversible proposals require their own declared operation and policy.'), el('ol', {}, actionPaths.consequential.map(step => el('li', {}, step)))),
+      el('div', {class: 'branch destructive-branch'}, el('h3', {}, 'Destructive / undeclared'), el('p', {class: 'blocked-node'}, actionPaths.destructive), el('p', {class: 'hint'}, 'The current catalog has no reviewed destructive or irreversible executor. Undeclared operations stop before effects. Approval cannot create tool authority.'))),
     el('p', {class: 'undeclared-note'}, actionPaths.undeclared),
     control(workflowLayers[6], 6, true));
   select(workflowLayers[3]);

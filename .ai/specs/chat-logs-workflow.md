@@ -22,7 +22,8 @@ identity with a compact editorial header, history rail and readable process map.
 - Workflow shows five request steps and Consumption/Supply chain rails. Clicking
   a step opens its implementation/gap detail. Actions splits read checks from
   consequential writes and destructive/irreversible proposals. Hard denies are
-  final; permitted exact approval precedes server revalidation/dispatch. Reads
+  final; a separate red “Destructive / undeclared” branch states
+  “Blocked · no reviewed executor”; permitted exact approval precedes server revalidation/dispatch. Reads
   require scope and checks. Undeclared operations are denied, unimplemented.
 - All old hashes/query routes survive, with the correct primary parent active.
   Native links preserve keyboard and browser history. Dirty editors confirm

@@ -307,6 +307,7 @@ test('seven-layer map keeps reads checked, hard denials final and gaps explicit'
   assert.match(actionPaths.read[0], /Scope \+ policy \+ data checks/);
   assert.match(actionPaths.consequential.join(' '), /Hard deny → stop; no override/);
   assert.match(actionPaths.consequential.at(-1), /Server approval \+ revalidation → explicit resume → dispatch/);
+  assert.equal(actionPaths.destructive, 'Blocked · no reviewed executor');
   assert.match(actionPaths.undeclared, /denied \/ unimplemented/);
   assert.match(workflowLayers[3].gap, /descriptor hash pinning are not implemented/);
   assert.match(workflowLayers[5].gap, /Redis/);

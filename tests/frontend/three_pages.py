@@ -136,6 +136,8 @@ def main():
                 "Server approval + revalidation",
                 "A read is never authorized solely by classification",
                 "Destructive / irreversible",
+                "Destructive / undeclared",
+                "Blocked · no reviewed executor",
             ]:
                 expect(branches).to_contain_text(text)
             expect(page.locator(".undeclared-note")).to_contain_text("denied / unimplemented")

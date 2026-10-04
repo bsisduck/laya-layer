@@ -144,7 +144,6 @@ async function startup() {
   try {
     mode = (await api.config()).mode;
     $('#logout').hidden = mode === 'local';
-    $('#console-mode').textContent = mode === 'local' ? 'Local console / trusted computer' : 'OPERATOR WORKSPACE';
     $('#topbar-mode').textContent = mode === 'local' ? 'Local console / trusted computer' : 'ENFORCEMENT CONTROL ROOM';
     $('#service-mode').textContent = mode === 'local' ? 'Local console / trusted computer' : 'OPERATOR WORKSPACE';
     if (mode === 'local') await restoreLocal();

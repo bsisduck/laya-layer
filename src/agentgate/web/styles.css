@@ -321,3 +321,8 @@ main {max-width:1544px;padding-top:26px;}
   .policy-associations {padding:22px 0;}.policy-context-grid,.gdpr-cards {grid-template-columns:1fr;gap:20px;}
 }
 .conversation-heading .tag {flex:none;white-space:nowrap;}
+.action-branches {grid-template-columns:1fr 1.25fr .85fr;}
+.branch.destructive-branch {background:#fcf0ea;border-color:#dba899;border-top:3px solid var(--red);}
+.destructive-branch h3 {color:var(--red);}
+.blocked-node {background:var(--red);color:white;border-radius:5px;padding:10px;font:11px/1.6 var(--mono);margin:14px 0;}
+@media(max-width:760px) {.action-branches {grid-template-columns:1fr;}}
