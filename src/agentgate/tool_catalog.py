@@ -30,6 +30,8 @@ class ToolMetadata(RiskMetadata):
     data_scope: Annotated[str, Field(min_length=1, max_length=512)]
     adapter: Literal["tenant_document_store", "tenant_memory_store", "local_fixture_outbox"]
     approval: Literal["automatic_read", "exact_approval"]
+    idempotent: Literal[True] = True
+    open_world: Literal[False] = False
 
     @model_validator(mode="after")
     def reviewed_executor_contract(self) -> ToolMetadata:
@@ -151,8 +153,8 @@ def mcp_annotations(operation: str) -> dict[str, bool]:
         "readOnlyHint": metadata.effect == "read",
         "destructiveHint": metadata.effect == "destructive",
         # Local mail deduplicates only for the same immutable idempotency key.
-        "idempotentHint": True,
-        "openWorldHint": False,
+        "idempotentHint": metadata.idempotent,
+        "openWorldHint": metadata.open_world,
     }
 
 

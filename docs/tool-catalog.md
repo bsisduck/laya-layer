@@ -73,6 +73,8 @@ credential/policy filtering. MCP names, schemas and results remain compatible.
 Optional standard annotations derive from reviewed metadata: reads declare
 `readOnlyHint=true`; local mail declares false. All three declare
 `destructiveHint=false`, `idempotentHint=true`, `openWorldHint=false`. Mail
+idempotency and closed-world flags are explicit immutable catalog fields bound
+into the registry digest alongside effect-derived read/destructive hints. Mail
 idempotency means repeating the same immutable key/arguments only. Hints describe
 the local adapter and never grant authority. Client `_meta`, descriptions or
 annotations cannot downgrade metadata. Hint keys inside strict tool arguments

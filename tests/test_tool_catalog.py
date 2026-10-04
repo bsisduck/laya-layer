@@ -80,6 +80,8 @@ def test_formula_extremes(effect, data, exposure, reversibility, person, expecte
         {"description": ""},
         {"risk_score": 0},
         {"destructiveHint": False},
+        {"idempotent": False},
+        {"open_world": True},
     ],
 )
 def test_invalid_or_inconsistent_executable_metadata_is_rejected(changes):

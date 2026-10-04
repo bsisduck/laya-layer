@@ -65,6 +65,7 @@ def catalog_flow(page, navigate, state, artifacts):
     page.keyboard.press("Enter")
     expect(summary.locator("..")).to_have_attribute("open", "")
     expect(summary.locator("..")).to_contain_text("recipient domains")
+    page.evaluate("window.scrollTo(0, 0)")
     page.screenshot(path=str(artifacts / "catalog-desktop.png"), full_page=True)
     for width in (390, 768):
         page.set_viewport_size({"width": width, "height": 844})
