@@ -5,6 +5,7 @@ import {filterEvents} from '../../src/agentgate/web/observe.js';
 import {parseEditor} from '../../src/agentgate/web/ui.js';
 import {playgroundBody} from '../../src/agentgate/web/actions.js';
 import {catalogState} from '../../src/agentgate/web/catalog.js';
+import {hrResourceLabel} from '../../src/agentgate/web/hr.js';
 import {exactMoney, knownMeasure, usageState} from '../../src/agentgate/web/departments.js';
 import {standardsEvidence} from '../../src/agentgate/web/standards.js';
 test('department money stays exact past JS and SQLite integer bounds with contributing counts', () => {
@@ -30,6 +31,11 @@ test('standards bind explicit official editions to local evidence and remaining 
 });
 const session = {authenticated: true, csrf_token: 'test-csrf', expires_at: 9999999999};
 const response = (body, status = 200) => new Response(JSON.stringify(body), {status, headers: {'Content-Type': 'application/json'}});
+test('HR readable resource examples map the supplied contract without inventing grants', () => {
+  assert.deepEqual(['hr-candidate-001'].map(hrResourceLabel), ['Synthetic candidate record']);
+  assert.deepEqual([].map(hrResourceLabel), []);
+  assert.equal(hrResourceLabel('future-synthetic-resource'), 'future-synthetic-resource');
+});
 test('catalog consumer separates unsupported, missing, empty and trusted versioned metadata', () => {
   const tool = {operation: 'mail.send', executable: true, effect: 'write', data_scope: 'Unclassified submitted text', adapter: 'local_fixture_outbox', reversibility: 'local_record_retained', affects_person: true, policy: {disposition: 'exact_approval'}, risk: {version: 'tool-policy-heuristic-v1', score: 75, band: 'high', components: {effect: 25, potential_data: 25, exposure: 10, reversibility: 5, affects_person: 10}}};
   const data = {version: 'approved-tools-v1', tools: [tool], examples: []};
@@ -213,4 +219,20 @@ test('an expired action follow-up cannot interrupt session recovery', async () =
   await assert.rejects(api.request('/admin/playground/credential?scope=tools'), /session unavailable/);
   bootstrapDone(); await recovery;
   assert.deepEqual(calls, ['/admin/session/bootstrap', '/admin/playground', '/admin/session', '/admin/session/bootstrap']);
+});
+
+const {hrState, clearHR} = await import('../../src/agentgate/web/hr.js');
+test('HR rejects missing contracts and recovery drops handles/proposals', () => {
+  for (const data of [null, {}, {version: 'hr-local-v2'}, {version: 'hr-local-v1', data: 'real'}]) assert.equal(hrState(data), 'missing');
+  assert.equal(hrState({version: 'hr-local-v1', data: 'synthetic', effective_documents: [], parent: {}, identity: {}, requester: {}}), 'ready');
+  const memory = {binding: {handle: 'not-authority'}, proposal: {action_id: 'old'}, key: 'old'};
+  clearHR(memory); assert.deepEqual(memory, {});
+});
+test('HR can retain actual 503 evidence while ordinary unavailable behavior stays intact', async () => {
+  let current = session;
+  const api = createClient(() => {}, async () => response(current, current === session ? 200 : 503));
+  await api.restore();
+  current = {action_id: 'actual-denied', trace_id: 'actual-trace', decision: 'deny', executed: false, reason_codes: ['REQUIRED_SEMANTIC_UNAVAILABLE']};
+  assert.deepEqual(await api.request('/admin/hr/summary', {method: 'POST', body: {}, decision: true, evidence: true}), current);
+  await assert.rejects(api.request('/admin/playground', {decision: true}), /unavailable/i);
 });

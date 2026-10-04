@@ -258,15 +258,19 @@ class ControlPlane:
         if row[0] != snapshot.generation:
             raise ControlsChanged
 
-    def activate_policy(self, policy: Policy, expected_version: str) -> ControlSnapshot:
-        return self._activate(self.validate_policy(policy), expected_version)
+    def activate_policy(
+        self, policy: Policy, expected_version: str, *, expected_generation: int | None = None
+    ) -> ControlSnapshot:
+        return self._activate(self.validate_policy(policy), expected_version, expected_generation)
 
     def activate_feed(self, feed: ThreatFeed, expected_version: str) -> ControlSnapshot:
         return self._activate(
             ThreatFeed.model_validate_json(feed.model_dump_json()), expected_version
         )
 
-    def _activate(self, value: Policy | ThreatFeed, expected: str) -> ControlSnapshot:
+    def _activate(
+        self, value: Policy | ThreatFeed, expected: str, expected_generation: int | None = None
+    ) -> ControlSnapshot:
         policy_update = isinstance(value, Policy)
         with self.store.connection() as connection:
             connection.execute("BEGIN IMMEDIATE")
@@ -275,6 +279,8 @@ class ControlPlane:
                 raise StorageUnavailable
             policy = Policy.model_validate_json(row["policy"])
             feed = ThreatFeed.model_validate_json(row["feed"])
+            if expected_generation is not None and row["generation"] != expected_generation:
+                raise ControlConflict
             current = policy if policy_update else feed
             if current.version != expected or value.revision <= current.revision:
                 raise ControlConflict

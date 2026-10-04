@@ -322,6 +322,7 @@ def issue_child(
     lifetime: int = MAX_LIFETIME,
     persist: Callable[[str], None] | None = None,
     before_issue: Callable[[sqlite3.Connection], None] | None = None,
+    clock: Callable[[], float] | None = None,
 ) -> str:
     """Private local provisioning only; never exposed as agent issuance/renewal."""
     if not math.isfinite(now) or type(lifetime) is not int or not 1 <= lifetime <= MAX_LIFETIME:
@@ -334,6 +335,10 @@ def issue_child(
         db.execute("BEGIN IMMEDIATE")
         if before_issue:
             before_issue(db)
+        if clock is not None:
+            now = clock()
+            if not math.isfinite(now):
+                raise ValueError("Nonfinite issuance clock")
         parent = _credential(db, parent_key, now)
         if parent["authority_kind"] != "legacy":
             raise ValueError("Children cannot delegate or renew")

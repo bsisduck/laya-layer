@@ -240,3 +240,13 @@ schema downgrade. Missing trust disables exchange and leaves legacy credentials,
 console modes, accounting and response contracts intact. See
 [issuer exchange](docs/issuer-exchange.md) for limits, revocation window, key rotation,
 fixture/installed evidence and TLS requirements. No browser OAuth flow is added.
+
+The additive `hr-local-v1` operator facade uses existing local-v1 authority and
+normal enforced read/model/mail/resume paths. Fixed private parent epoch state
+adds `hr_parent` only on explicit setup. The bounded child map is process-private;
+session loss/restart cannot reconstruct authority or replay mutations. Existing
+HumanSubject/DelegatedBinding v1, agent REST/MCP, action responses and exports
+retain serialization. ModelService accepts an optional trusted ReleasedSource
+guard; ordinary callers are unchanged. ControlPlane activation optionally CASes
+generation as well as policy version. See [HR workflow](docs/hr-workflow.md) for
+setup/upgrade/rollback and persistence limits.

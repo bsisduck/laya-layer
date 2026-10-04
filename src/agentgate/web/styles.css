@@ -852,3 +852,11 @@ table {
 .department-usage-panel :is(th, td, .footnote), .standards-evidence-panel :is(th, td) {overflow-wrap: break-word;}
 .table-scroll-hint {display: none;}
 @media (max-width: 700px) {.table-scroll-hint {display: block;}}
+
+.hr-workspace > .panel, .hr-workspace > div > .panel {margin-bottom: 20px;}
+.hr-buttons, .hr-links {display: flex; flex-wrap: wrap; gap: 12px; margin-top: 16px;}
+.hr-source {white-space: pre-wrap; overflow-wrap: anywhere; padding: 16px; background: var(--paper, #f7f4ec); border-left: 3px solid var(--orange, #d36e3e);}
+.hr-workspace textarea {min-height: 110px; width: 100%;}
+.hr-workspace .kv dd {overflow-wrap: anywhere;}
+
+.hr-workspace input:not([type="checkbox"]), .hr-workspace select {width: 100%; max-width: 100%;}

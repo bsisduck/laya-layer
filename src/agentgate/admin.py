@@ -818,3 +818,6 @@ def attach_admin_routes(
         return JSONResponse({"messages": jsonable_encoder(result)})
 
     app.include_router(router)
+    from agentgate.hr_workflow import attach_hr_routes
+
+    attach_hr_routes(app, service)

@@ -40,7 +40,8 @@ export async function timeline(api) {
   const root = panel('Security timeline');
   root.classList.add('timeline-panel');
   const decision = el('select', {id: 'event-decision'}, ['', 'allow', 'redact', 'deny', 'pending'].map(value => el('option', {value}, value || 'All decisions')));
-  const query = el('input', {id: 'event-query', type: 'search', placeholder: 'Trace, operation, tenant or reason', 'aria-label': 'Filter loaded events'});
+  const trace = new URLSearchParams(globalThis.location?.hash.split('?')[1] || '').get('trace') || '';
+  const query = el('input', {id: 'event-query', type: 'search', placeholder: 'Trace, operation, tenant or reason', 'aria-label': 'Filter loaded events', value: trace});
   const level = el('select', {id: 'event-level'}, ['', 'unknown', ...levels].map(value => el('option', {value}, value === 'unknown' ? 'Unknown live level' : value || 'All levels')));
   const layer = el('select', {id: 'event-layer'}, ['', ...layers].map(value => el('option', {value}, value.replaceAll('_', ' ') || 'All layers')));
   const content = el('div');
