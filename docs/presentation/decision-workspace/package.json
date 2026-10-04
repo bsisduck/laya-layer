@@ -1,0 +1,15 @@
+{
+  "name": "laya-decision-workspace-presentation",
+  "private": true,
+  "description": "Reproducible editable PowerPoint source for the ten-slide Polish product narrative",
+  "scripts": {
+    "build": "node build.cjs"
+  },
+  "dependencies": {
+    "jszip": "3.10.1",
+    "pptxgenjs": "4.0.1"
+  },
+  "overrides": {
+    "image-size": "2.0.4"
+  }
+}
