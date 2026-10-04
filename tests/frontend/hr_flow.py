@@ -326,7 +326,10 @@ def run():
         expect(draft_panel).to_contain_text("Observed local outbox records for this action: 1")
         click(page, "Replay exact resume", "/admin/hr/resume")
         assert rows(database, "tool_outbox", action) == 1
-        page.get_by_role("button", name="Start new draft").press("Enter")
+        new_draft = page.get_by_role("button", name="Start new draft")
+        expect(new_draft).to_be_enabled()
+        new_draft.focus()
+        new_draft.press("Enter")
         expect(page.get_by_label("Message recipient")).to_be_focused()
         expect(page.get_by_role("heading", name="Review the exact proposed message")).to_have_count(
             0

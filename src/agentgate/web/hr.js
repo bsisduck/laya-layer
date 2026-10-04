@@ -23,7 +23,7 @@ export function hrDecision(data, kind = 'read') {
 
 export function hrProgress(memory, active) {
   return [active ? 'Active' : memory.binding ? 'Expired' : 'Not started',
-    memory.read === 'released' ? 'Output released' : memory.read === 'blocked' ? 'Blocked · review evidence' : 'Read or summarize',
+    memory.read === 'released' ? 'Output released' : memory.read === 'blocked' ? 'Blocked · review evidence' : memory.read === 'unavailable' ? 'Unavailable · review evidence' : 'Read or summarize',
     memory.effects === 1 ? 'One local record observed' : ({pending: 'Awaiting exact review', approved: 'Approved · resume required', consumed: 'Consumed · inspect outbox', rejected: 'Rejected'})[memory.reviewState] || 'Draft a message'];
 }
 
@@ -60,7 +60,7 @@ export async function hrView(api, memory) {
       el('div', {class: 'hr-links'}, actual.trace_id ? traceLink(actual.trace_id, response.completion ? 'model' : kind === 'summary' ? 'summary request' : kind === 'read' ? 'source' : 'action') : null,
         response.source?.trace_id && response.source.trace_id !== actual.trace_id ? traceLink(response.source.trace_id, 'source') : null),
       details('Inspect response', response)));
-    if (kind !== 'action') memory.read = display.released ? 'released' : 'blocked';
+    if (kind !== 'action') memory.read = display.released ? 'released' : actual.decision === 'deny' ? 'blocked' : 'unavailable';
     bindingStatus();
   }
   const write = async (path, body) => {
@@ -81,7 +81,7 @@ export async function hrView(api, memory) {
     const progress = hrProgress(memory, active);
     if (data.configured && data.parent.state !== 'active') progress[0] = `Authority ${data.parent.state}`;
     steps.replaceChildren(...['Start HR session', 'Read / summarize', 'Draft / review'].map((label, i) => el('li', {}, el('strong', {}, label), el('span', {}, progress[i]))));
-    next.textContent = !data.configured ? 'Next: preview the HR setup, then activate the reviewed changes.' : !active ? 'Next: start a bounded HR session to enable the actions below.' : memory.effects === 1 ? 'One local message recorded. Inspect the outbox or deliberately start a new draft.' : memory.reviewState === 'approved' ? 'Next: resume the exact approved message to create one local outbox record.' : memory.reviewState === 'pending' ? 'Next: review the exact recipient and content below.' : memory.read === 'released' ? 'Next: draft a follow-up for exact human review.' : 'Next: select a source and read it or request a model summary.';
+    next.textContent = !data.configured ? 'Next: preview the HR setup, then activate the reviewed changes.' : data.parent.state === 'expired' ? 'Next: renew the expired HR authority below, then deliberately start a new HR session.' : data.parent.state !== 'active' ? 'Next: inspect the inactive HR authority and current policy before continuing.' : !active ? 'Next: start a bounded HR session to enable the actions below.' : memory.effects === 1 ? 'One local message recorded. Inspect the outbox or deliberately start a new draft.' : memory.reviewState === 'approved' ? 'Next: resume the exact approved message to create one local outbox record.' : memory.reviewState === 'pending' ? 'Next: review the exact recipient and content below.' : memory.read === 'released' ? 'Next: draft a follow-up for exact human review.' : 'Next: select a source and read it or request a model summary.';
     for (const {control, needsBinding} of controls) control.disabled = running.size > 0 || (needsBinding ? !active : data.parent.state !== 'active');
     if (sourceSelection) sourceSelection.disabled = running.size > 0;
     if (startControl) startControl.textContent = memory.binding ? 'Start a new HR session' : 'Start HR session';

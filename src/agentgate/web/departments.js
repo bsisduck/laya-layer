@@ -38,17 +38,20 @@ export function departmentUsage(api) {
       if (state === 'missing') throw new Error('Department evidence is unavailable or uses an unsupported version.');
       const t = data.totals;
       status.textContent = `${data.source} · ${data.completeness.status.replaceAll('_', ' ')} · ${utc(data.window.start)}Z to ${utc(data.window.end)}Z · UTC [start, end)`;
-      content.append(pairs({selected_attempts: t.attempts, durable_dispatch_intent: t.dispatch_intent, uncertain: t.uncertain, settled: t.settled,
+      const totals = pairs({selected_attempts: t.attempts, durable_dispatch_intent: t.dispatch_intent, uncertain: t.uncertain, settled: t.settled,
         attribution_known: t.attributed, explicitly_unassigned: t.unassigned, historical_attribution_unavailable: t.historical_attribution_unavailable,
         usage_known_attempts: t.known_usage_attempts, usage_unknown_attempts: t.unknown_usage_attempts, historical_usage_unavailable: t.historical_usage_unavailable,
         known_actual_input_tokens: knownMeasure(t.known_input_tokens, t.known_usage_attempts, t.attempts), known_actual_output_tokens: knownMeasure(t.known_output_tokens, t.known_usage_attempts, t.attempts),
         known_simulated_micro_USD: knownMeasure(t.known_simulated_micro_usd, t.known_usage_attempts, t.attempts, true),
         outstanding_reserved_calls: t.outstanding_calls, outstanding_reserved_input_tokens: t.outstanding_input_tokens, outstanding_reserved_output_tokens: t.outstanding_output_tokens,
-        outstanding_reserved_simulated_micro_USD: exactMoney(t.outstanding_simulated_micro_usd), over_bound_attempts_frozen: t.over_bound_attempts, zero_simulated_tariff_attempts: t.zero_tariff_attempts}));
+        outstanding_reserved_simulated_micro_USD: exactMoney(t.outstanding_simulated_micro_usd), over_bound_attempts_frozen: t.over_bound_attempts, zero_simulated_tariff_attempts: t.zero_tariff_attempts});
+      if (state === 'empty') content.append(empty('No model attempts in this tenant and reservation period.'),
+        el('details', {}, el('summary', {}, 'Inspect zero/unknown totals'), totals, details('Inspect reported totals', t)));
+      else content.append(totals);
       content.append(el('p', {class: 'hint'}, 'Dispatch intent is durable intent, not confirmation of provider receipt. Known amounts are partial sums when usage is unknown. A zero simulated tariff does not mean free enterprise AI or zero compute cost. Unknown reservations remain retained.'));
       if (data.completeness.status === 'truncated') content.append(el('p', {class: 'status error'}, 'Truncated report. Totals cover selected attempts; department rows may cover fewer. Choose a smaller period.'));
       if (state !== 'empty') content.append(el('p', {class: 'hint table-scroll-hint'}, 'Scroll horizontally to read all columns. Keyboard: focus the table, then use ← / →.'));
-      content.append(state === 'empty' ? empty('No model attempts in this tenant and reservation period.') : table(['Department / provenance', 'Attempts / known / unknown', 'Known actual input / output tokens', 'Known simulated micro-USD', 'Outstanding reservations'], data.departments.map(row => {
+      if (state !== 'empty') content.append(table(['Department / provenance', 'Attempts / known / unknown', 'Known actual input / output tokens', 'Known simulated micro-USD', 'Outstanding reservations'], data.departments.map(row => {
         const b = row.totals;
         return [el('div', {}, row.department ?? 'Unknown / unassigned', ...(row.provenance || []).map(p => el('p', {class: 'footnote'}, `${p.source === 'local_demo' ? 'local_demo · trusted local demo subject' : p.source} · authority v${p.authority_version}${p.issuer_id ? ` · issuer ${p.issuer_id}` : ''}`))),
           `${b.attempts} / ${b.known_usage_attempts} / ${b.unknown_usage_attempts}`,

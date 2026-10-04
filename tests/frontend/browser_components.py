@@ -176,6 +176,19 @@ def main() -> None:
         sections.get_by_role("link", name="Department usage", exact=True).press("Enter")
         expect(page.get_by_role("heading", name="Department model usage")).to_be_visible()
         expect(page.get_by_text("No model attempts in this tenant", exact=False)).to_be_visible()
+        totals = page.locator("details").filter(
+            has=page.get_by_text("Inspect zero/unknown totals", exact=True)
+        )
+        expect(totals).not_to_have_attribute("open", "")
+        expect(totals.locator(".kv")).to_be_hidden()
+        evidence = page.locator('[aria-label="Measured department evidence"]')
+        assert (
+            evidence.locator(":scope > :first-child").inner_text().startswith("No model attempts")
+        )
+        page.get_by_text("Inspect zero/unknown totals", exact=True).press("Enter")
+        expect(totals.locator(".kv")).to_be_visible()
+        expect(totals).to_contain_text("selected attempts")
+        expect(totals).to_contain_text("Unknown")
         assert page.get_by_role("heading", name="Resource ledger").count() == 0
         expect(page.get_by_role("link", name="Department usage", exact=True)).to_have_attribute(
             "aria-current", "page"

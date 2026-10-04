@@ -58,6 +58,7 @@ test('HR progress requires released content and observed outbox effects', () => 
   assert.deepEqual(hrProgress({}, false), ['Not started', 'Read or summarize', 'Draft a message']);
   assert.equal(hrProgress({binding: {}}, false)[0], 'Expired');
   assert.equal(hrProgress({read: 'blocked'}, true)[1], 'Blocked · review evidence');
+  assert.equal(hrProgress({read: 'unavailable'}, true)[1], 'Unavailable · review evidence');
   assert.equal(hrProgress({read: 'released'}, true)[1], 'Output released');
   assert.equal(hrProgress({reviewState: 'approved'}, true)[2], 'Approved · resume required');
   assert.equal(hrProgress({reviewState: 'consumed'}, true)[2], 'Consumed · inspect outbox');

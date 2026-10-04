@@ -16,7 +16,7 @@ def main():
     args = parser.parse_args()
     args.artifacts.mkdir(parents=True, exist_ok=True)
     calls, held, errors = [], [], []
-    state = {"hold": False, "fail": False, "parent": "active"}
+    state = {"hold": False, "fail": False, "parent": "active", "summary_missing": True}
     hr = {
         "version": "hr-local-v1",
         "data": "synthetic",
@@ -67,7 +67,9 @@ def main():
                         "executed": True,
                         "trace_id": "model-fixture",
                     },
-                    "choices": [{"message": {"content": "Mock provider summary"}}],
+                    "choices": []
+                    if state["summary_missing"]
+                    else [{"message": {"content": "Mock provider summary"}}],
                 },
                 "source": {"trace_id": "source-fixture"},
             }
@@ -146,6 +148,14 @@ def main():
             expect(page.get_by_text("Service unavailable. Mock read unavailable")).to_be_visible()
             expect(progress).not_to_contain_text("Output released")
             page.get_by_role("button", name="Request model summary").press("Enter")
+            expect(page.get_by_role("heading", name="Summary unavailable")).to_be_visible()
+            expect(progress).to_contain_text("Unavailable · review evidence")
+            expect(progress).not_to_contain_text("Blocked")
+            state["summary_missing"] = False
+            summary_control = page.get_by_role("button", name="Request model summary")
+            expect(summary_control).to_be_enabled()
+            summary_control.press("Enter")
+            expect(page.get_by_role("heading", name="Provider summary")).to_be_visible()
             expect(
                 page.get_by_role("link", name="Open model audit trace", exact=False)
             ).to_have_count(1)
