@@ -14,6 +14,13 @@ class LifecycleError(Exception):
     """Safe, operator-facing diagnostic; never include child output or credentials."""
 
 
+_SQLITE_SIDECARS = {
+    f"{database}{suffix}": database
+    for database in ("agentgate.sqlite3", "collector.sqlite3", "semantic-quota.sqlite3")
+    for suffix in ("-wal", "-shm")
+}
+
+
 def check_path(path: Path) -> None:
     for parent in (*reversed(path.parents), path):
         if parent.is_symlink():
@@ -100,7 +107,15 @@ def validate_data(directory: Path) -> None:
         if item.is_dir():
             validate_data(item)
         else:
-            check_file(item)
+            try:
+                check_file(item)
+            except FileNotFoundError:
+                # SQLite removes WAL/SHM files when its last connection closes.
+                # Only these owned stores may lose a sidecar during inspection;
+                # the database itself must still pass every private-file check.
+                if item.name not in _SQLITE_SIDECARS:
+                    raise
+                check_file(directory / _SQLITE_SIDECARS[item.name])
 
 
 def validate_environment(directory: Path) -> None:

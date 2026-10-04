@@ -8,6 +8,7 @@ import secrets
 import subprocess
 import tempfile
 import time
+from contextlib import closing
 from pathlib import Path
 from typing import Any
 
@@ -291,8 +292,8 @@ def install(
             backup = data / f"before-migrate-{time.time_ns()}.sqlite3"
             write_new(backup, b"")
             with (
-                sqlite3.connect(data / "agentgate.sqlite3") as source,
-                sqlite3.connect(backup) as target,
+                closing(sqlite3.connect(data / "agentgate.sqlite3")) as source,
+                closing(sqlite3.connect(backup)) as target,
             ):
                 source.backup(target)
             run([gateway, "--state-dir", str(data), "migrate"])

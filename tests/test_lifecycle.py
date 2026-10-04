@@ -7,6 +7,7 @@ import socket
 import subprocess
 import sys
 import time
+from contextlib import closing
 from pathlib import Path
 
 import pytest
@@ -734,7 +735,7 @@ def test_local_console_defaults_upgrade_remembered_choice_and_off_switch(install
     tokens = {p.name: p.read_bytes() for p in (state / "data").glob("*.token")}
 
     def authority():
-        with sqlite3.connect(state / "data/agentgate.sqlite3") as db:
+        with closing(sqlite3.connect(state / "data/agentgate.sqlite3")) as db:
             tables = [
                 row[0]
                 for row in db.execute("SELECT name FROM sqlite_master WHERE type='table'")

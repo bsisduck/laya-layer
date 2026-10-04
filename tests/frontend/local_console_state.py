@@ -1,10 +1,11 @@
 """Read-only QA evidence, including absence of lazy authority tables."""
 
 import sqlite3
+from contextlib import closing
 
 
 def snapshot(database, tables):
-    with sqlite3.connect(database) as db:
+    with closing(sqlite3.connect(database)) as db:
         existing = {
             row[0] for row in db.execute("SELECT name FROM sqlite_master WHERE type='table'")
         }
