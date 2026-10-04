@@ -328,3 +328,40 @@ def test_local_operator_cookie_never_authenticates_mcp(local):
             )
             assert result.status_code == 401
         assert harness.executor.calls == []
+
+
+def test_fresh_authority_evidence_distinguishes_absent_tables_from_empty(local):
+    from frontend.local_console_state import snapshot
+
+    client, harness, _ = local
+    tables = (
+        "operator_credentials",
+        "credentials",
+        "operator_credential_epochs",
+        "credential_renewals",
+    )
+    initial = snapshot(harness.store.path, tables)
+    assert initial["operator_credential_epochs"] is None
+    assert initial["credential_renewals"] is None
+    session = bootstrap(client).json()
+    assert client.get("/admin/overview").status_code == 200
+    assert client.get("/admin/session").status_code == 200
+    assert snapshot(harness.store.path, tables) == initial
+    assert harness.executor.calls == []
+    result = client.post(
+        "/admin/playground",
+        headers={"Origin": ORIGIN, "X-CSRF-Token": session["csrf_token"]},
+        json={"mode": "document", "document_id": "tenant-a-notes"},
+    )
+    assert result.status_code == 200 and result.json()["executed"] is True
+    established = snapshot(harness.store.path, tables)
+    assert established["operator_credential_epochs"] == []  # Epoch zero is implicit.
+    assert established["credential_renewals"] == []
+    assert established != initial
+    assert len(established["credentials"]) == len(initial["credentials"]) + 1
+    assert established["operator_credentials"] == initial["operator_credentials"]
+    harness.now[0] += 900
+    assert bootstrap(client).status_code == 200
+    assert client.get("/admin/overview").status_code == 200
+    assert snapshot(harness.store.path, tables) == established
+    assert len(harness.executor.calls) == 1

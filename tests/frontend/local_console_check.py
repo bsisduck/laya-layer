@@ -13,6 +13,7 @@ import uuid
 from pathlib import Path
 
 import httpx
+from local_console_state import snapshot
 from mcp import ClientSession
 from mcp.client.streamable_http import streamable_http_client
 from playwright.sync_api import expect, sync_playwright
@@ -20,11 +21,6 @@ from playwright.sync_api import expect, sync_playwright
 from agentgate.storage import credential_digest
 
 ROOT = Path(__file__).resolve().parents[2]
-
-
-def snapshot(database, tables):
-    with sqlite3.connect(database) as db:
-        return {table: db.execute(f'SELECT * FROM "{table}"').fetchall() for table in tables}
 
 
 def expire(context, base, database):
