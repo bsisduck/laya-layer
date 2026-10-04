@@ -171,27 +171,28 @@ def main():
                 "all three top menus and three pages visible without overflow at 360/390/768/1440"
             )
 
-            for route, parent in [
-                ("hr", "Chat"),
-                ("tool_actions", "Chat"),
-                ("outbox", "Chat"),
-                ("playground", "Chat"),
-                ("timeline?trace=" + trace, "Logs"),
-                ("overview", "Logs"),
-                ("overview?section=usage", "Logs"),
-                ("export", "Logs"),
-                ("catalog", "Workflow"),
-                ("policy", "Workflow"),
-                ("feed", "Workflow"),
-                ("overview?section=standards", "Workflow"),
-                ("overview?section=controls", "Workflow"),
-                ("unknown", "Chat"),
+            for route, parent, title in [
+                ("hr", "Chat", "HR workspace"),
+                ("approvals", "Chat", "Approvals"),
+                ("outbox", "Chat", "Test outbox"),
+                ("playground", "Chat", "Playground"),
+                ("timeline?trace=" + trace, "Logs", "Security timeline"),
+                ("overview", "Logs", "Overview"),
+                ("overview?section=usage", "Logs", "Overview"),
+                ("export", "Logs", "Audit export"),
+                ("catalog", "Workflow", "Catalog"),
+                ("policy", "Workflow", "Policy studio"),
+                ("feed", "Workflow", "Threat feed"),
+                ("overview?section=standards", "Workflow", "Overview"),
+                ("overview?section=controls", "Workflow", "Overview"),
+                ("unknown", "Chat", "Chat"),
             ]:
                 page.goto(base + "/#" + route)
                 expect(primary.get_by_role("link", name=parent, exact=True)).to_have_attribute(
                     "aria-current", "page"
                 )
                 expect(page.locator("#view")).not_to_have_attribute("aria-busy", "true")
+                expect(page.locator("#page-title")).to_have_text(title)
             primary.get_by_role("link", name="Logs", exact=True).click()
             primary.get_by_role("link", name="Workflow", exact=True).click()
             page.go_back()
@@ -202,7 +203,9 @@ def main():
             expect(primary.get_by_role("link", name="Workflow", exact=True)).to_have_attribute(
                 "aria-current", "page"
             )
-            scenarios.append("all legacy/deep routes retain parent, native back/forward")
+            scenarios.append(
+                "all legacy/deep routes retain expected page title and parent, native back/forward"
+            )
 
             page.goto(base + "/#policy")
             editor = page.get_by_label("Policy JSON")
