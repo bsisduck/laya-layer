@@ -3,7 +3,8 @@
 Runtime commits: `b4310c4` (operations/HR/navigation/inbox layout), `6fc3777`
 (comparable catalog, immediate workflow links, responsive focus and regressions).
 Consumer follow-up: `6a93b0b` (usage/standards/ledger routes and missing-data-only
-authority bootstrap). Runtime bytes are unchanged after `6fc3777`.
+authority bootstrap). Follow-up `c8c0e17` adds only the mobile breakpoint guard
+and its regression; the rest of runtime remains at `6fc3777`.
 Base: fresh `origin/main` `60328b9` (merged #54). No backend enforcement, schema,
 auth, policy, provider or Cezar configuration changes. Default page is Operations;
 existing route hashes/queries and explicit `#hr` are retained.
@@ -20,7 +21,7 @@ separate evidence ledger rather than resetting populated data.
 | Check | Measured result | Local evidence |
 |---|---|---|
 | JavaScript contracts | 22 passed, 0 failed/skipped | `/tmp/issue56-contracts-final.log` |
-| Workspace consumers | 5 scenario groups passed: default/count scopes, partial errors/loading/stale response, exact approval disclosure, mobile focus/menu, query/Back/dirty cancellation | `.ai/qa/artifacts_workspace/result.json` |
+| Initial workspace consumers at `6fc3777` | 5 scenario groups passed: default/count scopes, partial errors/loading/stale response, exact approval disclosure, mobile focus/menu, query/Back/dirty cancellation | `.ai/qa/artifacts_workspace/result.json` |
 | HR components | Passed desktop simultaneous actions, compact toolbar, mobile order; existing negative/withheld/validation/expiry assertions retained | `.ai/qa/artifacts_hr_components56/` |
 | Browser components | Passed mocked catalog/approval/401/503/XSS/loading/empty/idempotency consumers | `/tmp/issue56-browser-components.log` |
 | Local-console installed E2E | Passed REST/MCP/SQLite effects, expiry/no mutation retry, controls/export/mobile; no inference | `.ai/qa/artifacts_local_console56/result.json` |
@@ -32,8 +33,9 @@ separate evidence ledger rather than resetting populated data.
 
 Artifacts/logs are ignored and remain local. The local-console report predates the
 refinement commit but tested the same runtime bytes; installed HR evidence names
-the committed head. Later changes only adapt existing usage/authority consumers
-and document default-route behavior. No assertion on denied execution, side effects,
+the committed head. The earlier follow-ups adapt existing usage/authority consumers
+and document default-route behavior. The independent-QA follow-up below fixes the
+subsequently reproduced navigation race. No assertion on denied execution, side effects,
 exact payload, withholding, expiry or replay was removed.
 
 ## Visual comparison
@@ -83,6 +85,46 @@ SMTP, commercial billing guarantees, production readiness or compliance certific
 | Workspace unknown-state assertion | Test locator matched semantic and delivery unknown states; Agent/QA | Assert exact two reported unknown pills; all 5 scenario groups pass |
 | First local-console invocation | Missing required descriptor argument; Agent/QA | Reran existing CLI with descriptor; installed flow passes |
 
+## Independent QA follow-up — PR #57
+
+Independent installed QA at `8a42425` failed twice after browser Back →
+1440→390px resize → Open navigation → Policy studio. Author runs of the
+unchanged script returned PASS then FAIL on owned port 60032, reproducing the
+missing Navigation menu. Logs: `/tmp/laya-navigation-race57-original-1.log` and
+`/tmp/laya-navigation-race57-original-2.log`.
+
+| Failure | Evidence and cause | Fix / owner |
+|---|---|---|
+| Drawer disappears or Policy stays on Overview | Buffered URL/focus/native-event trace: Back hashchange completed; opener click at +11.7ms; queued media callback at +15.9ms sees the open dialog and focused Policy link, then closes it and moves focus to workspace | Product race; `c8c0e17` keeps the newly opened drawer at current mobile width; desktop still clears modal/inert state |
+| Immediate final URL assertion after dirty-editor Cancel | First fixed run reaches Policy but fails the immediate URL read; failure screenshot retains edited revision 2. Separate confirmation trace records `false` and final `#policy` | QA synchronization; await actual confirm event and restored URL, assert exact prompt, retained draft, focus and closed drawer |
+
+The new regression holds an actual native media callback, opens the drawer, then
+releases the callback. It fails on the old runtime after release, and passes with
+the two-line guard. The original Back/resize/open/Policy sequence remains
+unchanged; no retries or timeout increases were added. No HR negative,
+idempotency, expiry, withholding or mutation assertions changed.
+
+At `c8c0e172c6eada753721ddb193393fbe5b76e658`:
+
+- 6 workspace scenario groups passed in two separate complete runs, including the
+  held-native-callback regression and original keyboard/Back sequence.
+- 22 JavaScript contracts passed, 0 failed/skipped.
+- Actual installed local-console REST/MCP/SQLite E2E passed, including exact
+  approval/replay, expiry/no mutation retry and session recovery; no inference.
+  The installed `app.js` SHA256 matches committed source bytes.
+
+Evidence root: `/tmp/laya-navigation-race57/`. Event/focus/URL ordering is in
+`buffered/events.json` and `resize-event-excerpt.json`; the failed old-runtime
+regression is `regression-before/failure.png`. Passing screenshots were captured
+and visually inspected at `fixed-2/menu-delayed-resize-390.png`; cancellation
+retention is visible in `regression-after/failure.png`. Results are in
+`fixed-1/result.json`, `fixed-2/result.json`, `local-console/results.json` and
+`installed-asset.json`. Command logs are `/tmp/laya-navigation-race57-fixed-1.log`,
+`-fixed-2.log`, `-contracts.log`, and `-local-console.log` with the same prefix.
+
+This is author fix/QA evidence. Root's independent follow-up gate and affected
+browser QA remain required before merge; PR #57 stays draft.
+
 ## Full gate and teardown
 
 At code/test head `6a93b0b`, `make validate` passed with
@@ -95,6 +137,14 @@ At code/test head `6a93b0b`, `make validate` passed with
 | Strict mypy | PASS · 58 source files |
 | Pytest | PASS · 1005 passed, 0 failed/skipped, 136.38s |
 | Source distribution and wheel | PASS |
+
+Follow-up gate at `c8c0e172c6eada753721ddb193393fbe5b76e658` also passed:
+**1005 pytest passed, 0 failed/skipped, 140.89s**, workflow/lock checks,
+Ruff lint/format (124 files), strict mypy (58 source files), sdist and wheel.
+All pinned Hermes tests ran with the same explicit source variable.
+Log: `/tmp/laya-navigation-race57-validate.log`. Owned QA was stopped before this
+serial gate; its descriptor still reports `status: stopped`. Author review of the
+follow-up found no blocker/major; independent follow-up review/QA remains required.
 
 Exact log: `/tmp/issue56-validate.log`. All four source-gated pinned Hermes tests
 ran locally. The existing GitHub workflow omits that optional source variable;
