@@ -14,8 +14,6 @@ export function pendingApprovals(data) {
 export async function overview(api) {
   const section = overviewSection(globalThis.location?.hash);
   const root = el('div', {class: 'operations'});
-  root.append(el('div', {class: 'overview-sections', role: 'group', 'aria-label': 'Overview sections'},
-    [['all', 'Operations'], ['usage', 'Department usage'], ['standards', 'Standards evidence'], ['controls', 'Threat controls']].map(([key, label]) => el('a', {href: key === 'all' ? '#overview' : `#overview?section=${key}`, ...(section === key ? {'aria-current': 'page'} : {})}, label))));
   if (section === 'usage') { root.append(departmentUsage(api)); return root; }
   if (section === 'standards') { root.append(standardsView()); return root; }
   if (section === 'controls') { root.append(await ladder(api)); return root; }

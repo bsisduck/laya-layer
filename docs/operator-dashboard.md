@@ -159,3 +159,14 @@ remain separate evidence classes.
 See [two-axis threat evidence](threat-model.md) for the authored L0–L5 ladder, exact seven
 layers, strict frozen-corpus sidecar and unknown live-level contract. The taxonomy
 adds classification/evidence presentation, not new enforcement or inference results.
+
+## Three primary workspaces
+
+Chat is the default with four labelled synthetic histories and a prominent Live
+HR workspace link. Examples make no API call. Logs opens actual timeline events
+and links Operations, Department usage and Audit export. Workflow presents a
+conceptual five-checkpoint path with Consumption/Supply chain rails, current
+coverage/gaps, read versus consequential/destructive branches and GDPR Articles
+9/20/22/30 associations. Catalog, policy, feed, AI Act/DORA/OWASP evidence and
+threat controls remain contextual destinations. Every old hash remains usable.
+See [implementation and QA evidence](chat-logs-workflow-evidence.md).

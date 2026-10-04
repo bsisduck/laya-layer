@@ -1,9 +1,14 @@
-The packaged console now defaults empty/unknown hashes to Overview → Operations.
-`#hr` explicitly opens HR; all existing route hashes, timeline trace queries and
-`#overview?section=usage|standards|controls` remain. Presentation labels and layout
-change without backend/auth/schema/policy/provider changes. Browser consumers use
-explicit section links; pending approvals retain the global unexpired-record count,
-separate from bounded terminal decisions. See [workspace validation](docs/operations-workspace-validation.md).
+The packaged console now defaults empty/unknown hashes to Chat. Exactly three
+primary top links (Chat / Logs / Workflow) remain visible on mobile. Existing
+hashes, timeline trace queries and `#overview?section=usage|standards|controls`
+retain their views, grouped through contextual navigation with the parent active.
+Operations remains `#overview`; `#logs` opens the timeline, `#workflow` opens the
+conceptual pipeline, and `#hr` opens the actual HR workspace with Chat active.
+Browser consumers use the contextual navigation helper. Dirty-editor rejection
+restores the full previous hash; local/credential session semantics, API, auth,
+policy, approval, storage and provider contracts are unchanged. Authored Chat
+examples never enter live audit or counts. Pending approvals retain their global
+unexpired-record count. See [three-page evidence](docs/chat-logs-workflow-evidence.md).
 
 # Contract status
 

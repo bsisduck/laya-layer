@@ -172,7 +172,7 @@ def main() -> None:
         expect(page.get_by_role("heading", name="Service & controls")).to_be_visible()
         expect(page.locator(".stat.allow strong")).to_have_text("7")
         expect(page.locator(".stat.deny strong")).to_have_text("—")
-        sections = page.get_by_role("group", name="Overview sections")
+        sections = page.locator("#context-nav")
         expect(sections.get_by_role("link")).to_have_count(4)
         sections.get_by_role("link", name="Department usage", exact=True).press("Enter")
         expect(page.get_by_role("heading", name="Department model usage")).to_be_visible()
@@ -200,11 +200,13 @@ def main() -> None:
                 "link", name="Department usage", exact=True, include_hidden=True
             )
         ).to_have_attribute("aria-current", "page")
-        sections.get_by_role("link", name="Standards evidence", exact=True).press("Enter")
+        navigation(page).get_by_role("link", name="Standards evidence", exact=True).press("Enter")
         expect(
             page.get_by_role("heading", name="Standards controls, evidence and gaps")
         ).to_be_visible()
         assert page.get_by_role("heading", name="Department model usage").count() == 0
+        page.go_back()
+        expect(page.get_by_role("heading", name="From intent to permitted output")).to_be_visible()
         page.go_back()
         expect(page.get_by_role("heading", name="Department model usage")).to_be_visible()
         page.go_back()
