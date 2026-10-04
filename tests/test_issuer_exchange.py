@@ -16,7 +16,7 @@ from agentgate.app import create_app
 from agentgate.authority import issue_child, provision_subject, subject
 from agentgate.authority_contracts import HumanSubject, parse_binding, parse_human
 from agentgate.issuer_exchange import exchange, revoke_subject
-from agentgate.issuer_trust import TrustConfig, import_trust, subject_id
+from agentgate.issuer_trust import TrustConfig, import_trust, load_trust, subject_id
 from agentgate.model_config import ModelPolicy
 from agentgate.models import ModelService
 from agentgate.storage import CredentialInvalid, credential_digest
@@ -66,6 +66,11 @@ def issuer(harness):
             }
         )
     )
+    from agentgate.control_plane import ControlPlane
+
+    controls = ControlPlane(h.store, clock=h.service.clock)
+    controls.initialize(h.service.policy)
+    h.service.controls = controls
     import_trust(h.store, trust, 0, h.service.clock)
     provider = ObservedProvider(h.store)
     models = ModelService(h.service, provider)
@@ -340,7 +345,7 @@ def test_functional_atomic_audit_failure_rolls_back_refresh_and_admission(issuer
 def test_functional_limits_are_transactional_bounded_and_no_growth(issuer):
     h, _, _, config, _ = issuer
     profile = config.profiles[0].model_copy(
-        update={"max_active_children": 1, "max_total_children": 2, "exchanges_per_day": 3}
+        update={"max_active_children": 1, "max_total_children": 2, "exchanges_per_day": 5}
     )
     import_trust(h.store, config.model_copy(update={"profiles": (profile,)}), 1, h.service.clock)
     first = child(issuer)
@@ -634,3 +639,197 @@ def test_integration_exchange_mcp_wire_protects_actual_reads(issuer):
         assert response.status_code == 200
         assert response.json()["result"]["structuredContent"]["executed"] is allowed
     assert h.executor.calls == [("tenant-a-notes", "tenant-a")]
+
+
+def test_functional_exact_parent_client_tenant_and_child_not_parent(issuer):
+    h, parent, *_ = issuer
+    child_token = child(issuer)
+    clone = h.store.issue(h.identity, 2000.0)
+    for token in (clone, child_token):
+        result = h.client.post(
+            "/v1/authority/exchange",
+            headers={"Authorization": "Bearer " + token},
+            json={"access_token": signed(issuer)},
+        )
+        assert result.status_code == 401
+    before = rows(issuer)
+    # Signed tenant may be configured, but must exactly match authenticated parent.
+    _, _, _, config, _ = issuer
+    profile = config.profiles[0]
+    extra = profile.tenants[0].model_copy(update={"value": "other-tenant", "tenant_id": "tenant-b"})
+    profile = profile.model_copy(update={"tenants": (*profile.tenants, extra)})
+    import_trust(h.store, config.model_copy(update={"profiles": (profile,)}), 1, h.service.clock)
+    assert request(issuer, signed(issuer, tid="other-tenant")).status_code == 401
+    assert rows(issuer) == before
+    # Only the one configured client claim is used; no azp/client_id fallback.
+    profile = profile.model_copy(update={"client_claim": "azp"})
+    import_trust(h.store, config.model_copy(update={"profiles": (profile,)}), 2, h.service.clock)
+    assert request(issuer).status_code == 401
+
+
+def test_integration_exchange_policy_or_exact_parent_change_rolls_back(issuer):
+    h, parent, *_ = issuer
+    ctx = context(issuer)
+    before = rows(issuer)
+    controls = h.service.controls
+    snapshot = controls.snapshot()
+
+    def change_policy():
+        controls.activate_policy(
+            snapshot.policy.model_copy(update={"revision": 2}), snapshot.policy.version
+        )
+
+    from agentgate.control_plane import ControlsChanged
+
+    with pytest.raises(ControlsChanged):
+        exchange(h.service, ctx, signed(issuer), before_write=change_policy)
+    assert rows(issuer) == before
+    ctx = context(issuer)
+    with pytest.raises(CredentialInvalid):
+        exchange(h.service, ctx, signed(issuer), before_write=lambda: h.store.revoke(parent))
+    assert rows(issuer) == before
+
+
+def test_unit_public_config_invalid_refs_private_keys_duplicate_ids_and_cas(issuer):
+    from pydantic import ValidationError
+
+    h, _, _, config, _ = issuer
+    raw = config.model_dump(mode="json")
+    for mutation in ("duplicate", "private", "weak", "tenant"):
+        value = json.loads(json.dumps(raw))
+        profile = value["profiles"][0]
+        if mutation == "duplicate":
+            profile["keys"].append(profile["keys"][0])
+        elif mutation == "private":
+            profile["keys"][0]["d"] = "PRIVATE_DATA_MUST_BE_REFUSED"
+        elif mutation == "weak":
+            profile["keys"][0]["n"] = "AQAB"
+        else:
+            profile["parents"][0]["tenant_id"] = "not-mapped"
+        with pytest.raises(ValidationError):
+            TrustConfig.model_validate_json(json.dumps(value))
+    profile = config.profiles[0]
+    group = profile.groups[0].model_copy(update={"roles": ("not-approved",)})
+    invalid = config.model_copy(
+        update={"profiles": (profile.model_copy(update={"groups": (group,)}),)}
+    )
+    with pytest.raises(ValueError):
+        import_trust(h.store, invalid, 1, h.service.clock)
+    with pytest.raises(ValueError):
+        import_trust(h.store, config, 0, h.service.clock)
+    with h.store.connection() as db:
+        assert load_trust(db).generation == 1
+
+
+def test_integration_issuer_attribution_does_not_change_export_v1(issuer):
+    from agentgate.audit_export import export_page
+
+    h, *_ = issuer
+    h.token = child(issuer)
+    assert h.read().status_code == 200
+    page = export_page(h.store.path, tenant="tenant-a")
+    exported = [json.loads(line) for line in page.lines]
+    assert exported
+    assert all("authority" not in row and "issuer_id" not in row for row in exported)
+    assert all("exact-person" not in json.dumps(row) for row in exported)
+    assert all(row["principal_id"] == h.identity.principal_id for row in exported)
+
+
+def test_integration_ingress_bounded_no_overrides_and_no_secret_echo(issuer):
+    h, parent, *_ = issuer
+    base_headers = {"Authorization": "Bearer " + parent}
+    for body in (
+        {"access_token": signed(issuer), "department": "HR"},
+        {"access_token": "a" * 18000},
+    ):
+        response = h.client.post("/v1/authority/exchange", headers=base_headers, json=body)
+        assert response.status_code in (401, 413)
+        assert len(response.content) < 100
+    response = h.client.post(
+        "/v1/authority/exchange?access_token=forbidden",
+        headers=base_headers,
+        json={"access_token": signed(issuer)},
+    )
+    assert response.status_code == 422
+    assert rows(issuer)[0] == 0
+
+
+@pytest.mark.parametrize("denial", ["revoked", "stale-conflict", "unapproved-role"])
+def test_integration_post_verification_denial_consumes_bounded_admission(issuer, denial):
+    h, _, _, config, _ = issuer
+    profile = config.profiles[0].model_copy(update={"exchanges_per_day": 3})
+    import_trust(h.store, config.model_copy(update={"profiles": (profile,)}), 1, h.service.clock)
+    child(issuer)
+    sid = subject_id("https://issuer.invalid/people", "exact-person")
+    remaining = 2
+    if denial == "revoked":
+        revoke_subject(h.store, sid, 1)
+        token = signed(issuer)
+    elif denial == "stale-conflict":
+        h.now[0] += 1
+        child(issuer, groups=["agents"])
+        remaining = 1
+        token = signed(issuer, groups=["employees"], iat=1000, nbf=1000, auth_time=1000)
+    else:
+        controls = h.service.controls
+        snapshot = controls.snapshot()
+        delegation = snapshot.policy.delegation.model_copy(
+            update={
+                "profiles": tuple(
+                    p for p in snapshot.policy.delegation.profiles if p.role_id != "employee-hr"
+                )
+            }
+        )
+        controls.activate_policy(
+            snapshot.policy.model_copy(update={"revision": 2, "delegation": delegation}),
+            snapshot.policy.version,
+        )
+        token = signed(issuer)
+    before = rows(issuer)
+    with h.store.connection() as db:
+        old = db.execute("SELECT record FROM human_subjects").fetchone()[0]
+    for _ in range(remaining):
+        assert request(issuer, token).status_code == 401
+    for _ in range(3):
+        assert request(issuer, token).status_code == 429
+    assert rows(issuer) == before
+    assert h.executor.calls == [] and issuer[4].calls == []
+    with h.store.connection() as db:
+        assert db.execute("SELECT count FROM issuer_admission").fetchone()[0] == 3
+        assert db.execute("SELECT record FROM human_subjects").fetchone()[0] == old
+        assert (
+            db.execute(
+                "SELECT COUNT(*) FROM issuer_events WHERE kind='exchange_denied'"
+            ).fetchone()[0]
+            == remaining
+        )
+
+
+def test_integration_denial_audit_failure_rolls_back_admission(issuer):
+    h, *_ = issuer
+    child(issuer)
+    revoke_subject(h.store, subject_id("https://issuer.invalid/people", "exact-person"), 1)
+    with h.store.connection() as db:
+        before = tuple(db.execute("SELECT * FROM issuer_admission").fetchone())
+        db.execute(
+            "CREATE TRIGGER fail_denial BEFORE INSERT ON issuer_events WHEN NEW.kind='exchange_denied' BEGIN SELECT RAISE(ABORT,'fixture denial audit failure'); END"
+        )
+    assert request(issuer).status_code == 503
+    with h.store.connection() as db:
+        assert tuple(db.execute("SELECT * FROM issuer_admission").fetchone()) == before
+
+
+def test_integration_concurrent_valid_denials_cannot_overrun_admission(issuer):
+    h, _, _, config, _ = issuer
+    profile = config.profiles[0].model_copy(update={"exchanges_per_day": 3})
+    import_trust(h.store, config.model_copy(update={"profiles": (profile,)}), 1, h.service.clock)
+    child(issuer)
+    revoke_subject(h.store, subject_id("https://issuer.invalid/people", "exact-person"), 1)
+    before = rows(issuer)
+    token = signed(issuer)
+    with ThreadPoolExecutor(max_workers=5) as pool:
+        statuses = list(pool.map(lambda _: request(issuer, token).status_code, range(5)))
+    assert statuses.count(401) == 2 and statuses.count(429) == 3
+    assert rows(issuer) == before
+    with h.store.connection() as db:
+        assert db.execute("SELECT count FROM issuer_admission").fetchone()[0] == 3

@@ -261,7 +261,7 @@ def exchange(
         before_write()
     token = secrets.token_urlsafe(32)
     key = credential_digest(token)
-    denied = False
+    denial: CredentialInvalid | ExchangeLimit | None = None
     with service.store.connection() as db:
         db.execute("BEGIN IMMEDIATE")
         now = service.clock()
@@ -286,14 +286,11 @@ def exchange(
             "INSERT INTO issuer_admission VALUES (?,?,?) ON CONFLICT(parent_digest) DO UPDATE SET day=excluded.day,count=excluded.count",
             (parent_key, day, used + 1),
         )
-        if assertion is None:
-            db.execute(
-                "INSERT INTO issuer_events(timestamp,kind,generation,parent_digest) VALUES (?,'exchange_denied',?,?)",
-                (now, trust.generation, parent_key),
-            )
-            denied = True
-            expires = now
-        else:
+        expires = now
+        db.execute("SAVEPOINT authority_mutations")
+        try:
+            if assertion is None:
+                raise CredentialInvalid
             assertion.valid_at(now)
             profile = assertion.profile
             if not profile.permits(parent_key, identity, assertion.client_id):
@@ -353,9 +350,20 @@ def exchange(
                 "INSERT INTO issuer_events(timestamp,kind,generation,parent_digest,child_digest,subject_id) VALUES (?,'child_issued',?,?,?,?)",
                 (now, trust.generation, parent_key, key, human.subject_id),
             )
+        except (CredentialInvalid, ExchangeLimit) as error:
+            # Business denial commits only admission and a minimized denial.
+            # Authority/child mutations never escape the savepoint. Any audit or
+            # storage error propagates and rolls back the WHOLE transaction.
+            db.execute("ROLLBACK TO authority_mutations")
+            denial = error
+            db.execute(
+                "INSERT INTO issuer_events(timestamp,kind,generation,parent_digest) VALUES (?,'exchange_denied',?,?)",
+                (now, trust.generation, parent_key),
+            )
+        db.execute("RELEASE authority_mutations")
         db.execute("COMMIT")
-    if denied:
-        raise CredentialInvalid
+    if denial is not None:
+        raise denial
     return token, expires
 
 

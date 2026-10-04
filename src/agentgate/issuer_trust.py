@@ -112,6 +112,8 @@ class IssuerProfile(Contract):
             "auth_time",
         }:
             raise ValueError("Overlapping claim names")
+        if any(p.tenant_id not in {m.tenant_id for m in self.tenants} for p in self.parents):
+            raise ValueError("Parent tenant must have an explicit signed tenant mapping")
         if self.max_active_children > self.max_total_children:
             raise ValueError("Active limit exceeds total limit")
         return self
@@ -182,6 +184,20 @@ def import_trust(
         old = load_trust(db)
         if old.generation != expected_generation:
             raise ValueError("Trust generation conflict")
+        from agentgate.policy import Policy
+
+        row = db.execute("SELECT policy FROM active_controls WHERE id=1").fetchone()
+        if row is None:
+            raise ValueError("Active policy required before importing issuer trust")
+        policy = Policy.model_validate_json(row[0])
+        approved = {p.role_id for p in policy.delegation.profiles} if policy.delegation else set()
+        if any(
+            not set(group.roles).issubset(approved)
+            for p in config.profiles
+            if p.enabled
+            for group in p.groups
+        ):
+            raise ValueError("Issuer groups must map to existing approved role profiles")
         generation = old.generation + 1
         db.execute(
             "INSERT INTO issuer_trust VALUES (1,?,?) ON CONFLICT(id) DO UPDATE SET generation=excluded.generation,config=excluded.config",
