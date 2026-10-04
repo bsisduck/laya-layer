@@ -20,17 +20,19 @@ These results establish control behavior, not actual classifier quality or a
 successful real HR summary.
 
 Root's independent installed-console regression at `34bf344` passed credential
-browser and local-console checks, including unchanged state after HR startup
-failure, session/CSRF boundaries, outbox replay, mobile navigation and MCP.
+browser and local-console checks, including unchanged authority/control state on
+HR startup, separate bootstrap failure/retry checks, session/CSRF boundaries,
+outbox replay, mobile navigation and MCP.
 Desktop/mobile visual review covered overview, catalog, timeline, denial,
-outbox and startup failure. Mocked-component checks supply UI-only evidence.
+outbox and bootstrap failure. Mocked-component checks supply UI-only evidence.
 The acceptance runner executed **140 cases / 420 setup-call-teardown phases**
 with zero failures, skips or reconciliation problems. These are separate
 runner counts, not additions to the 1,005 pytest tests. The final fixed ladder
 entrypoint at `c9c47b8` passed author and independent QA. The original
 test-entrypoint failure evidence/log is retained: it assumed the default Overview,
 then was fixed by explicit `/#overview` navigation. This is separate from the
-local-console startup/no-authority-mutation checks above. Root also reports 18 passing Node contract checks, separately
+local-console startup/no-authority-mutation checks above. Root also reports
+18 passing Node contract checks, separately
 from the Python and acceptance counts. The separately observed preserving
 primary upgrade and deliberate HR setup are recorded in the
 [release ledger](release-evidence.md#existing-primary-installation-preservation-then-deliberate-setup);
