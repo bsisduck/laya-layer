@@ -2,10 +2,20 @@ import {eventContext, ladder, levels, layers} from './threats.js';
 import {departmentUsage} from './departments.js';
 import {standardsView} from './standards.js';
 import {el, text, tag, panel, pairs, details, table, empty, field, timestamp} from './ui.js';
+export function overviewSection(hash = '') {
+  const section = new URLSearchParams(hash.split('?')[1] || '').get('section');
+  return ['usage', 'standards', 'controls'].includes(section) ? section : 'all';
+}
 export async function overview(api) {
+  const section = overviewSection(globalThis.location?.hash);
+  const root = el('div');
+  root.append(el('div', {class: 'overview-sections', role: 'group', 'aria-label': 'Overview sections'},
+    [['all', 'All operations'], ['usage', 'Department usage'], ['standards', 'Standards evidence'], ['controls', 'Threat controls']].map(([key, label]) => el('a', {href: key === 'all' ? '#overview' : `#overview?section=${key}`, ...(section === key ? {'aria-current': 'page'} : {})}, label))));
+  if (section === 'usage') { root.append(departmentUsage(api)); return root; }
+  if (section === 'standards') { root.append(standardsView()); return root; }
+  if (section === 'controls') { root.append(await ladder(api)); return root; }
   const data = await api.request('/admin/overview');
   const counts = data.counts || {};
-  const root = el('div');
   root.append(el('div', {class: 'summary-strip'}, el('span', {}, 'POLICY / ', text(data.policy_version)), el('span', {}, 'FEED / ', text(data.feed_version))));
   root.append(el('div', {class: 'stats'}, ['allow', 'redact', 'deny', 'pending'].map(key => el('div', {class: `stat ${key}`},
     el('p', {class: 'eyebrow'}, {allow: 'Allowed', redact: 'Redacted', deny: 'Denied', pending: 'Pending'}[key]),

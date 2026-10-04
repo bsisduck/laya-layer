@@ -41,10 +41,11 @@ export function status() { return el('p', {class: 'status', role: 'status', 'ari
 export async function busy(control, output, action) {
   if (control.disabled) return;
   control.disabled = true;
+  control.setAttribute('aria-busy', 'true');
   output.classList.remove('error'); output.textContent = 'Working…';
   try { await action(); }
   catch (error) { output.classList.add('error'); output.textContent = error.message; }
-  finally { control.disabled = false; }
+  finally { control.disabled = false; control.removeAttribute('aria-busy'); }
 }
 export function timestamp(value) {
   if (value === null || value === undefined) return 'Unknown';

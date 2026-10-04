@@ -5,7 +5,8 @@ import {filterEvents} from '../../src/agentgate/web/observe.js';
 import {parseEditor} from '../../src/agentgate/web/ui.js';
 import {playgroundBody} from '../../src/agentgate/web/actions.js';
 import {catalogState} from '../../src/agentgate/web/catalog.js';
-import {hrResourceLabel} from '../../src/agentgate/web/hr.js';
+import {hrResourceLabel, hrDecision, hrProgress} from '../../src/agentgate/web/hr.js';
+import {overviewSection} from '../../src/agentgate/web/observe.js';
 import {exactMoney, knownMeasure, usageState} from '../../src/agentgate/web/departments.js';
 import {standardsEvidence} from '../../src/agentgate/web/standards.js';
 test('department money stays exact past JS and SQLite integer bounds with contributing counts', () => {
@@ -35,6 +36,37 @@ test('HR readable resource examples map the supplied contract without inventing 
   assert.deepEqual(['hr-candidate-001'].map(hrResourceLabel), ['Synthetic candidate record']);
   assert.deepEqual([].map(hrResourceLabel), []);
   assert.equal(hrResourceLabel('future-synthetic-resource'), 'future-synthetic-resource');
+});
+test('HR distinguishes withheld output, no dispatch and actual released summaries', () => {
+  const denied = {decision: 'deny', executed: false, result: {content: 'must not display'}};
+  assert.match(hrDecision(denied).message, /not dispatched/);
+  assert.equal(hrDecision(denied).content, undefined);
+  assert.match(hrDecision({...denied, executed: true}).message, /output was withheld/);
+  assert.equal(hrDecision({...denied, executed: true}).released, false);
+  assert.match(hrDecision({decision: 'deny'}).message, /Execution is unknown/);
+  assert.match(hrDecision({decision: 'deny', executed: null}).message, /Execution is unknown/);
+  const completion = {agentgate: {decision: 'allow', executed: true}, choices: [{message: {content: 'Actual provider output'}}]};
+  assert.equal(hrDecision({completion}).content, 'Actual provider output');
+  for (const bad of [{...completion, choices: []}, {...completion, agentgate: denied}]) {
+    assert.equal(hrDecision({completion: bad}).released, false);
+    assert.equal(hrDecision({completion: bad}).content, null);
+  }
+  assert.equal(hrDecision({decision: 'allow', executed: true}).released, false);
+  assert.equal(hrDecision({decision: 'require_approval', executed: false}, 'action').released, false);
+});
+test('HR progress requires released content and observed outbox effects', () => {
+  assert.deepEqual(hrProgress({}, false), ['Not started', 'Read or summarize', 'Draft a message']);
+  assert.equal(hrProgress({binding: {}}, false)[0], 'Expired');
+  assert.equal(hrProgress({read: 'blocked'}, true)[1], 'Blocked · review evidence');
+  assert.equal(hrProgress({read: 'released'}, true)[1], 'Output released');
+  assert.equal(hrProgress({reviewState: 'approved'}, true)[2], 'Approved · resume required');
+  assert.equal(hrProgress({reviewState: 'consumed'}, true)[2], 'Consumed · inspect outbox');
+  assert.equal(hrProgress({effects: 1}, true)[2], 'One local record observed');
+  assert.equal(hrProgress({effects: 0}, true)[2], 'Draft a message');
+});
+test('overview deep links select only known evidence sections', () => {
+  for (const key of ['usage', 'standards', 'controls']) assert.equal(overviewSection(`#overview?section=${key}`), key);
+  for (const hash of ['', '#overview', '#overview?section=missing', '#overview?section=<script>']) assert.equal(overviewSection(hash), 'all');
 });
 test('catalog consumer separates unsupported, missing, empty and trusted versioned metadata', () => {
   const tool = {operation: 'mail.send', executable: true, effect: 'write', data_scope: 'Unclassified submitted text', adapter: 'local_fixture_outbox', reversibility: 'local_record_retained', affects_person: true, policy: {disposition: 'exact_approval'}, risk: {version: 'tool-policy-heuristic-v1', score: 75, band: 'high', components: {effect: 25, potential_data: 25, exposure: 10, reversibility: 5, affects_person: 10}}};

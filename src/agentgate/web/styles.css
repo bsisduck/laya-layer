@@ -57,7 +57,10 @@ button {
   min-height:44px;
 }
 button:disabled {
-  opacity:.5;
+  opacity:.65;
+  cursor:not-allowed;
+}
+button[aria-busy=true] {
   cursor:wait;
 }
 button:hover:not(:disabled) {
@@ -581,6 +584,16 @@ summary {
   cursor:pointer;
   font-size:12px;
   font-weight:600;
+  min-height:44px;
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+summary:before {
+  content:'▸';
+}
+details[open]>summary:before {
+  content:'▾';
 }
 details pre {
   margin-top:15px;
@@ -860,3 +873,22 @@ table {
 .hr-workspace .kv dd {overflow-wrap: anywhere;}
 
 .hr-workspace input:not([type="checkbox"]), .hr-workspace select {width: 100%; max-width: 100%;}
+.hr-steps {list-style: none; padding: 0; margin: 18px 0 10px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; counter-reset: hr-step;}
+.hr-steps li {counter-increment: hr-step; border-top: 2px solid var(--green); padding-top: 10px; font-size: 13px;}
+.hr-steps strong:before {content: counter(hr-step) '. '; color: var(--green);}
+.hr-steps span {display: block; color: var(--muted); font-size: 12px; margin-top: 4px;}
+.hr-next {font-size: 13px; color: var(--green);}
+.hr-identity {display: flex; flex-wrap: wrap; gap: 8px 24px; font-size: 13px;}
+.hr-feedback:not(:empty) {margin-top: 16px;}
+.hr-links a, .overview-sections a {min-height: 44px; display: inline-flex; align-items: center; padding: 8px 0;}
+.hr-workspace>details {margin-bottom: 20px;}
+.overview-sections {display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px;}
+.overview-sections a {padding: 10px 14px; border: 1px solid var(--line); font-size: 13px; text-decoration: none;}
+.overview-sections a[aria-current=page] {background: var(--green); color: var(--panel); border-color: var(--green);}
+@media(max-width:720px) {
+  .hr-steps {gap: 8px;}
+  .hr-steps strong {font-size: 12px;}
+  .hr-steps span {font-size: 11px;}
+  .hr-identity {display: grid; gap: 4px;}
+  .hr-buttons {gap: 8px;}
+}

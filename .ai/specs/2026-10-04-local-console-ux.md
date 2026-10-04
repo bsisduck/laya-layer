@@ -21,3 +21,36 @@ Meaningful pure frontend unit/contract tests for changed decision presentation a
 
 ## Selected skills
 Open Mercato om-ux-shape, om-code-review, om-prepare-test-env, om-integration-tests; installed frontend-testing-debugging and frontend-design for preserving existing style and browser evidence. Skills search completed; no extra installation required.
+
+## Implementation handoff
+
+For the local HR operator, use one visible three-step flow with compact session
+controls and adjacent source/action evidence. [PRODUCT] The supplied scope and
+architecture require exact consent, separate read/model execution and honest
+release/effect states. The existing model remains optional assistance; a manual
+follow-up draft works without a summary. Withheld or unavailable output must stay
+visible as a failure, with no substitute summary or semantic-policy change.
+
+| State | Visible response and deliberate recovery |
+|---|---|
+| Inactive | “Start HR session”; explain disabled actions beside them |
+| Active | Requester, agent and expiry; “Read selected source” / “Request model summary” |
+| Busy | Lock HR controls and source selection; show “Working…” beside the action |
+| Released | Show only supplied, released content and source/model audit links |
+| Denied | Distinguish executed/output withheld, not dispatched, and unknown execution |
+| Invalid draft | Focus the invalid field; explain missing email/subject/body before any request |
+| Pending | Immutable recipient/content review; approval creates zero local messages |
+| Edited | Explain the old approval still binds its original message; “Start new draft” explicitly selects a new key |
+| Approved | “Resume approved message”; current authority is rechecked by the backend |
+| Consumed | “Replay exact resume”; report the observed local outbox count |
+| Expired/recovered | Disable old controls; start a new session deliberately, without replay |
+
+Overview section links use the existing hash route query for usage, standards and
+threat controls. Plain `#overview` retains the full overview. Browser back restores
+the previous section. Read selection and progress reset together when returning
+to HR; detached read responses are discarded.
+
+[ASSUMPTION] This reduces finding/feedback effort; no user study measures that
+effect. Verify action reachability, adjacent feedback, held-response source
+locking, keyboard/mobile behavior, exact-effect assertions and installed-wheel
+regressions. No new AI capability or dependency is needed.
