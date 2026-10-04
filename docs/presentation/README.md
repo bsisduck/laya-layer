@@ -58,6 +58,15 @@ absence of a login input, source text bounds and PDF page/text extraction.
 It does not replace visual inspection: inspect **every rendered page**, Polish
 glyphs, table/diagram labels, arrows, overlap and narrow screenshots.
 
+Final slide/CSS source is `7724c23`; root also reviewed the link-only `b2d0a02`
+documentation delta. Author and root final renders/checkers passed after the
+scoped slide-9 spacing correction. All twenty pages were visually inspected;
+only the two slide-9 PNGs changed, and both were reopened. The configured review
+gate passed independently at `0267ebc` with 1,005 tests and zero skips. The
+original author two-test failure and original layout failure remain disclosed
+separately. [Exact results and artifact digests](../release-evidence.md#final-bilingual-presentation-verification)
+identify this delivery; CI/root notes review still governs the draft PR.
+
 ## Claim review
 
 | Slide | Claim source | Evidence boundary |

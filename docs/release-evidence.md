@@ -50,6 +50,54 @@ Minimized ignored delivery evidence: `reports/generated/live-console/hr-delivery
 installation URL, key or token is published. The author did not mutate the primary
 installation, shared Ollama or other QA state.
 
+## Final bilingual presentation verification
+
+Root independently reviewed the sources through `0267ebc`, all twenty rendered
+pages, and the narrative-only `7e41ea8` corrections. The scoped `7724c23` CSS
+change reduced only slide 9's heading gap by six pixels. Root rerendered, reopened
+both changed pages and passed the offline checker; the link-only `b2d0a02` delta
+was also reviewed. Author final rendering exited **0**, and pixel comparisons
+confirm that only PL/EN page 9 changed. Both language versions have ten PDF pages
+and ten HTML slides. Author and root each passed **40 offline desktop/narrow
+observations**: keyboard navigation, glyph text, safe geometry, no login and
+only the local document request. These are presentation checks, not AgentGate
+enforcement or model evaluation.
+
+Root's configured `make validate` at `0267ebc`, with pinned Hermes enabled,
+passed **1,005 tests, zero skips in 665.95 seconds**, plus workflow/config/lock,
+Ruff, strict mypy (58 source files), sdist and wheel. Subsequent changes are
+narrative docs and presentation CSS; validation/runtime inputs are unchanged.
+The first author gate instead recorded **1,003 passes and two failures in
+521.97 seconds**: the slow-ACK fixture had zero receipt rows where two were
+expected, and the collector daemon exceeded its shared startup/send deadline.
+The original log is retained as
+`reports/generated/presentation/validate-first-failed.log`. No assertion,
+timeout or runtime change conceals that result; the independent passing run is
+reported separately. Root explicitly accepted that configured review gate for
+this docs-only publication.
+
+The initial layout-check failure (slide 9 scroll height 724/720 and note below
+the safe bound) is retained separately in
+`reports/generated/presentation/offline-first-failed-root.log`; the six-pixel
+spacing fix passed the unchanged assertions. An earlier interrupted author
+renderer exited 143 after saving the English PDF during a Chrome shutdown stall;
+its log remains ignored. The final serialized render exited 0. Author Node
+contracts separately passed 18 checks with zero skips, and helper Ruff/format,
+shell syntax and local link checks passed.
+
+Generated deliverables remain ignored in `reports/generated/presentation`.
+These SHA-256 values identify the author's final reviewed-source artifacts:
+
+| Artifact | SHA-256 |
+|---|---|
+| `laya-pl.pdf` | `768118d20f4045053cfa28bad6a3b2b3b38187987f6147859704887c957beff8` |
+| `laya-pl.html` | `2c877db1d874472451e1cd3089e15f3c104c50dc4152af46cc0ce2b17e498da7` |
+| `laya-en.pdf` | `9494d8a724478bd8f46e79cfed25630ee34bfcae38585bae641751d0e3add7a0` |
+| `laya-en.html` | `946ee44df3f6de1cb83f00e22557b1eec3b2092f67741288c9b9ec470c061144` |
+
+Source/page acceptance does not authorize an author merge. The draft publication
+requires root exact-head notes review and green CI.
+
 ## Integrated capabilities
 
 | Boundary | Implementation and evidence | Limit |
