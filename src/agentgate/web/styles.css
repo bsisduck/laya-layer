@@ -834,3 +834,5 @@ table {
 .threat-ladder p, .table-wrap .footnote {overflow-wrap: anywhere;}
 .filters {flex-wrap: wrap;}
 @media (max-width: 700px) {.threat-ladder {grid-template-columns: 1fr;}}
+
+.timeline-panel table {min-width: 880px;}

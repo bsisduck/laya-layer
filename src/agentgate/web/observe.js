@@ -35,6 +35,7 @@ export async function timeline(api) {
   const data = await api.request('/admin/events?limit=100');
   if (!Array.isArray(data.events)) throw new Error('The timeline response is missing its event list.');
   const root = panel('Security timeline');
+  root.classList.add('timeline-panel');
   const decision = el('select', {id: 'event-decision'}, ['', 'allow', 'redact', 'deny', 'pending'].map(value => el('option', {value}, value || 'All decisions')));
   const query = el('input', {id: 'event-query', type: 'search', placeholder: 'Trace, operation, tenant or reason', 'aria-label': 'Filter loaded events'});
   const level = el('select', {id: 'event-level'}, ['', 'unknown', ...levels].map(value => el('option', {value}, value === 'unknown' ? 'Unknown live level' : value || 'All levels')));
@@ -54,7 +55,7 @@ export async function timeline(api) {
   level.addEventListener('change', render); layer.addEventListener('change', render);
   decision.addEventListener('change', render); query.addEventListener('input', render);
   root.append(el('div', {class: 'filters'}, field('Decision', decision), field('Live level', level), field('Control layer', layer), query), count, content);
-  root.append(el('p', {class: 'hint'}, 'Filters apply only to this loaded window. L0–L5 describes authored scenarios; current live levels are always unknown, so selecting L0–L5 returns no classified observations. Layers and OWASP are control associations only; intent is not assessed.'));
+  root.append(el('p', {class: 'hint'}, 'Scroll the records horizontally on narrow screens. Filters apply only to this loaded window. L0–L5 describes authored scenarios; current live levels are always unknown, so selecting L0–L5 returns no classified observations. Layers and OWASP are control associations only; intent is not assessed.'));
   if (Array.isArray(data.control_events)) root.append(details('Policy and feed activation events', data.control_events));
   render(); return root;
 }

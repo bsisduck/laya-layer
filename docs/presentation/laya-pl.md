@@ -82,6 +82,16 @@ Zmieniona treść daje konflikt. Odnowienie zachowuje tożsamość i zużyty bud
 <div class="note">Testy reguł i jakość modelu to osobne dowody. Kontrola manifestów i klienci REST/MCP/Hermes są zintegrowani po przeglądzie.</div>
 
 ---
+<!-- _class: ladder-slide -->
+## Od przypadku do adaptacyjnego ataku
+
+<div class="ladder-grid"><div class="card"><strong>L0 · Przypadek</strong><p>Błędy ujawnienia / zużycia zasobów</p></div><div class="card"><strong>L1 · Bezpośrednia znana próba</strong><p>Jawna zabroniona instrukcja / operacja</p></div><div class="card"><strong>L2 · Ukrywanie / omijanie</strong><p>Podzielone sekrety / parafrazy; są luki</p></div><div class="card"><strong>L3 · Treść pośrednia</strong><p>Niezaufany dokument / wynik narzędzia</p></div><div class="card"><strong>L4 · Nadużycie uprawnień / działań</strong><p>Dokładna zgoda / zakres / wspólny budżet</p></div><div class="card"><strong>L5 · Atak na kontrolę / łańcuch dostaw</strong><p>Poprawne migawki / limity / metadane</p></div></div>
+
+<div class="note">Siedem warstw: tożsamość · wejście · dane · działania · wyjście · zużycie · łańcuch dostaw</div>
+<div class="warn">Typy autorskich scenariuszy ≠ zaobserwowani atakujący. Poziom każdego bieżącego zdarzenia jest nieznany. OWASP LLM 2025 / Agentic 2026 to kontekst.</div>
+<div class="note">Bez obietnic pełnego DLP, podpisów, czterech oczu czy limitów tempa. Fałszywe alarmy i przeoczenia semantyczne pozostają jawne.</div>
+
+---
 <!-- _class: lead closing -->
 ## Działający lokalny prototyp. Jawne ograniczenia.
 

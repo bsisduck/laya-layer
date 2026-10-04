@@ -56,11 +56,14 @@ def test_sidecar_exact_102_references_and_frozen_provenance():
         "question",
         "manifest",
         "extra",
+        "boolean_version",
     ],
 )
 def test_invalid_metadata_fails_instead_of_plausible_empty_chart(tmp_path, mutation):
     value = json.loads((ROOT / "testdata/test-cases.json").read_bytes())
-    if mutation == "duplicate":
+    if mutation == "boolean_version":
+        value["schema_version"] = True
+    elif mutation == "duplicate":
         value["cases"][-1] = value["cases"][0]
     elif mutation == "missing":
         value["cases"].pop()

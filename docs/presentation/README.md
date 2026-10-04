@@ -1,6 +1,6 @@
 # English / Polish presentation source
 
-[Laya English](laya-en.md) and [Laya Polish](laya-pl.md) each contain **nine slides**.
+[Laya English](laya-en.md) and [Laya Polish](laya-pl.md) each contain **ten slides**.
 [laya.css](laya.css) is the local Marp theme; no external assets, source challenge
 PDFs, product keys or invented team facts are embedded. Team/member/URL fields
 are deliberate templates. Fill them from user-owned facts before submission.
@@ -23,7 +23,7 @@ Rendering requires a prepared local Chromium/Chrome. Initial npx preparation can
 use the network; an offline judge environment must cache the renderer/browser
 beforehand. The product itself has no Marp/Node presentation dependency.
 Generated PDFs/previews/reports stay under ignored `reports/generated/`; commit
-only Markdown/CSS source. Recheck nine pages, readable EN/PL glyphs, diagram/text
+only Markdown/CSS source. Recheck ten pages, readable EN/PL glyphs, diagram/text
 fit and every evidence claim after edits. Refresh release/PR status from
 [the evidence ledger](../release-evidence.md) before root's final freeze.
 

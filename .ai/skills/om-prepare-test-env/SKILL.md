@@ -43,3 +43,11 @@ Verified on macOS: cold launch, warm reuse (0.244 s), source-touch invalidation,
 double stop, restart (7.406 s), and unchanged private tokens/epochs/budget accounts.
 These are observations, not performance guarantees. Scripts and this note must
 stay in sync when bootstrap behavior changes.
+
+Threat ladder regression (no inference): after live feature exploration, run
+`uv run --locked --with playwright python tests/frontend/threat_ladder.py`.
+It consumes this worktree's descriptor, creates a real unregistered-resource denial
+and verifies durable audit/no outbox effect, unknown level and overlapping layer
+filters, keyboard/mobile behavior, old payload safe text, loading/error states and
+invalid ordered metadata. Screenshots/result stay in `.ai/qa/artifacts_threat_ladder`;
+append-only QA audit observations remain. It logs out and closes its browser.

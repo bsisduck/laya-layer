@@ -221,3 +221,31 @@ def test_taxonomy_operator_boundary_and_unclassified_context(admin):
             assert ctx["layers"] == [] and ctx["owasp"] == []
     assert events[0]["threat_context"]["layers"] == ["identity", "data"]
     assert set(events[0]) == EXPORT_KEYS | {"feed_version", "threat_context"}
+
+
+@pytest.mark.parametrize(
+    "reason,event_type,operation,expected_layers",
+    [
+        ("EMAIL_REDACTED", "action_completed", "documents.read", ["data", "output"]),
+        ("EMAIL_REDACTED", "action_completed", "chat.completions", ["data"]),
+        ("SECRET_IN_INPUT", "action_denied", "mail.send", ["input", "data"]),
+        ("BUDGET_EXCEEDED", "action_denied", "chat.completions", ["consumption"]),
+        ("EXECUTION_FAILED", "execution_failed", "documents.read", []),
+        ("ALLOWED", "action_completed", "documents.read", []),
+    ],
+)
+def test_reviewed_control_associations_never_establish_live_level(
+    harness, reason, event_type, operation, expected_layers
+):
+    from agentgate.contracts import Reason
+
+    harness.read()
+    event = harness.store.events()[-1].model_copy(
+        update={"reason_codes": (Reason(reason),), "event_type": event_type, "operation": operation}
+    )
+    context = threat_context(event)
+    assert context["layers"] == expected_layers
+    assert context["candidate_levels"] == [] and context["intent"] == "not_assessed"
+    assert context["level_status"] == "unknown" and context["basis"] == "control_context_only"
+    if not expected_layers:
+        assert context["owasp"] == []

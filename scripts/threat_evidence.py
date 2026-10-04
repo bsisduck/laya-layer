@@ -78,9 +78,10 @@ def load_index(root: Path, path: Path | None = None) -> Index:
     path = path or root / "testdata/test-cases.json"
     if path.stat().st_size > 131072:
         raise ValueError("Metadata index exceeds 128 KiB")
-    index = Index.model_validate_json(
-        json.dumps(json.loads(path.read_bytes(), object_pairs_hook=unique_object))
-    )
+    value = json.loads(path.read_bytes(), object_pairs_hook=unique_object)
+    if not isinstance(value, dict) or type(value.get("schema_version")) is not int:
+        raise ValueError("Metadata schema version must be an integer")
+    index = Index.model_validate_json(json.dumps(value, allow_nan=False))
     if {d.id for d in index.datasets} != set(DATASETS):
         raise ValueError("Exact dataset set required")
     expected = set()

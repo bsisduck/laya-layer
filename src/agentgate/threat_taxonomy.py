@@ -200,7 +200,15 @@ def threat_context(event: AuditEvent) -> dict[str, JsonValue]:
                 "mail.send",
             ):
                 layers.add("input")
-            elif reason == Reason.SECRET_IN_OUTPUT or event.event_type == "output_blocked":
+            elif (
+                reason == Reason.SECRET_IN_OUTPUT
+                or event.event_type == "output_blocked"
+                or (
+                    reason == Reason.EMAIL_REDACTED
+                    and event.operation in ("documents.read", "memory.query")
+                    and event.event_type == "action_completed"
+                )
+            ):
                 layers.add("output")
         if reason in (
             Reason.SEMANTIC_BLOCKED,

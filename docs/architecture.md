@@ -120,3 +120,7 @@ Pre-dispatch audit failure prevents execution; post-dispatch audit failure
 withholds output and retains uncertain accounting. Approval alone does not send
 mail. An output denial can follow billable/executed work. Buffered SSE delays the
 first token until inspection completes; it is not incremental token enforcement.
+
+See [two-axis threat evidence](threat-model.md) for the authored L0–L5 ladder, exact seven
+layers, strict frozen-corpus sidecar and unknown live-level contract. The taxonomy
+adds classification/evidence presentation, not new enforcement or inference results.

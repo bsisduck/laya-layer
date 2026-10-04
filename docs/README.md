@@ -8,7 +8,7 @@ Start with the [visual architecture](architecture.md), then follow the
 | [Release evidence](release-evidence.md) | Exact integrated refs, merge states, measured limitations and root QA |
 | [T01–T48 acceptance](acceptance.md) | Executable control mappings, frozen evaluation cases, partial/pending/gap evidence |
 | [Demo and recovery](demo-runbook.md) | Five-minute product demonstration and state-preserving recovery |
-| [Presentation sources](presentation/README.md) | Nine-slide English/Polish decks; generated PDFs stay ignored |
+| [Presentation sources](presentation/README.md) | Ten-slide English/Polish decks; generated PDFs stay ignored |
 | [Submission template](submission-template.md) | User-owned team/member/URL and organizer fields |
 | [Install and lifecycle](local-app.md) | One-command local app, credentials, offline restart and recovery |
 | [Visual architecture](architecture.md) | Working path, trust boundaries, and target system |
@@ -32,3 +32,7 @@ Start with the [visual architecture](architecture.md), then follow the
 
 The full design describes the intended product. The implementation documents
 describe observed behavior; a planned component is not a security guarantee.
+
+See [two-axis threat evidence](threat-model.md) for the authored L0–L5 ladder, exact seven
+layers, strict frozen-corpus sidecar and unknown live-level contract. The taxonomy
+adds classification/evidence presentation, not new enforcement or inference results.

@@ -45,3 +45,10 @@ section.closing { justify-content: flex-start; padding-top: 64px; }
 section.closing h2 { font-size: 42px; margin-bottom: 20px; }
 section.closing p { font-size: 28px; margin: 8px 0 18px; }
 section.closing .node { font-size: 22px; padding: 18px; line-height: 1.25; }
+
+.ladder-grid {display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 8px 0 12px;}
+section.ladder-slide h2 {font-size: 38px; margin-bottom: 14px;}
+section.ladder-slide .card {padding: 10px 16px; border-radius: 12px; font-size: 21px;}
+section.ladder-slide .card p {font-size: 18px; margin: 4px 0 0;}
+section.ladder-slide .note {font-size: 18px; margin: 10px 0;}
+section.ladder-slide .warn {font-size: 20px; padding: 12px 16px;}

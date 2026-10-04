@@ -6,15 +6,23 @@ export function eventContext(event) {
   const valid = context?.schema_version === 1 && context?.taxonomy_version === 'laya-threat-v1';
   // No authenticated scenario attribution exists in this version. Never infer a level.
   return {level_status: 'unknown', candidate_levels: [],
-    layers: valid && Array.isArray(context.layers) ? context.layers.filter(value => layers.includes(value)) : [],
-    owasp: valid && Array.isArray(context.owasp) ? context.owasp.filter(value => /^(LLM\d{2}:2025|ASI\d{2}:2026)$/.test(value)) : []};
+    layers: valid && Array.isArray(context.layers) ? [...new Set(context.layers.filter(value => layers.includes(value)))] : [],
+    owasp: valid && Array.isArray(context.owasp) ? [...new Set(context.owasp.filter(value => typeof value === 'string' && /^(LLM(0[1-9]|10):2025|ASI(0[1-9]|10):2026)$/.test(value)))] : []};
+}
+export function validTaxonomy(data) {
+  return data?.schema_version === 1 && data?.taxonomy_version === 'laya-threat-v1' &&
+    Array.isArray(data.levels) && data.levels.length === levels.length &&
+    data.levels.every((level, index) => level?.id === levels[index] &&
+      ['name', 'assignment', 'controls', 'gaps', 'coverage'].every(key => typeof level[key] === 'string' && level[key].length > 0)) &&
+    Array.isArray(data.layers) && data.layers.length === layers.length &&
+    data.layers.every((layer, index) => layer?.id === layers[index] && typeof layer.name === 'string' && layer.name.length > 0);
 }
 export async function ladder(api) {
   const root = panel('Authored scenario ladder · L0–L5');
   root.append(el('p', {class: 'hint'}, 'Scenario types, not a severity score. Live events have unknown levels: denials, budget exhaustion and semantic signals do not identify attacker sophistication.'));
   try {
     const data = await api.request('/admin/threat-taxonomy');
-    if (data.schema_version !== 1 || data.taxonomy_version !== 'laya-threat-v1' || !Array.isArray(data.levels) || !Array.isArray(data.layers) || data.levels.length !== 6) throw new Error('Taxonomy metadata unavailable.');
+    if (!validTaxonomy(data)) throw new Error('Taxonomy metadata unavailable.');
     root.append(el('ol', {class: 'threat-ladder'}, data.levels.map(level => el('li', {},
       el('div', {class: 'section-head'}, el('h3', {}, `${level.id} · ${level.name}`), tag(level.coverage)),
       el('p', {}, level.assignment), el('p', {class: 'hint'}, `Current controls: ${level.controls}`),

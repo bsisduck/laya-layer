@@ -155,3 +155,7 @@ The local generation used one attempt and 118 tokens; input secret denial made
 no attempt. See [release evidence](release-evidence.md) for exact source, timings
 and limits. Mocked UI consumers, installed integration and real semantic accuracy
 remain separate evidence classes.
+
+See [two-axis threat evidence](threat-model.md) for the authored L0–L5 ladder, exact seven
+layers, strict frozen-corpus sidecar and unknown live-level contract. The taxonomy
+adds classification/evidence presentation, not new enforcement or inference results.
