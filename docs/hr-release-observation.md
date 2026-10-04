@@ -65,6 +65,7 @@ Output denial does not undo an executed read.
 
 This is an **actual false positive**, unsuitable for a normal HR semantic demo.
 It supplies no efficacy claim and must not be described as model-summary success.
+The retained false positive is tracked in [issue 51](https://github.com/bsisduck/laya-sec-agent/issues/51).
 The guard was retained unchanged. Ending the binding returned HTTP 200; root
 stopped the owned QA installation. No inference was run by the presentation author.
 
