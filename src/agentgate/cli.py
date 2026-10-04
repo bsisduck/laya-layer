@@ -147,9 +147,48 @@ def main() -> None:
         "revoke-local-credential", help="Revoke a local parent or child credential"
     )
     revoke.add_argument("--token-file", type=Path, required=True)
+    issuer = commands.add_parser(
+        "import-issuer-trust", help="CAS-import bounded PUBLIC pinned issuer trust"
+    )
+    issuer.add_argument("--config-file", type=Path, required=True)
+    issuer.add_argument("--expected-generation", type=int, required=True)
+    exchange = commands.add_parser(
+        "exchange-person-token",
+        help="Exchange to a private child file on loopback; no browser login",
+    )
+    exchange.add_argument("--gateway", required=True)
+    exchange.add_argument("--parent-token-file", type=Path, required=True)
+    exchange.add_argument("--access-token-file", type=Path, required=True)
+    exchange.add_argument("--output-token-file", type=Path, required=True)
+    revoke = commands.add_parser(
+        "revoke-human", help="CAS-revoke a local or issuer human without clearing its tombstone"
+    )
+    revoke.add_argument("--subject", required=True)
+    revoke.add_argument("--expected-revision", type=int, required=True)
     args = parser.parse_args()
     try:
-        if args.command == "init-demo":
+        if args.command == "import-issuer-trust":
+            from agentgate.issuer_cli import import_file
+
+            generation = import_file(args.state_dir, args.config_file, args.expected_generation)
+            print(
+                f"Public issuer trust activated at generation {generation}; prior issuer children invalidated."
+            )
+        elif args.command == "exchange-person-token":
+            from agentgate.issuer_cli import exchange_file
+
+            exchange_file(
+                args.gateway, args.parent_token_file, args.access_token_file, args.output_token_file
+            )
+            print(
+                "Short-lived child stored once in the private output file; issuer profile assertion verified."
+            )
+        elif args.command == "revoke-human":
+            from agentgate.issuer_cli import revoke_file
+
+            revoke_file(args.state_dir, args.subject, args.expected_revision)
+            print("Human authority revoked; exchange cannot clear the tombstone.")
+        elif args.command == "init-demo":
             initialize_demo(args.state_dir)
             print(
                 "Demo initialized. Scoped credential stored in the private client.token file; expires in one hour."
