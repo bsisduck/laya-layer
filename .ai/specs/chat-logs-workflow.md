@@ -30,8 +30,8 @@ identity with a compact editorial header, history rail and readable process map.
   private state; recovery does not retry mutations. No backend contracts change.
 - Workflow associates GDPR Articles 9/22 with scoped access, filtering, exact
   review and audit, without claiming compliance or sensitive-category detection.
-  Existing AI Act/DORA/OWASP evidence remains reachable. DP20/DP30 are inactive
-  internal placeholders labelled “definition required”.
+  Existing AI Act/DORA/OWASP evidence remains reachable. Articles 20/30 distinguish subject portability from organizational RoPA.
+  Audit JSONL is not portability; technical logs are not a complete RoPA.
 
 ## States and recovery
 

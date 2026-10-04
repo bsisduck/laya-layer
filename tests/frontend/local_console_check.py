@@ -161,7 +161,7 @@ def main():
             )
             started = time.monotonic()
             page.goto(base)
-            expect(page.get_by_role("heading", name="Service & controls")).to_be_visible()
+            expect(page.get_by_role("heading", name="Example conversations")).to_be_visible()
             startup_ms = round((time.monotonic() - started) * 1000)
             expect(page.locator("#console-mode")).to_be_visible()
             no_credentials(page, state)

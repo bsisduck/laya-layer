@@ -21,7 +21,7 @@ test('department money stays exact past JS and SQLite integer bounds with contri
   assert.equal(usageState({version: 1, source: 'model-attempt-evidence-v1', departments: [], totals: {attempts: 0}, window: {}, completeness: {status: 'complete'}}), 'empty');
 });
 test('standards bind explicit official editions to local evidence and remaining obligations', () => {
-  assert.equal(standardsEvidence.length, 9);
+  assert.equal(standardsEvidence.length, 11);
   for (const row of standardsEvidence) {
     assert.ok(['eur-lex.europa.eu', 'ai-act-service-desk.ec.europa.eu', 'www.esma.europa.eu', 'genai.owasp.org'].includes(new URL(row.source).hostname));
     assert.ok(row.evidence.length && row.gap.length);
@@ -276,4 +276,46 @@ test('pending approvals use explicit global evidence, never a bounded decision c
   assert.equal(pendingApprovals({counts: {pending: 9}}), null);
   assert.equal(pendingApprovals({coverage: {pending_approvals: -1}}), null);
   assert.equal(pendingApprovals({coverage: {pending_approvals: '12'}}), null);
+});
+
+import {destinations, resolveRoute} from '../../src/agentgate/web/routes.js';
+import {exampleConversations} from '../../src/agentgate/web/conversations.js';
+import {workflowLayers, actionPaths} from '../../src/agentgate/web/workflow.js';
+test('three primary workspaces preserve old hashes and normalize unknown routes', () => {
+  assert.deepEqual(Object.keys(destinations), ['chat', 'logs', 'workflow']);
+  for (const hash of ['', '#unknown', '#<script>']) assert.equal(resolveRoute(hash).name, 'chat');
+  for (const [parent, links] of Object.entries(destinations)) for (const [hash] of links) assert.equal(resolveRoute(hash).parent, parent);
+  assert.deepEqual(resolveRoute('#timeline?trace=trace-1'), {name: 'timeline', parent: 'logs', section: 'all', active: '#logs'});
+  assert.equal(resolveRoute('#overview?section=unknown').parent, 'logs');
+  assert.equal(resolveRoute('#overview?section=usage').active, '#overview?section=usage');
+});
+test('every authored conversation includes authority, explanation and zero-effect framing', () => {
+  assert.equal(exampleConversations.length, 4);
+  assert.equal(new Set(exampleConversations.map(item => item.id)).size, 4);
+  assert.deepEqual(exampleConversations.map(item => item.outcome), ['Allowed', 'Blocked', 'Escalated', 'Blocked']);
+  for (const item of exampleConversations) {
+    for (const key of ['title','role','context','request','response','reason','operation','data','policy','effects','next']) assert.ok(item[key]?.length, `${item.id}.${key}`);
+    assert.ok(item.layers.length); assert.match(item.effects, /Illustration only/);
+  }
+  assert.match(exampleConversations[1].reason, /cannot override/);
+  assert.match(exampleConversations[2].response, /Approval alone would not dispatch/);
+  assert.match(exampleConversations[3].effects, /read may already have executed/);
+});
+test('seven-layer map keeps reads checked, hard denials final and gaps explicit', () => {
+  assert.deepEqual(workflowLayers.map(layer => layer.id), ['identity','input','data','actions','output','consumption','supply']);
+  for (const layer of workflowLayers) {assert.equal(layer.status, 'Partial'); assert.ok(layer.implemented && layer.gap && layer.evidence);}
+  assert.match(actionPaths.read[0], /Scope \+ policy \+ data checks/);
+  assert.match(actionPaths.consequential.join(' '), /Hard deny → stop; no override/);
+  assert.match(actionPaths.consequential.at(-1), /Server approval \+ revalidation → explicit resume → dispatch/);
+  assert.match(actionPaths.undeclared, /denied \/ unimplemented/);
+  assert.match(workflowLayers[3].gap, /descriptor hash pinning are not implemented/);
+  assert.match(workflowLayers[5].gap, /Redis/);
+  assert.match(workflowLayers[6].gap, /No verified 17-feed/);
+});
+test('GDPR portability and organizational records are distinct from technical exports', () => {
+  const portability = standardsEvidence.find(row => row.framework.includes('Article 20 ·'));
+  const ropa = standardsEvidence.find(row => row.framework.includes('Article 30 ·'));
+  for (const row of [portability, ropa]) assert.ok(row && row.source.startsWith('https://eur-lex.europa.eu/'));
+  for (const phrase of ['provided personal data', 'consent/contract', 'automated processing', 'machine-readable', 'others’ rights', 'Audit JSONL is not', 'not implemented']) assert.ok(portability.gap.includes(phrase));
+  for (const phrase of ['organizational RoPA', 'purposes', 'data/subject categories', 'recipients', 'transfers', 'retention', 'safeguards', 'not a complete RoPA', 'not implemented']) assert.ok(ropa.gap.includes(phrase));
 });

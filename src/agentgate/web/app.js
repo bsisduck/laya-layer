@@ -1,9 +1,12 @@
 import {createClient} from './api.js';
 import {createLocalRecovery} from './session.js';
+import {destinations, resolveRoute} from './routes.js';
+import {chatView} from './conversations.js';
+import {workflowView} from './workflow.js';
 import {hrView, clearHR} from './hr.js';
 const hrMemory = {};
 import {el, empty, timestamp} from './ui.js';
-import {overview, overviewSection, timeline} from './observe.js';
+import {overview, timeline} from './observe.js';
 const $ = selector => document.querySelector(selector);
 const lockscreen = $('#lockscreen');
 const serviceScreen = $('#service-screen');
@@ -19,51 +22,10 @@ let dirty = false;
 let drafts = {};
 const api = createClient(expired);
 const recoverLocal = createLocalRecovery(api);
-const titles = {hr: ['GOVERNED EMPLOYEE WORKFLOW', 'HR workspace'], overview: ['LIVE OPERATIONS', 'Overview'], timeline: ['CORRELATED EVIDENCE', 'Security timeline'], catalog: ['REVIEWED TOOL AUTHORITY', 'Catalog'], playground: ['BOUNDED DEMO ACTIONS', 'Playground'], policy: ['VERSIONED CONTROLS', 'Policy studio'], feed: ['DATA-ONLY INDICATORS', 'Threat feed'], approvals: ['EXACT ACTION REVIEW', 'Approvals'], outbox: ['LOCAL DELIVERY EVIDENCE', 'Test outbox'], export: ['BOUNDED SECURITY RECORDS', 'Audit export']};
-let currentRoute = 'overview';
-const rail = $('#navigation-rail');
-const menuButton = $('#open-menu');
-const backdrop = $('#nav-backdrop');
-const mobile = matchMedia('(max-width: 760px)');
-let menuOpen = false;
-function closeMenu(restoreFocus = true) {
-  menuOpen = false; rail.classList.remove('menu-open');
-  backdrop.hidden = true; menuButton.setAttribute('aria-expanded', 'false');
-  rail.hidden = mobile.matches;
-  rail.removeAttribute('role'); rail.removeAttribute('aria-modal'); rail.removeAttribute('aria-label');
-  document.body.classList.remove('menu-open'); $('.main-shell').inert = false;
-  if (restoreFocus && mobile.matches) menuButton.focus();
-}
-function openMenu() {
-  menuOpen = true; rail.hidden = false; rail.classList.add('menu-open');
-  rail.setAttribute('role', 'dialog'); rail.setAttribute('aria-modal', 'true'); rail.setAttribute('aria-label', 'Navigation menu');
-  backdrop.hidden = false; menuButton.setAttribute('aria-expanded', 'true');
-  document.body.classList.add('menu-open'); $('.main-shell').inert = true; $('#close-menu').focus();
-}
-menuButton.addEventListener('click', openMenu);
-$('#close-menu').addEventListener('click', () => closeMenu());
-backdrop.addEventListener('click', () => closeMenu());
-mobile.addEventListener('change', () => {
-  // A queued breakpoint event must not close a drawer opened at the new mobile width.
-  if (mobile.matches && menuOpen) return;
-  const wasInMenu = rail.contains(document.activeElement);
-  closeMenu(false);
-  if (wasInMenu && mobile.matches) $('#workspace').focus();
-});
-rail.addEventListener('click', event => { if (event.target.closest('a') && menuOpen) { closeMenu(false); $('#workspace').focus(); } });
-document.addEventListener('keydown', event => {
-  if (!menuOpen) return;
-  if (event.key === 'Escape') { event.preventDefault(); closeMenu(); }
-  else if (event.key === 'Tab') {
-    const items = [...rail.querySelectorAll('a, button:not([disabled])')].filter(node => node.getClientRects().length);
-    const first = items[0], last = items.at(-1);
-    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
-    else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
-  }
-});
-closeMenu(false);
+const titles = {chat: ['UNDERSTAND THE BOUNDARY', 'Chat'], logs: ['REAL EXECUTION EVIDENCE', 'Logs'], workflow: ['SEVEN LAYERS / ONE BOUNDARY', 'Workflow'], hr: ['GOVERNED EMPLOYEE WORKFLOW', 'HR workspace'], overview: ['LIVE OPERATIONS', 'Overview'], timeline: ['CORRELATED EVIDENCE', 'Security timeline'], catalog: ['REVIEWED TOOL AUTHORITY', 'Catalog'], playground: ['BOUNDED DEMO ACTIONS', 'Playground'], policy: ['VERSIONED CONTROLS', 'Policy studio'], feed: ['DATA-ONLY INDICATORS', 'Threat feed'], approvals: ['EXACT ACTION REVIEW', 'Approvals'], outbox: ['LOCAL DELIVERY EVIDENCE', 'Test outbox'], export: ['BOUNDED SECURITY RECORDS', 'Audit export']};
+let currentRoute = 'chat';
+let currentHash = location.hash;
 function lock(message = 'Console locked. Use your operator credential to continue.') {
-  closeMenu(false);
   authenticated = false; dirty = false; drafts = {}; clearHR(hrMemory); revision++; clearTimeout(expiryTimer); api.clear();
   view.replaceChildren(); notice.textContent = ''; $('#session-expiry').textContent = '';
   serviceScreen.hidden = true; shell.hidden = true; lockscreen.hidden = false; $('#credential').value = '';
@@ -79,26 +41,32 @@ function unlock(session) {
 }
 async function navigate() {
   if (!authenticated) return;
-  const next = location.hash.slice(1).split('?')[0] || 'overview';
+  const route = resolveRoute(location.hash);
   if (dirty && !window.confirm('Discard the unsaved editor changes?')) {
-    history.replaceState(null, '', `#${currentRoute}`); $('#workspace').focus(); return;
+    history.replaceState(null, '', currentHash || location.pathname + location.search); $('#workspace').focus(); return;
   }
-  closeMenu(false);
-  dirty = false; currentRoute = Object.hasOwn(titles, next) ? next : 'overview';
+  dirty = false; currentRoute = route.name; currentHash = location.hash;
   const ticket = ++revision;
   notice.textContent = ''; view.replaceChildren(empty('Loading operator state…'));
   view.setAttribute('aria-busy', 'true');
   $('#page-kicker').textContent = titles[currentRoute][0]; $('#page-title').textContent = titles[currentRoute][1];
   document.title = `${titles[currentRoute][1]} — Laya Sec Layer`;
-  const section = overviewSection(location.hash);
-  const activeHash = currentRoute === 'overview' && section !== 'all' ? `#overview?section=${section}` : `#${currentRoute}`;
-  document.querySelectorAll('nav a').forEach(a => { if (a.hash === activeHash) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
+  document.querySelectorAll('.primary-nav a').forEach(a => {
+    if (a.hash === `#${route.parent}`) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
+  });
+  const parentLabel = {chat: 'Chat', logs: 'Logs', workflow: 'Workflow'}[route.parent];
+  const contextNav = $('#context-nav');
+  contextNav.setAttribute('aria-label', `${parentLabel} workspace navigation`);
+  contextNav.replaceChildren(...destinations[route.parent].map(([href, label]) => el('a', {href, ...(href === route.active ? {'aria-current': 'page'} : {})}, label)));
+  $('#refresh').hidden = ['chat', 'workflow'].includes(currentRoute);
   $('#workspace').focus();
   try {
     let node;
-    if (currentRoute === 'hr') node = await hrView(api, hrMemory);
+    if (currentRoute === 'chat') node = chatView();
+    else if (currentRoute === 'workflow') node = workflowView();
+    else if (currentRoute === 'hr') node = await hrView(api, hrMemory);
     else if (currentRoute === 'overview') node = await overview(api);
-    else if (currentRoute === 'timeline') node = await timeline(api);
+    else if (['timeline', 'logs'].includes(currentRoute)) node = await timeline(api);
     else if (currentRoute === 'catalog') {
       const {catalogView} = await import('./catalog.js');
       node = await catalogView(api);
@@ -137,7 +105,6 @@ function expired() {
   } else lock('Session expired or credential denied. Unlock to continue.');
 }
 function serviceState(message, retry = false) {
-  closeMenu(false);
   authenticated = false; dirty = false; drafts = {}; clearHR(hrMemory); revision++; clearTimeout(expiryTimer); api.clear();
   view.replaceChildren(); notice.textContent = ''; $('#session-expiry').textContent = '';
   shell.hidden = true; lockscreen.hidden = true; serviceScreen.hidden = false;
