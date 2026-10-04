@@ -80,6 +80,7 @@ section.evidence .columns { grid-template-columns: 1fr 1.18fr; gap: 28px; }
 section.evidence table { font-size: 22px; }
 section.evidence th, section.evidence td { padding: 8px 12px; }
 section.evidence h3 { font-size: 26px; }
+section.evidence h2 { margin-bottom: 15px; }
 section.evidence p { font-size: 23px; }
 section.evidence .warn, section.evidence .note { font-size: 21px; }
 section.standards table { font-size: 24px; }
