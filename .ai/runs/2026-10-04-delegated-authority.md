@@ -1,17 +1,23 @@
 # Local delegated authority core
 
 Source doc: .ai/specs/2026-10-04-delegated-authority.md
+Issue: https://github.com/bsisduck/laya-sec-agent/issues/40
+Draft PR: https://github.com/bsisduck/laya-sec-agent/pull/43
 
-Implement trusted local-demo human/child bindings and relational grants at existing transactional dispatch boundaries, preserving legacy identity/consent/accounting. User authorizes issue and validated draft PR; no merge. JWT exchange, catalog, console mode and department settlement/report consumer are excluded. Child lifetime maximum: 300 seconds. Committed durable dispatch is the revocation boundary.
+Trusted local-demo human/child bindings and relational grants are enforced at the
+existing transactional dispatch boundaries. Immutable Identity, prior consent and
+accounting semantics are preserved. Child lifetime maximum is 300 seconds;
+committed durable dispatch defines the revocation boundary. JWT exchange and
+per-attempt department usage settlement/reporting remain subsequent consumers.
 
 ## Implementation Plan
 
-1. Persist bounded local human records, exact one-hop bindings, immutable ceiling, migration/readiness and private provisioning.
-2. Connect one resolver to REST/MCP/model discovery and dispatch; SQL-filter relational memory grants.
-3. Bind delegated approvals and trusted audit/UI attribution; preserve legacy serialization and renewal.
-4. Exercise unit/functional/integration invariants against actual adapters/storage/lifecycle.
-5. Rebuild installed wheel and verify browser exact approval with private server-issued child, retaining ignored evidence and tearing down owned QA.
-6. Review diff, run make validate/JS gate, publish draft PR with exact evidence and limits; root independent review remains required.
+1. Persist bounded local human records, exact one-hop binding/ceiling, additive migration/readiness and private provisioning.
+2. Connect one resolver to REST/MCP/model discovery and transaction-bound protected dispatch; SQL-filter relational memory grants before content.
+3. Bind delegated consent and trusted human/approval attribution; preserve legacy serialization, accounting and renewal contracts.
+4. Verify actual adapters/storage/lifecycle, zero forbidden effects, races, rollback, migration/restart, replay and budgets.
+5. Rebuild installed wheels and verify credential/local-console browser exact approval; retain ignored evidence and stop owned QA in finally.
+6. Review, validate and deliver one draft PR. Root independently reviews/runs gate and QA before merge; no author merge.
 
 ## Progress
 
@@ -19,32 +25,33 @@ Implement trusted local-demo human/child bindings and relational grants at exist
 - [x] 2. Enforce relational authority before protected dispatch
 - [x] 3. Preserve and bind consent, audit and renewal
 - [x] 4. Verify unit, functional and integration invariants
-- [x] 5. Verify rebuilt installed browser E2E and teardown
-- [ ] 6. Validate, review and publish draft
+- [x] 5. Verify rebuilt installed browser E2Es and teardown
+- [x] 6. Validate, review and publish draft #43
 
-## Validation checkpoint
+## Validation and integration
 
-Source head dd5f6bf0621ee5464aa8cd800877ae7fa708fb15 on catalog main 13d4cc6:
-`make validate` passed 769 tests plus lint, formatting, strict typing and packaging;
-JS contracts passed 9/9. Installed rebuilt-wheel browser exact approval passed,
-with one local outbox effect, no forbidden provider attempt and owned QA stopped
-in `finally`. Authority suite: 6 unit, 10 functional, 37 integration cases. Evidence
-is retained locally in ignored `.ai/qa/artifacts_authority/`. No real inference.
+Rebased unpublished work onto merged catalog/console main
+4e1743340ce71ef976f093479d1decfc49d81695. Owned admin decisions select actor_mode
+from the actual trusted local_console closure; supplied explicit OperatorTools
+hooks retain the original signature. Console/catalog implementations remain in
+those independent PRs. Actor text accepts email/spaces without deriving permission.
 
-Independent console PR42 still uses its trusted route flag (no session mode).
-On integration, owned `ScopedTools.decide` must receive `actor_mode=local_console`
-for that flag; supplied public adapters retain their old explicit signature. This
-branch provides the attribution contract and does not implement console sessions.
+Runtime core 5224485427c069e1cdef10254211d66362eb1401 passed make validate with the
+retained pinned Hermes source: **855 tests, no skips**, lint/format, strict mypy,
+source and wheel builds. Authority cases: **6 unit, 10 functional, 50 integration**;
+focused authority/admin/catalog/console tests **222/222**; JS contracts **13/13**.
+Frozen unmodified e4a5929 pending/consumed snapshots verify core compatibility;
+the independent catalog registry upgrade intentionally requires pending reproposal.
+Accepted maximum 64-grant issuance/reopen/query and all trusted actor modes pass.
 
-## Publication hold
+Installed credential and local-console E2Es both imported rebuilt site-packages,
+provisioned real private local bindings, verified exact operator approval, correct
+mode and separate human/accounting attribution, one fixture outbox effect each,
+replay/mutation/revocation and model denial with no provider attempt. Own QA51829
+stopped in finally and policy restored. Primary8080/state, shared Ollama and other
+QA were preserved. No inference or semantic evaluation ran. Evidence is retained
+under ignored .ai/qa/artifacts_authority/{credential,local-console}/ plus integrated
+logs; reproduction and migration/rollback are in docs/delegated-authority.md.
 
-User explicitly paused first push/PR until merged local-console main is supplied.
-Authority remains unpublished. Local checkpoint 86ad7dc0102b99aa8c52222a85549321e78e69b4
-passed `make validate` with the retained pinned Hermes source: **778 tests**, no
-skips, all lint/type/build checks. Added accepted-max 64-grant issuance/reopen/SQL
-query and real decision-audit actor-mode regressions; authority now has 6 unit,
-10 functional and 46 integration cases; combined authority/admin gate passed 123.
-
-After supplied base arrives: rebase, wire owned actor mode from console's trusted
-route flag, preserve explicit supplied adapters, then repeat final full/JS gates
-and installed browser QA before draft publication and exact-head CI monitoring.
+Public exact-head CI results and final delivery head are recorded on draft #43.
+Independent root high-risk review/gate/QA remains required before any merge.
