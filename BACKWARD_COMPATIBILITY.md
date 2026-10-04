@@ -152,3 +152,21 @@ Hermes support is deliberately pinned to source f97608f (0.21.5) and its MCP ext
 lock; different versions fail closed until reviewed. REST/MCP aliases, upstream
 adaptations, exit codes and explicit approval resumption are documented in
 `docs/restricted-agents.md`. Native host access is outside the profile boundary.
+
+Threat evidence adds protected `GET /admin/threat-taxonomy` and nullable-by-absence
+version-1 `threat_context` on `/admin/events` only. Existing operator auth, origin,
+CSRF and agent-credential rejection remain. Every current runtime level is unknown;
+finite layer/OWASP associations are diagnostic and confer no permissions. Older
+admin payloads render unknown in the UI. No migration, persisted AuditEvent field,
+public REST/model/MCP body/reason/status/default, telemetry-v1 or export-v1 field
+change occurs. Exact v1 projection keys and denied-boundary privacy are regression
+tested. See `docs/threat-model.md` for version and association semantics.
+
+Acceptance report schema 1 preserves its existing inventory/source/JUnit fields
+and adds separately versioned `threat_evidence`. Legacy `--check`, `--markdown`
+and `--run` commands remain supported. The strict sidecar now validates exact
+48+54 references, original frozen corpus bytes and versioned axes; invalid metadata
+fails the command. Actual collected parametrized node IDs and all execution phases
+must reconcile; ambient PYTEST_ADDOPTS cannot narrow the gate. Readers that ignore
+the additive object retain old fields. New consumers distinguish declaration,
+execution and readiness; no semantic measurements are imported or recomputed.

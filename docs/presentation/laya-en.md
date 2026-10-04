@@ -82,6 +82,16 @@ Changed payload conflicts. Credential renewal preserves identity and root spend.
 <div class="note">Control fixtures and model accuracy are separate. Metadata intake and restricted REST/MCP/Hermes clients are integrated and reviewed.</div>
 
 ---
+<!-- _class: ladder-slide -->
+## From accident to adaptive attacker
+
+<div class="ladder-grid"><div class="card"><strong>L0 · Accident</strong><p>Bounded disclosure / resource mistakes</p></div><div class="card"><strong>L1 · Direct known attempt</strong><p>Explicit prohibited instruction / operation</p></div><div class="card"><strong>L2 · Concealment / evasion</strong><p>Split secrets / paraphrases; gaps remain</p></div><div class="card"><strong>L3 · Indirect content</strong><p>Untrusted documents / tool results</p></div><div class="card"><strong>L4 · Authority / action abuse</strong><p>Exact approvals / scopes / root budgets</p></div><div class="card"><strong>L5 · Control / supply-chain target</strong><p>Last-good controls / quota / metadata intake</p></div></div>
+
+<div class="note">Seven layers: identity · input · data · actions · output · consumption · supply_chain</div>
+<div class="warn">Authored scenario types ≠ observed attackers. Every current live level is unknown. OWASP LLM 2025 / Agentic 2026 associations are contextual.</div>
+<div class="note">No universal DLP, feed signatures, four eyes or rate-limit claim. Semantic false positives and missed attacks remain visible.</div>
+
+---
 <!-- _class: lead closing -->
 ## Working local prototype. Explicit limits.
 

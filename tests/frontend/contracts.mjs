@@ -79,3 +79,35 @@ test('filters preserve actual events, editor errors and server-owned identity', 
   assert.deepEqual(playgroundBody('document', {document_id: 'notes'}, 'key'), {mode: 'document', document_id: 'notes'});
   assert.equal(playgroundBody('mail', {recipient: 'a@demo.internal'}, 'retry-key').idempotency_key, 'retry-key');
 });
+
+test('live ladder filters preserve unknown and overlapping control associations', async () => {
+  const {eventContext} = await import('../../src/agentgate/web/threats.js');
+  const context = {schema_version: 1, taxonomy_version: 'laya-threat-v1', candidate_levels: [], level_status: 'unknown', layers: ['identity', 'data'], owasp: ['LLM06:2025', 'ASI03:2026']};
+  const denied = {decision: 'deny', threat_context: context};
+  const old = {decision: 'allow'};
+  assert.deepEqual(filterEvents([denied, old], '', '', 'unknown'), [denied, old]);
+  for (const level of ['L0','L1','L2','L3','L4','L5']) assert.deepEqual(filterEvents([denied,old], '', '', level), []);
+  assert.deepEqual(filterEvents([denied,old], '', '', '', 'data'), [denied]);
+  assert.deepEqual(filterEvents([denied,old], 'allow', '', '', 'identity'), []);
+  assert.equal(eventContext({...denied, threat_context: {...context, candidate_levels: ['L5']}}).level_status, 'unknown');
+  assert.deepEqual(eventContext({...denied, threat_context: {...context, schema_version: 99}}).layers, []);
+  assert.deepEqual(eventContext({threat_context: {...context, layers: ['<script>', 'input']}}).layers, ['input']);
+});
+
+test('taxonomy consumers reject invented OWASP families and invalid ordered legends', async () => {
+  const {eventContext, validTaxonomy, levels, layers} = await import('../../src/agentgate/web/threats.js');
+  const data = {schema_version: 1, taxonomy_version: 'laya-threat-v1',
+    levels: levels.map(id => ({id, name: id, assignment: 'Rule', controls: 'Controls', gaps: 'Limits', coverage: 'partial'})),
+    layers: layers.map(id => ({id, name: id}))};
+  assert.equal(validTaxonomy(data), true);
+  for (const mutate of [
+    value => {value.levels[1].id = 'L0';}, value => {value.levels.reverse();},
+    value => {value.levels[2].id = 'L9';}, value => {value.layers[1].id = 'identity';},
+    value => {value.layers.reverse();}, value => {value.layers.pop();},
+    value => {delete value.levels[0].controls;}, value => {value.layers[0] = null;},
+  ]) {const malformed = structuredClone(data); mutate(malformed); assert.equal(validTaxonomy(malformed), false);}
+  const context = {schema_version: 1, taxonomy_version: 'laya-threat-v1', layers: ['data','data'],
+    owasp: ['LLM99:2025','ASI00:2026','LLM00:2025','ASI11:2026','LLM01:2026','ASI01:2025',null,{},'LLM02:2025','LLM02:2025','ASI10:2026']};
+  assert.deepEqual(eventContext({threat_context: context}).owasp, ['LLM02:2025','ASI10:2026']);
+  assert.deepEqual(eventContext({threat_context: context}).layers, ['data']);
+});

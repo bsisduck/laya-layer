@@ -251,3 +251,7 @@ tools story when combining adapters. Static generation-0 snapshots make
 `assert_current` a no-op; live snapshots verify the generation inside the
 caller's reservation/intent transaction. Real model/tool integration validation
 belongs to the integrating branch, not this story's callback/forwarding fixtures.
+
+See [two-axis threat evidence](threat-model.md) for the authored L0–L5 ladder, exact seven
+layers, strict frozen-corpus sidecar and unknown live-level contract. The taxonomy
+adds classification/evidence presentation, not new enforcement or inference results.
