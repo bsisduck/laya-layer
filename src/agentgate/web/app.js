@@ -98,6 +98,11 @@ $('#logout').addEventListener('click', async () => {
 });
 $('#refresh').addEventListener('click', navigate);
 window.addEventListener('hashchange', navigate);
+// Activating the current destination still restores workspace focus and state.
+shell.addEventListener('click', event => {
+  const link = event.target.closest('nav a');
+  if (link && link.hash === location.hash) { event.preventDefault(); navigate(); }
+});
 window.addEventListener('beforeunload', event => { if (dirty) { event.preventDefault(); event.returnValue = ''; } });
 function expired() {
   if (mode === 'local') {

@@ -96,6 +96,11 @@ def main():
             expect(
                 page.get_by_role("heading", name="Security timeline", exact=True)
             ).to_be_visible()
+            page.locator("#context-nav").get_by_role(
+                "link", name="Security timeline", exact=True
+            ).press("Enter")
+            expect(page.locator("#workspace")).to_be_focused()
+            expect(page.get_by_label("Filter loaded events")).to_be_visible()
             page.get_by_label("Filter loaded events").fill(trace)
             page.get_by_label("Decision", exact=True).select_option("deny")
             expect(page.locator("tbody tr")).to_have_count(1)

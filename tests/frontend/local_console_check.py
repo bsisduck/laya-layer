@@ -391,7 +391,7 @@ def main():
                         [(digest,) for digest in fault_rows],
                     )
                 p.get_by_role("button", name="Retry connection").press("Enter")
-                expect(p.get_by_role("heading", name="Service & controls")).to_be_visible()
+                expect(p.get_by_role("heading", name="Example conversations")).to_be_visible()
                 assert len(failures) == 2
                 assert all(url.endswith("/admin/session/bootstrap") for url in failures)
                 failure.close()
