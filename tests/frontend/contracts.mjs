@@ -67,7 +67,8 @@ test('expired playground authority retains the separate operator session for exp
 });
 test('conflicts/missing routes/network writes never become successes', async () => {
   for (const [status, message] of [[409, /Version conflict/], [404, /unavailable/], [501, /unavailable/]]) {
-    const api = createClient(() => {}, async () => response({detail: 'safe detail'}, status));
+    const api = createClient(() => {}, async url => response(url === '/admin/session' ? session : {detail: 'safe detail'}, url === '/admin/session' ? 200 : status));
+    await api.restore();
     await assert.rejects(api.request('/admin/policy'), message);
   }
   const api = createClient(() => {}, async () => {throw new Error('connection');});
@@ -173,4 +174,20 @@ test('local outage never loops or bootstraps after non-401 and bootstrap failure
     assert.equal(restores, 1);
     assert.equal(bootstraps, status === 401 ? 1 : 0);
   }
+});
+
+test('an expired action follow-up cannot interrupt session recovery', async () => {
+  const calls = []; let bootstrapDone; let recovery;
+  const api = createClient(() => {recovery = recover();}, async url => {
+    calls.push(url);
+    if (url === '/admin/session/bootstrap' && calls.length > 1) return new Promise(done => {bootstrapDone = () => done(response(session));});
+    return response(url === '/admin/session/bootstrap' ? session : {detail: 'expired'}, url === '/admin/session/bootstrap' ? 200 : 401);
+  });
+  const recover = createLocalRecovery(api);
+  await api.bootstrap();
+  await assert.rejects(api.request('/admin/playground', {method: 'POST', body: {}, decision: true}));
+  await new Promise(done => setImmediate(done));
+  await assert.rejects(api.request('/admin/playground/credential?scope=tools'), /session unavailable/);
+  bootstrapDone(); await recovery;
+  assert.deepEqual(calls, ['/admin/session/bootstrap', '/admin/playground', '/admin/session', '/admin/session/bootstrap']);
 });

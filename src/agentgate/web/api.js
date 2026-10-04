@@ -18,6 +18,7 @@ export function createClient(onUnauthorized = () => {}, transport = globalThis.f
     }
     const write = method !== 'GET';
     if (write && path !== '/admin/session' && path !== '/admin/session/bootstrap' && !csrf) throw new ApiError(401, 'Unlock the console first.');
+    if (!write && !csrf && !['/admin/session', '/admin/config'].includes(path)) throw new ApiError(401, 'Operator session unavailable.');
     const epoch = generation;
     const controller = new AbortController();
     pending.add(controller);
