@@ -204,6 +204,49 @@ def main():
             )
             scenarios.append("all legacy/deep routes retain parent, native back/forward")
 
+            page.goto(base + "/#policy")
+            editor = page.get_by_label("Policy JSON")
+            expect(editor).to_be_visible()
+            edited = editor.input_value() + " "
+            editor.fill(edited)
+            before_modified = len(calls)
+            modified_dialogs = []
+
+            def dismiss_modified(dialog):
+                modified_dialogs.append(dialog.message)
+                dialog.dismiss()
+
+            page.on("dialog", dismiss_modified)
+            try:
+                for modifier in ["ctrlKey", "metaKey"]:
+                    prevented = page.evaluate(
+                        """modifier => {
+                        const link = document.querySelector('#context-nav a[href="#policy"]');
+                        const event = new MouseEvent('click', {bubbles:true, cancelable:true, button:0, [modifier]:true});
+                        link.dispatchEvent(event);
+                        return event.defaultPrevented;
+                    }""",
+                        modifier,
+                    )
+                    assert prevented is False, modifier
+                    expect(editor).to_have_value(edited)
+                    expect(page).to_have_url(base + "/#policy")
+                assert modified_dialogs == []
+                assert calls[before_modified:] == []
+            finally:
+                page.remove_listener("dialog", dismiss_modified)
+            # An ordinary active-link activation still confirms discard, reloads and focuses.
+            page.once("dialog", lambda d: d.accept())
+            with page.expect_response(lambda r: r.url.endswith("/admin/policy")):
+                page.locator("#context-nav").get_by_role(
+                    "link", name="Policy studio", exact=True
+                ).click()
+            expect(page.locator("#workspace")).to_be_focused()
+            expect(editor).not_to_have_value(edited)
+            scenarios.append(
+                "Ctrl/Meta active-link clicks are not cancelled or re-rendered; ordinary same-hash click retains discard/focus behavior"
+            )
+
             page.goto(base + "/#policy?source=deep-link")
             editor = page.get_by_label("Policy JSON")
             expect(editor).to_be_visible()
