@@ -16,7 +16,7 @@ from agentgate.storage import StorageUnavailable, Store, credential_digest
 
 LIFETIME = 86400
 Scope = Literal["tools", "model"]
-RenewalReason = Literal["missing", "revoked", "active", "conflict"]
+RenewalReason = Literal["missing", "revoked", "active", "conflict", "delegated"]
 
 
 class CredentialRenewalError(Exception):
@@ -89,6 +89,8 @@ def _replace(
     row = db.execute("SELECT * FROM credentials WHERE digest=?", (old_digest,)).fetchone()
     if row is None:
         raise CredentialRenewalError("missing")
+    if row["authority_kind"] != "legacy":
+        raise CredentialRenewalError("delegated")
     if row["revoked"]:
         raise CredentialRenewalError("revoked")
     if row["expires_at"] > now:

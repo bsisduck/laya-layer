@@ -769,14 +769,31 @@ def attach_admin_routes(
         if re.fullmatch(r"[a-zA-Z0-9][a-zA-Z0-9._-]{0,95}", action_id) is None:
             raise ValueError("Invalid action ID")
         body = await body_model(request, ApprovalDecision, 2048)
-        result = await run_in_threadpool(
-            tool_service().decide,
-            tenant_id=body.tenant_id,
-            action_id=action_id,
-            fingerprint=body.fingerprint,
-            approve=body.approve,
-            actor="local-console" if local_console else "operator",
-        )
+        from agentgate.scoped_tools import ScopedTools
+
+        hook = tool_service()
+        # Supplied public hooks keep their original explicit signature. The owned
+        # implementation supports trusted attribution; no TypeError guessing.
+        result: object
+        if tools is None and isinstance(hook, ScopedTools):
+            result = await run_in_threadpool(
+                hook.decide,
+                tenant_id=body.tenant_id,
+                action_id=action_id,
+                fingerprint=body.fingerprint,
+                approve=body.approve,
+                actor="local-console" if local_console else "operator",
+                actor_mode="local_console" if local_console else "credential",
+            )
+        else:
+            result = await run_in_threadpool(
+                hook.decide,
+                tenant_id=body.tenant_id,
+                action_id=action_id,
+                fingerprint=body.fingerprint,
+                approve=body.approve,
+                actor="local-console" if local_console else "operator",
+            )
         status = response_status(result) if isinstance(result, ActionResponse) else 200
         return JSONResponse(jsonable_encoder(result), status_code=status)
 

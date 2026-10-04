@@ -4,6 +4,7 @@ import hashlib
 import hmac
 import json
 import re
+import sqlite3
 import time
 import uuid
 from collections.abc import Callable
@@ -13,6 +14,8 @@ from typing import Literal
 
 from pydantic import JsonValue, ValidationError
 
+from agentgate.authority import EffectiveAuthority
+from agentgate.authority import resolve as resolve_authority
 from agentgate.budgets import BudgetExceeded
 from agentgate.contracts import (
     ActionRequest,
@@ -39,6 +42,7 @@ from agentgate.semantics import (
     SemanticUnavailable,
 )
 from agentgate.storage import CredentialInvalid, StorageUnavailable, Store, credential_digest
+from agentgate.tool_catalog import disposition
 
 EMAIL = re.compile(r"\b[A-Za-z0-9._%+-]{1,64}@[A-Za-z0-9.-]{1,253}\.[A-Za-z]{2,63}\b")
 SYNTHETIC_SECRET = re.compile(r"AGENTGATE_SECRET\[")
@@ -58,6 +62,9 @@ class Context:
     executed: bool = False
     semantic: SemanticResult | None = None
     controls: ControlSnapshot | None = None
+    authority_resource: str = ""
+    authority: EffectiveAuthority | None = None
+    approval_actor: dict[str, JsonValue] | None = None
     semantic_failure: Literal["unavailable", "invalid_output"] | None = None
 
 
@@ -133,8 +140,80 @@ class ActionService:
         try:
             context.identity = self.store.resolve(digest, self.clock())
             context.credential_digest = digest
+            with self.store.connection() as db:
+                context.authority = resolve_authority(
+                    db,
+                    digest,
+                    context.identity,
+                    self.context_controls(context).policy,
+                    self.clock(),
+                )
         except CredentialInvalid as error:
             raise GateError(401, Reason.INVALID_CREDENTIAL) from error
+
+    def resolve_authority(
+        self, context: Context, policy: Policy, db: sqlite3.Connection | None = None
+    ) -> EffectiveAuthority:
+        assert context.identity is not None and context.credential_digest is not None
+        try:
+            if db is None:
+                with self.store.connection() as connection:
+                    authority = resolve_authority(
+                        connection,
+                        context.credential_digest,
+                        context.identity,
+                        policy,
+                        self.clock(),
+                    )
+            else:
+                authority = resolve_authority(
+                    db, context.credential_digest, context.identity, policy, self.clock()
+                )
+        except CredentialInvalid as error:
+            raise GateError(401, Reason.INVALID_CREDENTIAL) from error
+        context.authority = authority
+        return authority
+
+    def authorize_authority(
+        self,
+        context: Context,
+        policy: Policy,
+        operation: str,
+        resource: str | None = None,
+        classification: str | None = None,
+        *,
+        db: sqlite3.Connection | None = None,
+    ) -> None:
+        authority = self.resolve_authority(context, policy, db)
+        if not authority.allows(operation, resource, classification):
+            raise GateError(
+                403,
+                Reason.RESOURCE_NOT_ALLOWED
+                if operation in ("documents.read", "memory.query")
+                else Reason.MODEL_NOT_ALLOWED
+                if operation == "chat.completions"
+                else Reason.OPERATION_NOT_ALLOWED,
+            )
+
+    def check_dispatch_authority(
+        self,
+        db: sqlite3.Connection,
+        *,
+        context: Context,
+        snapshot: ControlSnapshot,
+        operation: str,
+        resource: str | None = None,
+        classification: str | None = None,
+    ) -> None:
+        if self.controls is not None:
+            snapshot.assert_current(db)
+        elif self.policy != snapshot.policy:
+            raise ControlsChanged
+        if operation == "documents.read" and disposition(operation) != "automatic_read":
+            raise GateError(403, Reason.OPERATION_NOT_ALLOWED)
+        self.authorize_authority(
+            context, snapshot.policy, operation, resource, classification, db=db
+        )
 
     def digest_payload(self, context: Context, payload: bytes) -> None:
         context.payload_digest = hmac.new(
@@ -187,6 +266,10 @@ class ActionService:
             # not masquerade as a result for a failed output classification.
             semantic=context.semantic if context.semantic_failure is None else None,
             feed_version=self.context_controls(context).feed.version,
+            authority=context.authority.attribution.model_dump(mode="json")
+            if context.authority and context.authority.attribution
+            else None,
+            approval_actor=context.approval_actor,
         )
 
     def reject(self, context: Context, error: GateError) -> tuple[int, ActionResponse]:
@@ -237,10 +320,15 @@ class ActionService:
             denial = policy.authorize(identity, metadata)
             if denial is not None:
                 raise GateError(403, denial)
-            from agentgate.tool_catalog import disposition
-
             if disposition(operation) != "automatic_read":
                 raise GateError(403, Reason.OPERATION_NOT_ALLOWED)
+            self.authorize_authority(
+                context,
+                policy,
+                "documents.read",
+                arguments.document_id,
+                metadata.classification if metadata else None,
+            )
             try:
                 snapshot.inspect("tool_action", request.model_dump_json())
             except ThreatBlocked as error:
@@ -250,10 +338,13 @@ class ActionService:
             if not self.semantic_ready(policy):
                 raise GateError(503, Reason.REQUIRED_SEMANTIC_UNAVAILABLE)
             try:
-                before_dispatch = (
-                    partial(ControlPlane.assert_current, snapshot=snapshot)
-                    if self.controls is not None
-                    else None
+                before_dispatch = partial(
+                    self.check_dispatch_authority,
+                    context=context,
+                    snapshot=snapshot,
+                    operation="documents.read",
+                    resource=arguments.document_id,
+                    classification=metadata.classification if metadata else None,
                 )
                 self.store.dispatch_intent(
                     digest,

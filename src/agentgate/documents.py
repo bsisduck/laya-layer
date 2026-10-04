@@ -25,6 +25,9 @@ class DocumentRegistry:
             {doc.metadata.document_id: doc.metadata for doc in documents}
         )
 
+    def metadata(self) -> tuple[DocumentMetadata, ...]:
+        return tuple(self._metadata.values())
+
     def lookup(self, document_id: str) -> DocumentMetadata | None:
         return self._metadata.get(document_id)
 

@@ -20,12 +20,14 @@ from agentgate.policy import load_policy
 from agentgate.semantic_quota import QuotaUnavailable
 from agentgate.semantics import SemanticClient
 from agentgate.service import ActionService
-from agentgate.storage import StorageUnavailable, Store
+from agentgate.storage import CredentialInvalid, StorageUnavailable, Store
 
 
 def private_file(path: Path, content: bytes) -> None:
     with open(path, "xb", opener=lambda name, flags: os.open(name, flags, 0o600)) as stream:
         stream.write(content)
+        stream.flush()
+        os.fsync(stream.fileno())
 
 
 def initialize_demo(directory: Path) -> None:
@@ -127,6 +129,24 @@ def main() -> None:
     commands.add_parser(
         "migrate", help="Upgrade existing state after stopping and backing up the gateway"
     )
+    human = commands.add_parser(
+        "provision-local-human",
+        help="Provision an operator-owned LOCAL DEMO subject (not corporate IAM)",
+    )
+    human.add_argument("--record-file", type=Path, required=True)
+    human.add_argument("--expected-revision", type=int)
+    child = commands.add_parser(
+        "delegate-local", help="Issue a private one-hop LOCAL DEMO child (not JWT exchange)"
+    )
+    child.add_argument("--parent-token-file", type=Path, required=True)
+    child.add_argument("--subject", required=True)
+    child.add_argument("--output-token-file", type=Path, required=True)
+    child.add_argument("--lifetime", type=int, default=300)
+    child.add_argument("--policy", type=Path, default=Path("config/delegated-policy.yaml"))
+    revoke = commands.add_parser(
+        "revoke-local-credential", help="Revoke a local parent or child credential"
+    )
+    revoke.add_argument("--token-file", type=Path, required=True)
     args = parser.parse_args()
     try:
         if args.command == "init-demo":
@@ -141,6 +161,67 @@ def main() -> None:
             print(
                 "Operator initialized. Credential stored in private operator.token; never shared with agents."
             )
+        elif args.command == "provision-local-human":
+            from agentgate.authority import provision_subject
+            from agentgate.authority_contracts import HumanSubject
+
+            with args.record_file.open("rb") as source:
+                raw = source.read(16385)
+            if len(raw) > 16384:
+                raise ValueError("Subject record exceeds bound")
+            record = HumanSubject.model_validate_json(raw)
+            provision_subject(
+                Store(args.state_dir / "agentgate.sqlite3"),
+                record,
+                expected_revision=args.expected_revision,
+            )
+            print(
+                "Local-demo subject provisioned by the trusted operator; corporate IAM is not verified."
+            )
+        elif args.command == "delegate-local":
+            from agentgate.authority import issue_child
+            from agentgate.control_plane import ControlPlane
+
+            store = Store(args.state_dir / "agentgate.sqlite3")
+            if not store.ready():
+                raise StorageUnavailable
+            # Live installations use their active controls, never a stale policy file.
+            with store.connection() as db:
+                live = (
+                    db.execute(
+                        "SELECT 1 FROM sqlite_master WHERE type='table' AND name='active_controls'"
+                    ).fetchone()
+                    is not None
+                )
+            snapshot = ControlPlane(store).snapshot() if live else None
+            created = False
+
+            def persist(token: str) -> None:
+                nonlocal created
+                private_file(args.output_token_file, token.encode("ascii"))
+                created = True
+
+            try:
+                issue_child(
+                    store,
+                    args.parent_token_file.read_text().strip(),
+                    args.subject,
+                    snapshot.policy if snapshot else load_policy(args.policy),
+                    now=time.time(),
+                    lifetime=args.lifetime,
+                    persist=persist,
+                    before_issue=snapshot.assert_current if snapshot else None,
+                )
+            except Exception:
+                if created:
+                    args.output_token_file.unlink()
+                raise
+            print(
+                "Local-demo delegated credential created in the new private file; maximum lifetime 300 seconds."
+            )
+        elif args.command == "revoke-local-credential":
+            Store(args.state_dir / "agentgate.sqlite3").revoke(args.token_file.read_text().strip())
+            print("Local credential revoked; undispatched descendants are invalid.")
         elif args.command == "serve":
             policy = load_policy(args.policy)
             store = Store(args.state_dir / "agentgate.sqlite3")
@@ -257,7 +338,7 @@ def main() -> None:
                 raise StorageUnavailable
             Store(path).initialize()
             print(
-                "State upgraded to schema 2 plus scoped tools; credentials, audit and budget spend retained."
+                "State upgraded to schema 2 plus scoped tools and authority-v1; credentials, audit and budget spend retained."
             )
     except BrokenPipeError:
         # Avoid a second failing flush during interpreter shutdown. No export
@@ -265,7 +346,14 @@ def main() -> None:
         with open(os.devnull, "w") as sink:
             os.dup2(sink.fileno(), sys.stdout.fileno())
         parser.exit(1, "AgentGate output pipe closed before completion.\n")
-    except (OSError, ValueError, StorageUnavailable, QuotaUnavailable, httpx.HTTPError):
+    except (
+        OSError,
+        ValueError,
+        CredentialInvalid,
+        StorageUnavailable,
+        QuotaUnavailable,
+        httpx.HTTPError,
+    ):
         parser.exit(
             1,
             "AgentGate command failed. Check local initialization, policy, service, and state permissions.\n",

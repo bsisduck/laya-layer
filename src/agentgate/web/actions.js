@@ -158,7 +158,7 @@ function scopedList(kind, api) {
       for (const item of entries) {
         const response = el('div'); const rowStatus = status();
         const card = el('article', {class: 'panel approval'}, el('div', {class: 'section-head'}, el('h3', {}, text(item.action_id)), tag(item.state)),
-          pairs({tenant: item.tenant_id, principal: item.principal_id, root_run: item.root_run_id, operation: item.operation, policy: item.policy_version, created: timestamp(item.created_at), expires: timestamp(item.expires_at), fingerprint: item.fingerprint, payload_digest: item.payload_digest, policy_digest: item.policy_digest, registry_digest: item.registry_digest, reason: item.reason, decided_by: item.decided_by}),
+          pairs({tenant: item.tenant_id, accounting_owner: item.principal_id, human_requester: item.authority?.human_subject ?? 'Unattributed legacy agent', authority_provenance: item.authority?.provenance ?? 'legacy', department: item.authority?.department ?? 'unassigned', root_run: item.root_run_id, operation: item.operation, policy: item.policy_version, created: timestamp(item.created_at), expires: timestamp(item.expires_at), fingerprint: item.fingerprint, payload_digest: item.payload_digest, policy_digest: item.policy_digest, registry_digest: item.registry_digest, reason: item.reason, decided_by: item.decided_by}),
           el('pre', {'aria-label': 'Exact immutable mail payload'}, pretty(item.payload)), response, rowStatus);
         if (item.state === 'pending' && typeof item.fingerprint === 'string' && typeof item.action_id === 'string') {
           const check = el('input', {id: `review-${rows.childElementCount}`, type: 'checkbox'});

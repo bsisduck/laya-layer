@@ -15,9 +15,36 @@ Implement trusted local-demo human/child bindings and relational grants at exist
 
 ## Progress
 
-- [ ] 1. Persist trusted authority and provisioning
-- [ ] 2. Enforce relational authority before protected dispatch
-- [ ] 3. Preserve and bind consent, audit and renewal
-- [ ] 4. Verify unit, functional and integration invariants
-- [ ] 5. Verify rebuilt installed browser E2E and teardown
+- [x] 1. Persist trusted authority and provisioning
+- [x] 2. Enforce relational authority before protected dispatch
+- [x] 3. Preserve and bind consent, audit and renewal
+- [x] 4. Verify unit, functional and integration invariants
+- [x] 5. Verify rebuilt installed browser E2E and teardown
 - [ ] 6. Validate, review and publish draft
+
+## Validation checkpoint
+
+Source head dd5f6bf0621ee5464aa8cd800877ae7fa708fb15 on catalog main 13d4cc6:
+`make validate` passed 769 tests plus lint, formatting, strict typing and packaging;
+JS contracts passed 9/9. Installed rebuilt-wheel browser exact approval passed,
+with one local outbox effect, no forbidden provider attempt and owned QA stopped
+in `finally`. Authority suite: 6 unit, 10 functional, 37 integration cases. Evidence
+is retained locally in ignored `.ai/qa/artifacts_authority/`. No real inference.
+
+Independent console PR42 still uses its trusted route flag (no session mode).
+On integration, owned `ScopedTools.decide` must receive `actor_mode=local_console`
+for that flag; supplied public adapters retain their old explicit signature. This
+branch provides the attribution contract and does not implement console sessions.
+
+## Publication hold
+
+User explicitly paused first push/PR until merged local-console main is supplied.
+Authority remains unpublished. Local checkpoint 86ad7dc0102b99aa8c52222a85549321e78e69b4
+passed `make validate` with the retained pinned Hermes source: **778 tests**, no
+skips, all lint/type/build checks. Added accepted-max 64-grant issuance/reopen/SQL
+query and real decision-audit actor-mode regressions; authority now has 6 unit,
+10 functional and 46 integration cases; combined authority/admin gate passed 123.
+
+After supplied base arrives: rebase, wire owned actor mode from console's trusted
+route flag, preserve explicit supplied adapters, then repeat final full/JS gates
+and installed browser QA before draft publication and exact-head CI monitoring.
