@@ -1,6 +1,14 @@
 # Release evidence and claim boundaries
 
-Updated **2026-10-03**, validated integration `074cace` (PR31). Laya Sec Layer is the
+Updated **2026-10-04**. Historical validated integration `074cace` (PR31) remains
+recorded below. Final HR delivery is draft pending root's accepted merged base,
+CI and final source review. Root's `34bf344` gate passed 1,005 tests with zero
+skips; independent installed-console/visual QA passed and acceptance executed
+140 cases / 420 phases with no failures or skips. These counts are separate.
+The test-entrypoint fix and final rerun remain pending. Actual standard-v2 HR
+inspection produced a false positive and no
+released summary. See [the exact HR observation](hr-release-observation.md) and
+[presentation delivery](presentation/README.md). Laya Sec Layer is the
 product; AgentGate is its gateway. Cezar orchestrates development. This is a
 working local prototype on a trusted host, not an enterprise production release.
 
@@ -22,7 +30,7 @@ The [T01–T48 inventory](acceptance.md) maps concrete control tests, measured
 semantic cases and gaps. A passing control suite does not imply all 48 outcomes
 or reliable semantic detection.
 
-## Final integrated validation
+## Historical full-stack validation (PR31)
 
 At `074cace`, `make validate` passed **614 tests, zero skips**, including pinned
 upstream Hermes fixtures, plus workflow/config/lock checks, Ruff, strict mypy and
@@ -66,6 +74,14 @@ port migration, deduplication/new delivery, interrupted publication recovery and
 seven negative probes; its exact-SHA verdict remains on the PR.
 
 ## Real semantic evidence remains imperfect
+
+**Current HR limitation:** at `34bf344`, actual installed standard/v2/enforce
+blocked the ordinary candidate READ and the fresh source read for SUMMARY with
+`SEMANTIC_BLOCKED`, `executed=true`. Two protected reads occurred, output was
+withheld, and no model-provider attempt or outbox effect occurred. This is a
+false positive, not a successful real HR summary. The guard and all frozen
+measurements remain unchanged. [Exact profile, counters and artifact digest](hr-release-observation.md)
+separate this observation from passing deterministic/provider-fixture checks.
 
 | Frozen measurement | Standard | Native CoreML | Interpretation |
 |---|---|---|---|

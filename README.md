@@ -35,14 +35,17 @@ Ollama with the exact `llama3.2:1b` digest in
 needs network access or complete dependency/model caches. Then:
 
 ```sh
-./laya install
+./laya install --local-console
 ./laya status
 ```
 
-Open the printed operator URL (default **http://127.0.0.1:8080/**) and log in
-locally with the private `data/operator.token` file at the printed state path.
-Credentials are never printed by the launcher. Agent and operator authority are
-separate. Default state is `~/.local/share/laya`; ports are gateway 8080, private
+Open the printed operator URL (default **http://127.0.0.1:8080/**). Explicit
+`--local-console` mode opens without a login screen on the trusted computer.
+Agent calls still require scoped credentials. To use ordinary credential mode,
+install with `--no-local-console` and authenticate using the private
+`data/operator.token` file at the printed state path. The launcher never prints
+credentials. Agent and operator authority are separate. Default state is
+`~/.local/share/laya`; ports are gateway 8080, private
 proxy 4000, local contract collector 8095, and optional semantic worker 8091.
 An occupied port fails; the launcher does not evict its owner or stop shared Ollama.
 For a second installation, choose a new private state directory and unused ports:
@@ -70,6 +73,15 @@ See [installation, backup and explicit credential renewal](docs/local-app.md)
 and [the five-minute demo](docs/demo-runbook.md). Restart preserves authority,
 spend and policy. It does not renew expired/revoked credentials or reset budgets.
 
+The [approved catalog](docs/tool-catalog.md) explains actual adapters and exact
+approval requirements. [Delegated authority](docs/delegated-authority.md) limits
+access to the human/agent grant intersection and retains parent accounting ownership.
+The [department report](docs/department-usage.md) counts distinct model attempts
+with known/unknown consumption and explicit simulated tariffs. [Standards evidence](docs/standards-evidence.md)
+maps local controls to specific obligations without a compliance or certification
+verdict. [Polish and English presentation sources](docs/presentation/README.md)
+produce ten-page PDFs and standalone offline HTML.
+
 ## Evidence and limitations
 
 - Deterministic tests assert dispatch, outbox, ledger and audit effects. The
@@ -80,6 +92,11 @@ spend and policy. It does not renew expired/revoked credentials or reset budgets
   Frozen v1: 7/26 correct on each backend, all 16 benign cases withheld, and a
   failed CoreML warm run. V2: 15/28 standard, 16/28 CoreML, with false
   positives and missed malicious paraphrases. See [semantic evidence](docs/release-evidence.md#real-semantic-evidence-remains-imperfect).
+  Actual installed HR standard/v2/enforce at `34bf344` also blocked the ordinary
+  candidate READ and SUMMARY source read: both reads executed, output withheld,
+  zero model-provider attempts. This [false positive](docs/hr-release-observation.md)
+  is unsuitable as a normal HR semantic success demo. Existing explicit enforce
+  settings remain in force; fresh installations still default to semantic off.
 - JSONL, ECS-oriented records and Splunk HEC envelopes are local exports.
   Actual delivery uses **Laya local HTTP contract collector v1**, at least once
   with event-ID deduplication. [Vendor adapters and bank deployments](docs/enterprise-integrations.md)

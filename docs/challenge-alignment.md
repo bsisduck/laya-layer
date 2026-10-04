@@ -1,7 +1,8 @@
 # Laya Sec Layer: AI Control Layer challenge alignment
 
-Assessment updated **2026-10-03** with integrated artifact and restricted-agent
-components; exact source and observations are in [release evidence](release-evidence.md).
+Assessment updated **2026-10-04** with catalog, local console, delegated authority
+and department accounting. Final HR delivery remains draft pending root acceptance;
+exact source and observations are in [release evidence](release-evidence.md).
 The product is Laya Sec Layer, implemented by AgentGate. Cezar task completion
 and setup validation do not prove challenge delivery. No challenge-completion
 percentage or judging score is inferred from this map.
@@ -29,6 +30,22 @@ republished:
 | Spontaneous prompts and config/feed changes (§6, p. 4) | Operator model/document/memory/mail playground, versioned live policy/feed; root browser checks and actual local model smoke | Do not promise a correct semantic label for spontaneous prompts; approval revalidation, audit/ledger effects must accompany UI claims |
 | Own setup without paid services (§7, p. 4) | `./laya` installed gateway/UI/private proxy/local collector, prepared local Ollama; optional isolated standard/native CoreML; [runbook](demo-runbook.md) | Dependencies/assets must be preloaded for offline restart; trusted host/shared Ollama is not an egress sandbox; fresh-host install and each final runtime head need evidence |
 
+The primary final presentation uses the synthetic HR workflow. Local human/agent
+intersection and the catalog are implemented; generated-key issuer exchange is an
+optional accepted adapter, not corporate IdP certification. The distinct department
+model report uses trusted attribution, known/unknown attempt denominators and
+simulated tariffs; department export is unavailable. [Official standards associations](standards-evidence.md)
+support specific controls without automatic RODO/AI Act/DORA/OWASP compliance.
+AI Act classification depends on intended purpose and applicable Article 6
+exceptions, not the word HR.
+
+Root's actual HR standard/v2/enforce observation at `34bf344` blocked the ordinary
+candidate READ and SUMMARY source read: executed reads, withheld results, zero
+model-provider attempts/outbox. This is a [false positive](hr-release-observation.md),
+preserved alongside passing fixture HR checks and the 1,005-test root gate.
+Final merged-base/CI acceptance is pending. It cannot be presented as a successful
+real HR summary or merged semantic improvement.
+
 No particular SIEM, bank credentials or Goldman Sachs deployment is mandated by
 these PDFs. [Bank capabilities](enterprise-integrations.md) describe proposed
 interfaces, not access or validated compatibility. The brief allows pre-existing
@@ -55,5 +72,7 @@ eligibility is unresolved by these files.
 
 Reviewable [English/Polish presentation sources](presentation/README.md) and
 [submission template](submission-template.md) are supplied. Team identity, dates,
-eligibility, repository/demo URLs and actual HackTribe submission are user-owned.
-Template fields are deliberate, not invented team facts or a blocking question.
+eligibility, demo URL and actual HackTribe submission are user-owned.
+Team fields are deliberate, not invented facts or a blocking question. The public
+repository is https://github.com/bsisduck/laya-sec-agent; no public demo URL or
+HackTribe submission is invented.
