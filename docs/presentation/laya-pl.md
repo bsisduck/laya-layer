@@ -5,7 +5,7 @@ size: 16:9
 lang: pl
 paginate: true
 header: LAYA SEC LAYER / AGENTGATE
-footer: Wersja robocza · 2026-10-04 · Lokalny prototyp
+footer: 2026-10-04 · Lokalny prototyp
 ---
 <!-- _class: lead -->
 <div class="kicker">AI Control Layer / HackYeah</div>
@@ -22,11 +22,11 @@ Agent HR pracuje w nadanym zakresie. Człowiek sprawdza dokładną propozycję w
 <!-- _class: compact -->
 ## HR: dane, podsumowanie, zgoda
 
-<div class="columns"><div><div class="node"><strong>Alex Rivera · osoba fikcyjna</strong>Kandydat na koordynatora operacji.<br>3 lata układania grafików wsparcia.<br>Raporty w arkuszach i komunikacja.<br>Dostępność: przyszły miesiąc.</div><p class="note">Syntetyczny rekord i testowe CV. Bez rankingu kandydatów i decyzji o zatrudnieniu.</p></div><div><h3>Praca z kontrolowanym zakresem</h3><p>Pracownik HR wiąże agenta ze swoim zakresem. Agent czyta dostępny rekord i proponuje podsumowanie.</p><p>Człowiek przegląda odbiorcę, temat i treść. Wznowienie po zgodzie zapisuje jedną wiadomość w lokalnej skrzynce testowej.</p></div></div>
+<div class="columns"><div><div class="node"><strong>Alex Rivera · osoba fikcyjna</strong>Kandydat na koordynatora operacji.<br>3 lata układania grafików wsparcia.<br>Raporty w arkuszach i komunikacja.<br>Dostępność: przyszły miesiąc.</div><p class="note">Syntetyczny rekord i testowe CV. Bez rankingu kandydatów i decyzji o zatrudnieniu.</p></div><div><h3>Praca z kontrolowanym zakresem</h3><p>Pracownik HR wiąże agenta ze swoim zakresem. Agent czyta dostępny rekord. Podsumowanie wymaga wydania źródła przez bramę.</p><p>Człowiek przegląda odbiorcę, temat i treść. Wznowienie po zgodzie zapisuje jedną wiadomość w lokalnej skrzynce testowej.</p></div></div>
 
 <div class="warn">Korzyść: pomoc w przygotowaniu materiału, widoczny zakres danych i kontrola nad konkretnym działaniem.</div>
 
-<!-- Sources: docs/hr-workflow.md in HR author worktree (provisional until root acceptance); synthetic fixture hr-candidate-001 in src/agentgate/documents.py. Summary uses the configured provider and inspected tool result, with no substitute response. -->
+<!-- Sources: accepted docs/hr-workflow.md at a370134, reviewed c9c47b8 (runtime 34bf344); synthetic fixture hr-candidate-001 in src/agentgate/documents.py. Summary uses the configured provider and inspected tool result, with no substitute response. -->
 
 ---
 <!-- _class: compact architecture -->
@@ -51,7 +51,7 @@ Agent HR pracuje w nadanym zakresie. Człowiek sprawdza dokładną propozycję w
 
 <div class="note">Wymiana tokenu: testy z wygenerowanymi kluczami. Konsola bez logowania ufa komputerowi i nie potwierdza tożsamości pracownika firmy.</div>
 
-<!-- Sources: docs/delegated-authority.md; provisional docs/hr-workflow.md and docs/issuer-exchange.md. Human requester, approval actor and immutable accounting principal are separate. HR browser binding uses local_demo and session-private handles, never a browser-held agent bearer. -->
+<!-- Sources: docs/delegated-authority.md; accepted docs/hr-workflow.md and docs/issuer-exchange.md. Human requester, approval actor and immutable accounting principal are separate. HR browser binding uses local_demo and session-private handles, never a browser-held agent bearer. -->
 
 ---
 <!-- _class: compact -->
@@ -98,14 +98,14 @@ Agent HR pracuje w nadanym zakresie. Człowiek sprawdza dokładną propozycję w
 
 | Raport działu w wybranym okresie | Co oznacza pomiar |
 |---|---|
-| Próby modelu i przypisanie do działu | Każda próba raz, jawne nieprzypisane |
-| Znane tokeny wejścia / wyjścia i micro-USD | Rzeczywiste znane użycie, taryfa symulowana |
+| Test wystawcy: 6 znanych prób, issuer_v2 | Dział przypisany, dostawca testowy |
+| 120 tokenów wejścia / 18 wyjścia | Wybrany okres, taryfa symulowana |
 | Niepewny wynik / nieznane zużycie | Rezerwacja pozostaje, sumy mogą być częściowe |
 
 <div class="note">Dev: proponowany merge GitLab nie ma adaptera. Finance: proponowany przelew nie ma adaptera.</div>
 <div class="warn">Lokalny odbiór i pliki JSONL/ECS/HEC wymagają osobnego adaptera oraz dowodu dostarczenia do SIEM. Eksport działów nie jest dostępny.</div>
 
-<!-- Sources: accepted docs/department-usage.md at e6ac3564; docs/telemetry-delivery.md. Operator-only bounded selected-period report counts model attempts once, independently of three ledger scopes. Known token/money sums have known_usage_attempts denominator; dispatch_intent is not provider receipt. Accepted issuer QA at cd4c162: six known issuer_v2 provider-fixture attempts, 120 input and 18 output tokens. Final integrated installed measurements await root evidence. -->
+<!-- Sources: accepted docs/department-usage.md at e6ac3564; docs/telemetry-delivery.md. Operator-only bounded selected-period report counts model attempts once, independently of three ledger scopes. Known token/money sums have known_usage_attempts denominator; dispatch_intent is not provider receipt. Accepted issuer QA at cd4c162: six known issuer_v2 provider-fixture attempts, 120 input and 18 output tokens. HR fixture window at 34bf344: two attributed attempts, one known settlement and one uncertain invalid-provider outcome with output withheld. Separate selected windows, never summed. -->
 
 ---
 <!-- _class: compact standards -->
@@ -127,12 +127,12 @@ Agent HR pracuje w nadanym zakresie. Człowiek sprawdza dokładną propozycję w
 <!-- _class: compact evidence -->
 ## Testy kontroli i granice semantyki
 
-<div class="columns"><div><h3>Dowody działania kontroli</h3><table><tr><th>Rodzaj</th><th>Przykład</th></tr><tr><td>Jednostkowe</td><td>Granty, zakresy, heurystyka</td></tr><tr><td>Funkcjonalne</td><td>Odmowa i dokładna zgoda</td></tr><tr><td>Integracyjne</td><td>REST/MCP + transakcje SQLite</td></tr><tr><td>E2E instalacji</td><td>Wheel, przeglądarka i efekty</td></tr></table><p>0 przed zgodą. 1 wpis po wznowieniu i powtórce.<br>Odmowa dostępu: 0 wywołań.</p></div><div><h3>Zamrożone realne pomiary Laya</h3><table><tr><th>Korpus</th><th>Standard CPU</th><th>CoreML</th></tr><tr><td>v1 · 26</td><td>7/26 poprawnych</td><td>7/26</td></tr><tr><td>v2 · 28</td><td>15/28 poprawnych</td><td>16/28</td></tr></table><p class="note">V2: CPU/CoreML 7/6 fałszywych alarmów, 4/4 przeoczenia. Przeoczone złośliwe parafrazy.</p><p class="note">V1: 16 nieszkodliwych przypadków wstrzymanych. Rozgrzany CoreML zawiódł. Korpusy są różne.</p></div></div>
+<div class="columns"><div><h3>Dowody działania kontroli</h3><table><tr><th>Rodzaj</th><th>Przykład</th></tr><tr><td>Jednostkowe</td><td>Granty, zakresy, heurystyka</td></tr><tr><td>Funkcjonalne</td><td>Odmowa i dokładna zgoda</td></tr><tr><td>Integracyjne</td><td>REST/MCP + transakcje SQLite</td></tr><tr><td>E2E instalacji</td><td>Wheel, przeglądarka i efekty</td></tr></table><p>Baza a370134: 1005 testów, 0 pominiętych.<br>0 przed zgodą → 1 wpis po wznowieniu i powtórce.</p></div><div><h3>Zamrożone realne pomiary Laya</h3><table><tr><th>Korpus</th><th>Standard CPU</th><th>CoreML</th></tr><tr><td>v1 · 26</td><td>7/26 poprawnych</td><td>7/26</td></tr><tr><td>v2 · 28</td><td>15/28 poprawnych</td><td>16/28</td></tr></table><p class="note">V2: CPU/CoreML 7/6 fałszywych alarmów, 4/4 przeoczenia. Przeoczone złośliwe parafrazy.</p><p class="note">V1: 16 nieszkodliwych przypadków wstrzymanych. Rozgrzany CoreML zawiódł. Korpusy są różne.</p></div></div>
 
 <div class="warn"><strong>Realne HR / standard v2: fałszywy alarm.</strong> Zwykły rekord zatrzymany przy READ i SUMMARY. Dwa odczyty wykonane, wyniki wstrzymane. 0 wywołań modelu i 0 wiadomości.</div>
-<div class="note">Semantyka domyślnie wyłączona. CoreML eksperymentalny. Rewizja końcowa: oczekuje akceptacji.</div>
+<div class="note">Semantyka domyślnie wyłączona. CoreML eksperymentalny.</div>
 
-<!-- Sources: root acceptance of department PR47, reviewed 40eb409 / merged e6ac3564; docs/semantic-evaluation.md, docs/semantic-v2-evidence.md, docs/release-evidence.md. Never sum overlapping suite counts. V1/v2 corpora/question sets differ; two v2 incomplete cases per backend. Actual installed HR observation at 34bf344 / standard content-role-v2 enforce, checkpoint e4e9ddf21a7b1903b7acffd8814ad4307bf63a67: benign read and summary fresh read both HTTP403 SEMANTIC_BLOCKED executed=true; zero released documents/summaries/provider attempts/outbox. Two tool reservations and four audit events; quota 0 to 2/1000. False positive, unsuitable ordinary HR semantic demo. Report SHA256 af884f87f43e58af5883f44bff0370b0b9bf981aebe496c6e402d53cccfba2de. Final release revision remains provisional. Control tests are not detector accuracy. -->
+<!-- Sources: root acceptance of department PR47, reviewed 40eb409 / merged e6ac3564; docs/semantic-evaluation.md, docs/semantic-v2-evidence.md, docs/release-evidence.md. Never sum overlapping suite counts. V1/v2 corpora/question sets differ; two v2 incomplete cases per backend. Actual installed HR observation at 34bf344 / standard content-role-v2 enforce, checkpoint e4e9ddf21a7b1903b7acffd8814ad4307bf63a67: benign read and summary fresh read both HTTP403 SEMANTIC_BLOCKED executed=true; zero released documents/summaries/provider attempts/outbox. Two tool reservations and four audit events; quota 0 to 2/1000. False positive, unsuitable ordinary HR semantic demo. Report SHA256 af884f87f43e58af5883f44bff0370b0b9bf981aebe496c6e402d53cccfba2de. Accepted runtime base a370134, reviewed c9c47b8 (runtime 34bf344); root gate 1005 zero skips and 18 Node contracts; separate acceptance 140 cases/420 phases; installed credential/local-console and mocked UI-only evidence separately attributed. Final ladder entrypoint reruns passed with failure-entry test retained. Control tests are not detector accuracy. -->
 
 ---
 <!-- _class: lead closing -->

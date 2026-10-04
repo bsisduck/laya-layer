@@ -4,8 +4,9 @@
 
 Status after integration of reviewed installer, semantic profiles, artifact intake,
 restricted-agent clients, catalog, local console, delegated authority and department
-accounting. HR presentation finalization remains draft until root accepts the final
-HR/person-token base and measurements; see [presentation delivery](presentation/README.md).
+accounting. HR/person-token runtime base `a370134` is accepted with green CI.
+The documentation/presentation draft requires separate root content/visual review;
+see [presentation delivery](presentation/README.md).
 See [the evidence ledger](release-evidence.md) for exact commits and [acceptance](acceptance.md)
 for T01–T48 mappings; test counts are not completion percentages.
 
@@ -16,6 +17,8 @@ for T01–T48 mappings; test counts are not completion percentages.
 | Operator/live controls | Separate sessions/CSRF, policy/feed CAS, explicit renewal, root installed browser checks | Integrated; exact-head gates and independent review in release ledger |
 | Standard/native CoreML | Frozen v1/v2 reports and real CPU gateway smoke | V2 merged, opt-in; v1 poor/failed evidence retained; CoreML experimental |
 | Resource accounting | Shared-root tool/model budgets and persistent worker call quota | Integrated; full cumulative physical-resource governance incomplete |
+| HR workspace | Explicit preserving setup, session-private short-lived binding, fresh inspected source, exact message approval | Accepted PR50; installed fixture success, actual standard-v2 ordinary-record false positive retained |
+| Optional issuer exchange | Pinned person-token profile and immutable parent accounting | Accepted PR49; generated keys and fixture-provider E2E, no corporate IdP certification |
 | Human/agent authority | Exact relational grant intersection, issuance ceiling and transaction revalidation | Integrated local demo; short-lived children retain parent principal/root budgets |
 | Catalog and local console | Reviewed executors/risk components and explicit trusted-computer sessions | Integrated; 25/75 heuristic is not legal risk, no-login mode is not corporate identity |
 | Department accounting | One row per distinct model attempt, immutable attribution and exact settlement | Accepted department PR47; known/unknown denominators and simulated tariff remain explicit |
@@ -23,7 +26,7 @@ for T01–T48 mappings; test counts are not completion percentages.
 | Install/offline restart | Owned gateway/proxy/collector, prepared runtime reuse, preserved authority/ledgers | Integrated; installed browser, offline restart and source-only upgrade verified |
 | Artifact intake | Exact approved metadata tuple and no-download/execution probes | Integrated from reviewed PR28; metadata simulation only |
 | Restricted direct/Hermes clients | Actual REST/MCP/Hermes two-model/one-document cycles; independently reviewed source and 584 checks | Integrated from reviewed PR30; trusted host, restricted profile |
-| Documentation/submission assets | Ten-slide PL/EN Marp sources, portable HTML/PDF renderer and offline checks | Draft final HR delivery in issue48; final base/evidence, root review and green CI pending |
+| Documentation/submission assets | Ten-slide PL/EN Marp sources, portable HTML/PDF renderer and offline checks | Issue48; accepted runtime evidence incorporated, separate root source/page review and docs CI required |
 
 No organizer confirmation, enterprise deployment, certification or submission
 follows from this development plan. [Challenge alignment](challenge-alignment.md)

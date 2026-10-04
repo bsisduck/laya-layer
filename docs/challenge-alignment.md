@@ -1,7 +1,7 @@
 # Laya Sec Layer: AI Control Layer challenge alignment
 
 Assessment updated **2026-10-04** with catalog, local console, delegated authority
-and department accounting. Final HR delivery remains draft pending root acceptance;
+and department accounting, plus accepted HR/issuer base `a370134`;
 exact source and observations are in [release evidence](release-evidence.md).
 The product is Laya Sec Layer, implemented by AgentGate. Cezar task completion
 and setup validation do not prove challenge delivery. No challenge-completion
@@ -43,7 +43,7 @@ Root's actual HR standard/v2/enforce observation at `34bf344` blocked the ordina
 candidate READ and SUMMARY source read: executed reads, withheld results, zero
 model-provider attempts/outbox. This is a [false positive](hr-release-observation.md),
 preserved alongside passing fixture HR checks and the 1,005-test root gate.
-Final merged-base/CI acceptance is pending. It cannot be presented as a successful
+Base `a370134` is accepted with green CI. This cannot be presented as a successful
 real HR summary or merged semantic improvement.
 
 No particular SIEM, bank credentials or Goldman Sachs deployment is mandated by

@@ -2,7 +2,9 @@
 
 Root observed the installed HR contract at source
 `34bf344fcdae9b60c416a34bf0ebbb8953e5e706` on 4 October 2026. Final merged-base
-acceptance and CI remain pending. These observations retain their exact source;
+acceptance is merged `a370134`, reviewed `c9c47b8` with both CI checks green.
+The test entrypoint changed; runtime is unchanged from `34bf344`. These
+observations retain their exact source;
 they do not become a real-model success when later documentation changes.
 
 ## Deterministic and installed fixture evidence
@@ -24,8 +26,13 @@ Desktop/mobile visual review covered overview, catalog, timeline, denial,
 outbox and startup failure. Mocked-component checks supply UI-only evidence.
 The acceptance runner executed **140 cases / 420 setup-call-teardown phases**
 with zero failures, skips or reconciliation problems. These are separate
-runner counts, not additions to the 1,005 pytest tests. A test entrypoint fix
-and final rerun in PR50 remain pending root's final merged-base acceptance.
+runner counts, not additions to the 1,005 pytest tests. The final fixed ladder
+entrypoint at `c9c47b8` passed author and independent QA; its startup-failure
+entry test remains. Root also reports 18 passing Node contract checks, separately
+from the Python and acceptance counts. The separately observed preserving
+primary upgrade and deliberate HR setup are recorded in the
+[release ledger](release-evidence.md#existing-primary-installation-preservation-then-deliberate-setup);
+its UI check made zero provider attempts.
 
 The separately accepted issuer test (`cd4c162`, merged `e015e66c`) used generated
 keys and a provider fixture. Direct REST, direct MCP and pinned Hermes each ran

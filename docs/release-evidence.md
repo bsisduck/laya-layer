@@ -1,16 +1,54 @@
 # Release evidence and claim boundaries
 
-Updated **2026-10-04**. Historical validated integration `074cace` (PR31) remains
-recorded below. Final HR delivery is draft pending root's accepted merged base,
-CI and final source review. Root's `34bf344` gate passed 1,005 tests with zero
-skips; independent installed-console/visual QA passed and acceptance executed
-140 cases / 420 phases with no failures or skips. These counts are separate.
-The test-entrypoint fix and final rerun remain pending. Actual standard-v2 HR
-inspection produced a false positive and no
-released summary. See [the exact HR observation](hr-release-observation.md) and
-[presentation delivery](presentation/README.md). Laya Sec Layer is the
-product; AgentGate is its gateway. Cezar orchestrates development. This is a
-working local prototype on a trusted host, not an enterprise production release.
+Updated **2026-10-04**. Accepted runtime base is
+`a37013449ed4be1994a129bd1d1cd34dc4a65520`, reviewed HR head `c9c47b8`
+(runtime unchanged from `34bf344`). Both PR50 CI checks are green. Documentation
+and the final ten-slide PL/EN sources require their own root content/visual review;
+see [presentation delivery](presentation/README.md). Historical integration
+`074cace` (PR31) remains recorded below. Laya Sec Layer is the product; AgentGate
+is its gateway. Cezar orchestrates development. This is a working local prototype
+on a trusted host, not a production security certification.
+
+## Current HR delivery and independent evidence
+
+| Evidence scope | Actual result | Boundary |
+|---|---|---|
+| Root full gate at `34bf344` | 1,005 pytest tests, zero skips; workflow/lock, lint/format, strict mypy (58 files), source/wheel build PASS | Pinned Hermes and deterministic provider/semantic fixtures; not real classifier accuracy |
+| Node contracts | 18 PASS | Browser component contracts, separately counted |
+| Installed HR | Exact approval/mobile/scope/expiry/session PASS; two attributed provider-fixture attempts, one known settlement and one uncertain invalid-provider outcome with output withheld | Approval zero effects; resume/replay one local outbox row; no SMTP |
+| Independent installed console at `34bf344` | Actual credential and local-console flows, MCP, unchanged HR startup state, sessions/CSRF, replay and desktop/mobile visuals PASS | Mocked-component loading/error/safety checks explicitly UI-only; no inference |
+| Acceptance runner at `34bf344` | 140 cases / 420 setup-call-teardown phases; zero failures, skips or reconciliation problems | Separate runner denominator, never summed with pytest or treated as attack samples |
+| Final ladder entrypoint `c9c47b8` | Author and independent reruns PASS | Test-only `/#overview` landing fix; initial failure and failure-entry test retained; no runtime change |
+| Actual standard/v2/enforce HR | Ordinary READ and SUMMARY source read both `SEMANTIC_BLOCKED`, `executed=true`; output withheld; zero provider attempts/outbox | Material false positive, unsuitable as a successful normal HR semantic demonstration |
+
+The independent minimized report is retained in ignored
+`.ai/qa/artifacts_final_deterministic/report.md`; the acceptance artifact is
+`reports/generated/final-deterministic-34bf344.json`. Root supplies CI status
+separately from that report. See PR50's [push gate](https://github.com/bsisduck/laya-sec-agent/actions/runs/37174047015)
+and [PR gate](https://github.com/bsisduck/laya-sec-agent/actions/runs/37174049349).
+[The exact semantic profile, counters and artifact digest](hr-release-observation.md)
+preserve the failed real observation alongside successful fixture controls.
+
+### Existing primary installation: preservation then deliberate setup
+
+Root upgraded the existing installation offline to `a370134`. A read-only
+before/after snapshot verified **37 pre-existing stable tables**, using their old
+column projection, including collector/quota state, and all key/token hashes
+unchanged **before HR setup**. Local-console mode and standard/content-role-v2
+**enforce** remained selected. Owned services and shared Ollama were ready.
+
+The operator then deliberately reviewed and CAS-activated the HR delta. It changed
+only revision/delegation/document roles/mail roles, retaining model budgets, feed
+and semantic controls. This intentional setup is distinct from upgrade preservation.
+A fresh actual Playwright UI check passed: no login, no DOM/storage bearer,
+HR ready for deliberate Start binding, mobile fit and department/standards views.
+It made **zero provider attempts** and does not establish successful HR generation.
+Root left the installation running. The existing guard was not weakened.
+
+Minimized ignored delivery evidence: `reports/generated/live-console/hr-delivery.json`,
+`hr-workspace.png` and `hr-mobile.png` in the same directory. No private state path,
+installation URL, key or token is published. The author did not mutate the primary
+installation, shared Ollama or other QA state.
 
 ## Integrated capabilities
 
@@ -20,6 +58,8 @@ working local prototype on a trusted host, not an enterprise production release.
 | Tools | Credential-owned tenant/role/agent/root; document and memory operations over REST and official-SDK MCP | Synthetic resources, no arbitrary shell or URL executor |
 | Mail | Stored immutable payload, separate operator approval, revalidation and one effect under replay | SQLite fixture outbox, no SMTP delivery |
 | Agents | Bounded direct REST/MCP and pinned upstream Hermes clients; actual two-model-call/one-document cycles | Restricted profile, no isolation from privileged same-user host authority |
+| HR/person authority | Preserving HR setup, local employee/agent grant intersection, session-private child, optional pinned issuer exchange | Generated-key issuer tests, no corporate IdP certification; real HR semantic false positive retained |
+| Catalog/department usage | Three reviewed adapters, explainable 25/75 heuristic; one selected-period row per model attempt with immutable attribution | No destructive/payment/merge adapter; unknown consumption and simulated tariffs explicit; department export absent |
 | Controls/UI | Packaged dashboard, sessions/CSRF, policy/feed validation and CAS activation, explicit expired-credential renewal | Global local operator; enterprise tenant RBAC/SSO absent |
 | Budgets | Shared-root tool/model ledgers, conservative unknown consumption and persistent installation-wide semantic call quota | No full cumulative per-tenant semantic token/time or physical-resource accounting |
 | Evidence | Minimized audit, scoped JSONL/ECS-oriented/HEC-envelope downloads, durable sender and owned local collector | Local protocol v1, at-least-once with event-ID deduplication; no tested bank/SIEM adapter |
@@ -64,6 +104,9 @@ Reports remain in ignored `.ai/qa/artifacts_fullstack_final/`.
 | [35 fragmented HTTP](https://github.com/bsisduck/laya-sec-agent/pull/35) | `54f3369` | `ba2dae8`; independent 60-test model/transport gate, green CI; no product code changes |
 | [33 documentation](https://github.com/bsisduck/laya-sec-agent/pull/33) | `4586f40` | `aaaa0e0` into PR31; reviewed mapping runner and EN/PL deck sources |
 | [31 full-stack release](https://github.com/bsisduck/laya-sec-agent/pull/31) | Final `074cace` | Independent GPT-6.1-Sol delta review: APPROVE, no blockers/majors; earlier two defects fixed and independently reproduced |
+| [47 department/standards](https://github.com/bsisduck/laya-sec-agent/pull/47) | `40eb409` | `e6ac3564`; root 886-test zero-skip gate, installed accounting both console modes and mobile/keyboard PASS, green CI |
+| [49 issuer exchange](https://github.com/bsisduck/laya-sec-agent/pull/49) | `cd4c162` | `e015e66c`; root 974-test zero-skip gate; generated-key REST/MCP/Hermes fixture cycles and nondispatch/replay PASS, green CI |
+| [50 HR workspace](https://github.com/bsisduck/laya-sec-agent/pull/50) | `c9c47b8` (runtime `34bf344`) | `a370134`; current evidence above, independent test-entrypoint rerun and both CI green; actual real semantic false positive retained |
 
 PR31's initial review reproduced a plain-FastAPI overview failure and a stranded
 sender after a collector-port change. Fix `9e1cfec` supplies honest unconfigured

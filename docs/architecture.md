@@ -8,8 +8,8 @@ This is a trusted-host boundary, not an OS sandbox.
 
 ## Human authority and the HR workspace
 
-The final HR delivery is draft pending root acceptance. At observed HR source
-`34bf344`, the operator HR facade invokes the existing ActionService/ModelService
+Accepted HR base `a370134` (reviewed `c9c47b8`, runtime `34bf344`)
+includes the local workspace. In this implementation, the operator HR facade invokes the existing ActionService/ModelService
 and exact approval boundary. It does not read fixtures or execute mail itself.
 
 ```mermaid

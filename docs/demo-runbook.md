@@ -7,10 +7,10 @@ fullstack/browser QA; this runbook does not itself claim execution. Use syntheti
 fixtures, private state and credentials. No heavyweight inference is needed to
 exercise the deterministic steps below.
 
-## Primary HR sequence (final delivery draft)
+## Primary HR sequence
 
-Final root acceptance/CI of the HR base is pending. The observed source is
-`34bf344`; [HR control and real semantic evidence](hr-release-observation.md)
+Root accepted merged base `a370134`, reviewed `c9c47b8` (runtime
+`34bf344`), with both CI checks green; [HR control and real semantic evidence](hr-release-observation.md)
 records the passing fixture workflow and the actual false positive separately.
 For a fresh trusted-computer demonstration, prepare dependencies and the pinned
 generation model, then use `./laya install --local-console`. Agent APIs still

@@ -5,7 +5,7 @@ size: 16:9
 lang: en
 paginate: true
 header: LAYA SEC LAYER / AGENTGATE
-footer: Draft · 2026-10-04 · Local prototype
+footer: 2026-10-04 · Local prototype
 ---
 <!-- _class: lead -->
 <div class="kicker">AI Control Layer / HackYeah</div>
@@ -22,11 +22,11 @@ An HR agent works within granted scope. A person reviews the exact proposed mess
 <!-- _class: compact -->
 ## HR: data, summary and consent
 
-<div class="columns"><div><div class="node"><strong>Alex Rivera · fictional person</strong>Operations coordinator candidate.<br>3 years coordinating support schedules.<br>Spreadsheet reports and communication.<br>Availability: next month.</div><p class="note">Synthetic record and test CV. No candidate ranking or hiring decision.</p></div><div><h3>Work within a controlled scope</h3><p>The HR employee binds the agent to their scope. The agent reads an available record and proposes a summary.</p><p>A person reviews recipient, subject and body. Resume after consent records one message in the local fixture outbox.</p></div></div>
+<div class="columns"><div><div class="node"><strong>Alex Rivera · fictional person</strong>Operations coordinator candidate.<br>3 years coordinating support schedules.<br>Spreadsheet reports and communication.<br>Availability: next month.</div><p class="note">Synthetic record and test CV. No candidate ranking or hiring decision.</p></div><div><h3>Work within a controlled scope</h3><p>The HR employee binds the agent to their scope. The agent reads an available record. A summary requires source release by the gate.</p><p>A person reviews recipient, subject and body. Resume after consent records one message in the local fixture outbox.</p></div></div>
 
 <div class="warn">Benefit: help preparing material, visible data scope and control over the specific action.</div>
 
-<!-- Sources: docs/hr-workflow.md in HR author worktree (provisional until root acceptance); synthetic fixture hr-candidate-001 in src/agentgate/documents.py. Summary uses the configured provider and inspected tool result, with no substitute response. -->
+<!-- Sources: accepted docs/hr-workflow.md at a370134, reviewed c9c47b8 (runtime 34bf344); synthetic fixture hr-candidate-001 in src/agentgate/documents.py. Summary uses the configured provider and inspected tool result, with no substitute response. -->
 
 ---
 <!-- _class: compact architecture -->
@@ -51,7 +51,7 @@ An HR agent works within granted scope. A person reviews the exact proposed mess
 
 <div class="note">Token exchange uses generated-key tests. The no-login console trusts the computer and does not verify a corporate employee identity.</div>
 
-<!-- Sources: docs/delegated-authority.md; provisional docs/hr-workflow.md and docs/issuer-exchange.md. Human requester, approval actor and immutable accounting principal are separate. HR browser binding uses local_demo and session-private handles, never a browser-held agent bearer. -->
+<!-- Sources: docs/delegated-authority.md; accepted docs/hr-workflow.md and docs/issuer-exchange.md. Human requester, approval actor and immutable accounting principal are separate. HR browser binding uses local_demo and session-private handles, never a browser-held agent bearer. -->
 
 ---
 <!-- _class: compact -->
@@ -98,14 +98,14 @@ An HR agent works within granted scope. A person reviews the exact proposed mess
 
 | Department report for a selected period | What the measurement means |
 |---|---|
-| Model attempts and department attribution | Each attempt once, explicit unassigned |
-| Known input / output tokens and micro-USD | Actual known usage, simulated tariff |
+| Issuer test: 6 known attempts, issuer_v2 | Attributed department, fixture provider |
+| 120 input / 18 output tokens | Selected period, simulated tariff |
 | Uncertain outcome / unknown consumption | Reservation retained, sums may be partial |
 
 <div class="note">Dev: the proposed GitLab merge has no adapter. Finance: the proposed transfer has no adapter.</div>
 <div class="warn">Local receipts and JSONL/ECS/HEC files need a separate adapter and delivery proof for SIEM. Department export is unavailable.</div>
 
-<!-- Sources: accepted docs/department-usage.md at e6ac3564; docs/telemetry-delivery.md. Operator-only bounded selected-period report counts model attempts once, independently of three ledger scopes. Known token/money sums have known_usage_attempts denominator; dispatch_intent is not provider receipt. Accepted issuer QA at cd4c162: six known issuer_v2 provider-fixture attempts, 120 input and 18 output tokens. Final integrated installed measurements await root evidence. -->
+<!-- Sources: accepted docs/department-usage.md at e6ac3564; docs/telemetry-delivery.md. Operator-only bounded selected-period report counts model attempts once, independently of three ledger scopes. Known token/money sums have known_usage_attempts denominator; dispatch_intent is not provider receipt. Accepted issuer QA at cd4c162: six known issuer_v2 provider-fixture attempts, 120 input and 18 output tokens. HR fixture window at 34bf344: two attributed attempts, one known settlement and one uncertain invalid-provider outcome with output withheld. Separate selected windows, never summed. -->
 
 ---
 <!-- _class: compact standards -->
@@ -127,12 +127,12 @@ An HR agent works within granted scope. A person reviews the exact proposed mess
 <!-- _class: compact evidence -->
 ## Control tests and semantic limitations
 
-<div class="columns"><div><h3>Control behavior evidence</h3><table><tr><th>Type</th><th>Example</th></tr><tr><td>Unit</td><td>Grants, scopes, heuristic</td></tr><tr><td>Functional</td><td>Denial and exact consent</td></tr><tr><td>Integration</td><td>REST/MCP + SQLite transactions</td></tr><tr><td>Installed E2E</td><td>Wheel, browser and effects</td></tr></table><p>0 before consent. 1 row after resume and replay.<br>Access denied: 0 calls.</p></div><div><h3>Frozen real Laya measurements</h3><table><tr><th>Corpus</th><th>Standard CPU</th><th>CoreML</th></tr><tr><td>v1 · 26</td><td>7/26 correct</td><td>7/26</td></tr><tr><td>v2 · 28</td><td>15/28 correct</td><td>16/28</td></tr></table><p class="note">V2: CPU/CoreML 7/6 false positives, 4/4 false negatives. Malicious paraphrases missed.</p><p class="note">V1: 16 benign cases withheld. CoreML warm run failed. The corpora differ.</p></div></div>
+<div class="columns"><div><h3>Control behavior evidence</h3><table><tr><th>Type</th><th>Example</th></tr><tr><td>Unit</td><td>Grants, scopes, heuristic</td></tr><tr><td>Functional</td><td>Denial and exact consent</td></tr><tr><td>Integration</td><td>REST/MCP + SQLite transactions</td></tr><tr><td>Installed E2E</td><td>Wheel, browser and effects</td></tr></table><p>Base a370134: 1005 tests, zero skips.<br>0 before consent → 1 row after resume and replay.</p></div><div><h3>Frozen real Laya measurements</h3><table><tr><th>Corpus</th><th>Standard CPU</th><th>CoreML</th></tr><tr><td>v1 · 26</td><td>7/26 correct</td><td>7/26</td></tr><tr><td>v2 · 28</td><td>15/28 correct</td><td>16/28</td></tr></table><p class="note">V2: CPU/CoreML 7/6 false positives, 4/4 false negatives. Malicious paraphrases missed.</p><p class="note">V1: 16 benign cases withheld. CoreML warm run failed. The corpora differ.</p></div></div>
 
 <div class="warn"><strong>Real HR / standard v2: false positive.</strong> Ordinary record blocked at READ and SUMMARY. Two reads executed, outputs withheld. 0 model calls and 0 messages.</div>
-<div class="note">Semantic inspection off by default. CoreML experimental. Final revision: pending acceptance.</div>
+<div class="note">Semantic inspection off by default. CoreML experimental.</div>
 
-<!-- Sources: root acceptance of department PR47, reviewed 40eb409 / merged e6ac3564; docs/semantic-evaluation.md, docs/semantic-v2-evidence.md, docs/release-evidence.md. Never sum overlapping suite counts. V1/v2 corpora/question sets differ; two v2 incomplete cases per backend. Actual installed HR observation at 34bf344 / standard content-role-v2 enforce, checkpoint e4e9ddf21a7b1903b7acffd8814ad4307bf63a67: benign read and summary fresh read both HTTP403 SEMANTIC_BLOCKED executed=true; zero released documents/summaries/provider attempts/outbox. Two tool reservations and four audit events; quota 0 to 2/1000. False positive, unsuitable ordinary HR semantic demo. Report SHA256 af884f87f43e58af5883f44bff0370b0b9bf981aebe496c6e402d53cccfba2de. Final release revision remains provisional. Control tests are not detector accuracy. -->
+<!-- Sources: root acceptance of department PR47, reviewed 40eb409 / merged e6ac3564; docs/semantic-evaluation.md, docs/semantic-v2-evidence.md, docs/release-evidence.md. Never sum overlapping suite counts. V1/v2 corpora/question sets differ; two v2 incomplete cases per backend. Actual installed HR observation at 34bf344 / standard content-role-v2 enforce, checkpoint e4e9ddf21a7b1903b7acffd8814ad4307bf63a67: benign read and summary fresh read both HTTP403 SEMANTIC_BLOCKED executed=true; zero released documents/summaries/provider attempts/outbox. Two tool reservations and four audit events; quota 0 to 2/1000. False positive, unsuitable ordinary HR semantic demo. Report SHA256 af884f87f43e58af5883f44bff0370b0b9bf981aebe496c6e402d53cccfba2de. Accepted runtime base a370134, reviewed c9c47b8 (runtime 34bf344); root gate 1005 zero skips and 18 Node contracts; separate acceptance 140 cases/420 phases; installed credential/local-console and mocked UI-only evidence separately attributed. Final ladder entrypoint reruns passed with failure-entry test retained. Control tests are not detector accuracy. -->
 
 ---
 <!-- _class: lead closing -->
