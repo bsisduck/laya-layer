@@ -264,3 +264,77 @@ def test_actual_hermes_explicit_approved_reinvocation_is_one_effect(live_agent_g
         c["scope"] == "root_run" and c["resource"] == "calls" and c["spent"] == 3
         for c in model.ledger.counters()
     )
+
+
+def test_installed_runner_bootstrap_does_not_shadow_upstream_dependencies(tmp_path):
+    import importlib.metadata
+    import shutil
+    import subprocess
+    import sys
+
+    import agentgate
+
+    site = tmp_path / "gateway-site-packages"
+    package = site / "agentgate"
+    shutil.copytree(
+        Path(agentgate.__file__).parent, package, ignore=shutil.ignore_patterns("__pycache__")
+    )
+    fake = site / "mcp-99.99.dist-info"
+    fake.mkdir()
+    (fake / "METADATA").write_text("Metadata-Version: 2.1\nName: mcp\nVersion: 99.99\n")
+    runner = package / "agents/hermes_runner.py"
+    # Import the shipped runner without invoking upstream or any gateway request.
+    code = "import importlib.metadata,runpy,sys; runpy.run_path(sys.argv[1],run_name='bootstrap_test'); print(importlib.metadata.version('mcp'))"
+    completed = subprocess.run(
+        [sys.executable, "-I", "-c", code, str(runner)], capture_output=True, check=True, text=True
+    )
+    assert completed.stdout.strip() == importlib.metadata.version("mcp")
+    assert completed.stdout.strip() != "99.99"
+
+
+@pytest.mark.skipif(
+    not os.environ.get("AGENTGATE_HERMES_SOURCE"),
+    reason="Prepared pinned Hermes environment not supplied",
+)
+def test_installed_runner_exposes_only_adapter_to_pinned_hermes_environment(tmp_path):
+    import json
+    import shutil
+    import subprocess
+
+    import agentgate
+
+    source = Path(os.environ["AGENTGATE_HERMES_SOURCE"])
+    verify_source(source)
+    site = tmp_path / "installed-gateway-site-packages"
+    package = site / "agentgate"
+    shutil.copytree(
+        Path(agentgate.__file__).parent, package, ignore=shutil.ignore_patterns("__pycache__")
+    )
+    for name in ("mcp", "openai", "httpx2", "hermes_agent"):
+        metadata = site / (name + "-99.99.dist-info")
+        metadata.mkdir()
+        (metadata / "METADATA").write_text(
+            f"Metadata-Version: 2.1\nName: {name.replace('_', '-')}\nVersion: 99.99\n"
+        )
+    runner = package / "agents/hermes_runner.py"
+    code = (
+        "import importlib.metadata,json,runpy,sys; "
+        "runpy.run_path(sys.argv[1],run_name='bootstrap_test'); import agentgate; "
+        "print(json.dumps({'versions':{p:importlib.metadata.version(p) for p in "
+        "('hermes-agent','openai','mcp','httpx2')}, 'package':list(agentgate.__path__), 'sys_path':sys.path}))"
+    )
+    completed = subprocess.run(
+        [str(source / ".venv/bin/python"), "-I", "-c", code, str(runner)],
+        capture_output=True,
+        check=True,
+        text=True,
+    )
+    result = json.loads(completed.stdout)
+    assert result["versions"] == {
+        "hermes-agent": "0.21.5",
+        "openai": "2.24.0",
+        "mcp": "2.0.0",
+        "httpx2": "2.7.0",
+    }
+    assert result["package"] == [str(package)]
+    assert str(site) not in result["sys_path"]
