@@ -7,6 +7,35 @@ fullstack/browser QA; this runbook does not itself claim execution. Use syntheti
 fixtures, private state and credentials. No heavyweight inference is needed to
 exercise the deterministic steps below.
 
+## Primary HR sequence
+
+Root accepted merged base `a370134`, reviewed `c9c47b8` (runtime
+`34bf344`), with both CI checks green; [HR control and real semantic evidence](hr-release-observation.md)
+records the passing fixture workflow and the actual false positive separately.
+For a fresh trusted-computer demonstration, prepare dependencies and the pinned
+generation model, then use `./laya install --local-console`. Agent APIs still
+require scoped credentials. Ordinary credential-console mode remains available.
+
+| Step | Action | Evidence |
+|---|---|---|
+| Prepare HR | Preview and deliberately activate the reviewed HR delta, then bind the local employee | Preserve unrelated controls/budgets; short-lived authority; no browser-held agent bearer |
+| Read and summarize | Select the ordinary synthetic candidate record | Authorized inspected read; actual configured provider result only if the source is releasable |
+| Check scope | Try private HR notes and the Finance record | Each missing human/agent grant denies before protected access, even in the same tenant |
+| Review message | Propose a message to the approved internal domain and inspect exact recipient/subject/body | Pending and operator approval have zero outbox effects |
+| Resume and replay | Resume the original stored action, then repeat | One local fixture outbox row; no SMTP; changed payload/authority needs new consent |
+| Inspect operations | Show attribution, actual-known/unknown attempts and local receipt state | Distinct attempts, simulated tariffs, partial unknown sums and collector limits |
+
+**Actual semantic limit:** root's installed standard/content-role-v2/enforce run
+at `34bf344` blocked the ordinary READ and SUMMARY source read. Both returned
+403 `SEMANTIC_BLOCKED`, `executed=true`: reads occurred, outputs were withheld,
+zero model-provider attempts and zero outbox rows. Quota moved 0→2/1000. This
+is a false positive and unsuitable as a normal HR semantic success demo.
+Do not disable an existing enforce guard to conceal it, substitute a fixture
+summary or promise successful classification. Fresh-install semantic inspection
+is off by default; an explicitly configured existing installation retains its
+policy. CoreML remains experimental. The following historical general-purpose
+sequence is an alternate demonstration, not evidence of this HR observation.
+
 ## Preparation
 
 Prepare the pinned Ollama generation model and locked runtimes before the demo.

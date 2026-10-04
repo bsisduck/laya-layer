@@ -1,8 +1,104 @@
 # Release evidence and claim boundaries
 
-Updated **2026-10-03**, validated integration `074cace` (PR31). Laya Sec Layer is the
-product; AgentGate is its gateway. Cezar orchestrates development. This is a
-working local prototype on a trusted host, not an enterprise production release.
+Updated **2026-10-04**. Accepted runtime base is
+`a37013449ed4be1994a129bd1d1cd34dc4a65520`, reviewed HR head `c9c47b8`
+(runtime unchanged from `34bf344`). Both PR50 CI checks are green. Documentation
+and the final ten-slide PL/EN sources require their own root content/visual review;
+see [presentation delivery](presentation/README.md). Historical integration
+`074cace` (PR31) remains recorded below. Laya Sec Layer is the product; AgentGate
+is its gateway. Cezar orchestrates development. This is a working local prototype
+on a trusted host, not a production security certification.
+
+## Current HR delivery and independent evidence
+
+| Evidence scope | Actual result | Boundary |
+|---|---|---|
+| Root full gate at `34bf344` | 1,005 pytest tests, zero skips; workflow/lock, lint/format, strict mypy (58 files), source/wheel build PASS | Pinned Hermes and deterministic provider/semantic fixtures; not real classifier accuracy |
+| Node contracts | 18 PASS | Browser component contracts, separately counted |
+| Installed HR | Exact approval/mobile/scope/expiry/session PASS; two attributed provider-fixture attempts, one known settlement and one uncertain invalid-provider outcome with output withheld | Approval zero effects; resume/replay one local outbox row; no SMTP |
+| Independent installed console at `34bf344` | Actual credential and local-console flows, MCP, unchanged HR startup state, sessions/CSRF, replay and desktop/mobile visuals PASS | Mocked-component loading/error/safety checks explicitly UI-only; no inference |
+| Acceptance runner at `34bf344` | 140 cases / 420 setup-call-teardown phases; zero failures, skips or reconciliation problems | Separate runner denominator, never summed with pytest or treated as attack samples |
+| Final ladder entrypoint `c9c47b8` | Author and independent reruns PASS | Test-only `/#overview` landing fix; original test-entrypoint failure evidence/log retained; no runtime change |
+| Actual standard/v2/enforce HR | Ordinary READ and SUMMARY source read both `SEMANTIC_BLOCKED`, `executed=true`; output withheld; zero provider attempts/outbox | Material false positive, unsuitable as a successful normal HR semantic demonstration |
+
+The independent minimized report is retained in ignored
+`.ai/qa/artifacts_final_deterministic/report.md`; the acceptance artifact is
+`reports/generated/final-deterministic-34bf344.json`. Root supplies CI status
+separately from that report. See PR50's [push gate](https://github.com/bsisduck/laya-sec-agent/actions/runs/37174047015)
+and [PR gate](https://github.com/bsisduck/laya-sec-agent/actions/runs/37174049349).
+[The exact semantic profile, counters and artifact digest](hr-release-observation.md)
+preserve the failed real observation alongside successful fixture controls.
+
+### Existing primary installation: preservation then deliberate setup
+
+Root upgraded the existing installation offline to `a370134`. A read-only
+before/after snapshot verified **37 pre-existing stable tables**, using their old
+column projection, including collector/quota state, and all key/token hashes
+unchanged **before HR setup**. Local-console mode and standard/content-role-v2
+**enforce** remained selected. Owned services and shared Ollama were ready.
+
+The operator then deliberately reviewed and CAS-activated the HR delta. It changed
+only revision/delegation/document roles/mail roles, retaining model budgets, feed
+and semantic controls. This intentional setup is distinct from upgrade preservation.
+A fresh actual Playwright UI check passed: no login, no DOM/storage bearer,
+HR ready for deliberate Start binding, mobile fit and department/standards views.
+It made **zero provider attempts** and does not establish successful HR generation.
+Root left the installation running. The existing guard was not weakened.
+
+Minimized ignored delivery evidence: `reports/generated/live-console/hr-delivery.json`,
+`hr-workspace.png` and `hr-mobile.png` in the same directory. No private state path,
+installation URL, key or token is published. The author did not mutate the primary
+installation, shared Ollama or other QA state.
+
+## Final bilingual presentation verification
+
+Root independently reviewed the sources through `0267ebc`, all twenty rendered
+pages, and the narrative-only `7e41ea8` corrections. The scoped `7724c23` CSS
+change reduced only slide 9's heading gap by six pixels. Root rerendered, reopened
+both changed pages and passed the offline checker; the link-only `b2d0a02` delta
+was also reviewed. Author final rendering exited **0**, and pixel comparisons
+confirm that only PL/EN page 9 changed. Both language versions have ten PDF pages
+and ten HTML slides. Author and root each passed **40 offline desktop/narrow
+observations**: keyboard navigation, glyph text, safe geometry, no login and
+only the local document request. These are presentation checks, not AgentGate
+enforcement or model evaluation.
+
+Root's configured `make validate` at `0267ebc`, with pinned Hermes enabled,
+passed **1,005 tests, zero skips in 665.95 seconds**, plus workflow/config/lock,
+Ruff, strict mypy (58 source files), sdist and wheel. Subsequent changes are
+narrative docs and presentation CSS; validation/runtime inputs are unchanged.
+The first author gate instead recorded **1,003 passes and two failures in
+521.97 seconds**: the slow-ACK fixture had zero receipt rows where two were
+expected, and the collector daemon exceeded its shared startup/send deadline.
+The original log is retained as
+`reports/generated/presentation/validate-first-failed.log`. No assertion,
+timeout or runtime change conceals that result; the independent passing run is
+reported separately. Root explicitly accepted that configured review gate for
+this docs-only publication.
+
+The author’s final serialized `make validate`, begun at `b2d0a02` with the same pinned Hermes source, then passed **1,005 tests, zero skips in 130.06 seconds**, all configured checks and source/wheel build; the original failure log remains retained.
+
+The initial layout-check failure (slide 9 scroll height 724/720 and note below
+the safe bound) is retained separately in
+`reports/generated/presentation/offline-first-failed-root.log`; the six-pixel
+spacing fix passed the unchanged assertions. An earlier interrupted author
+renderer exited 143 after saving the English PDF during a Chrome shutdown stall;
+its log remains ignored. The final serialized render exited 0. Author Node
+contracts separately passed 18 checks with zero skips, and helper Ruff/format,
+shell syntax and local link checks passed.
+
+Generated deliverables remain ignored in `reports/generated/presentation`.
+These SHA-256 values identify the author's final reviewed-source artifacts:
+
+| Artifact | SHA-256 |
+|---|---|
+| `laya-pl.pdf` | `768118d20f4045053cfa28bad6a3b2b3b38187987f6147859704887c957beff8` |
+| `laya-pl.html` | `2c877db1d874472451e1cd3089e15f3c104c50dc4152af46cc0ce2b17e498da7` |
+| `laya-en.pdf` | `9494d8a724478bd8f46e79cfed25630ee34bfcae38585bae641751d0e3add7a0` |
+| `laya-en.html` | `946ee44df3f6de1cb83f00e22557b1eec3b2092f67741288c9b9ec470c061144` |
+
+Source/page acceptance does not authorize an author merge. The draft publication
+requires root exact-head notes review and green CI.
 
 ## Integrated capabilities
 
@@ -12,6 +108,8 @@ working local prototype on a trusted host, not an enterprise production release.
 | Tools | Credential-owned tenant/role/agent/root; document and memory operations over REST and official-SDK MCP | Synthetic resources, no arbitrary shell or URL executor |
 | Mail | Stored immutable payload, separate operator approval, revalidation and one effect under replay | SQLite fixture outbox, no SMTP delivery |
 | Agents | Bounded direct REST/MCP and pinned upstream Hermes clients; actual two-model-call/one-document cycles | Restricted profile, no isolation from privileged same-user host authority |
+| HR/person authority | Preserving HR setup, local employee/agent grant intersection, session-private child, optional pinned issuer exchange | Generated-key issuer tests, no corporate IdP certification; real HR semantic false positive retained |
+| Catalog/department usage | Three reviewed adapters, explainable 25/75 heuristic; one selected-period row per model attempt with immutable attribution | No destructive/payment/merge adapter; unknown consumption and simulated tariffs explicit; department export absent |
 | Controls/UI | Packaged dashboard, sessions/CSRF, policy/feed validation and CAS activation, explicit expired-credential renewal | Global local operator; enterprise tenant RBAC/SSO absent |
 | Budgets | Shared-root tool/model ledgers, conservative unknown consumption and persistent installation-wide semantic call quota | No full cumulative per-tenant semantic token/time or physical-resource accounting |
 | Evidence | Minimized audit, scoped JSONL/ECS-oriented/HEC-envelope downloads, durable sender and owned local collector | Local protocol v1, at-least-once with event-ID deduplication; no tested bank/SIEM adapter |
@@ -22,7 +120,7 @@ The [T01–T48 inventory](acceptance.md) maps concrete control tests, measured
 semantic cases and gaps. A passing control suite does not imply all 48 outcomes
 or reliable semantic detection.
 
-## Final integrated validation
+## Historical full-stack validation (PR31)
 
 At `074cace`, `make validate` passed **614 tests, zero skips**, including pinned
 upstream Hermes fixtures, plus workflow/config/lock checks, Ruff, strict mypy and
@@ -56,6 +154,9 @@ Reports remain in ignored `.ai/qa/artifacts_fullstack_final/`.
 | [35 fragmented HTTP](https://github.com/bsisduck/laya-sec-agent/pull/35) | `54f3369` | `ba2dae8`; independent 60-test model/transport gate, green CI; no product code changes |
 | [33 documentation](https://github.com/bsisduck/laya-sec-agent/pull/33) | `4586f40` | `aaaa0e0` into PR31; reviewed mapping runner and EN/PL deck sources |
 | [31 full-stack release](https://github.com/bsisduck/laya-sec-agent/pull/31) | Final `074cace` | Independent GPT-6.1-Sol delta review: APPROVE, no blockers/majors; earlier two defects fixed and independently reproduced |
+| [47 department/standards](https://github.com/bsisduck/laya-sec-agent/pull/47) | `40eb409` | `e6ac3564`; root 886-test zero-skip gate, installed accounting both console modes and mobile/keyboard PASS, green CI |
+| [49 issuer exchange](https://github.com/bsisduck/laya-sec-agent/pull/49) | `cd4c162` | `e015e66c`; root 974-test zero-skip gate; generated-key REST/MCP/Hermes fixture cycles and nondispatch/replay PASS, green CI |
+| [50 HR workspace](https://github.com/bsisduck/laya-sec-agent/pull/50) | `c9c47b8` (runtime `34bf344`) | `a370134`; current evidence above, independent test-entrypoint rerun and both CI green; actual real semantic false positive retained |
 
 PR31's initial review reproduced a plain-FastAPI overview failure and a stranded
 sender after a collector-port change. Fix `9e1cfec` supplies honest unconfigured
@@ -66,6 +167,14 @@ port migration, deduplication/new delivery, interrupted publication recovery and
 seven negative probes; its exact-SHA verdict remains on the PR.
 
 ## Real semantic evidence remains imperfect
+
+**Current HR limitation:** at `34bf344`, actual installed standard/v2/enforce
+blocked the ordinary candidate READ and the fresh source read for SUMMARY with
+`SEMANTIC_BLOCKED`, `executed=true`. Two protected reads occurred, output was
+withheld, and no model-provider attempt or outbox effect occurred. This is a
+false positive, not a successful real HR summary. The guard and all frozen
+measurements remain unchanged. [Exact profile, counters and artifact digest](hr-release-observation.md)
+separate this observation from passing deterministic/provider-fixture checks.
 
 | Frozen measurement | Standard | Native CoreML | Interpretation |
 |---|---|---|---|

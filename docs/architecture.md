@@ -6,6 +6,40 @@ the complete target; these diagrams describe the local integration prototype.
 Solid arrows are integrated code paths; dashed arrows are proposed adapters.
 This is a trusted-host boundary, not an OS sandbox.
 
+## Human authority and the HR workspace
+
+Accepted HR base `a370134` (reviewed `c9c47b8`, runtime `34bf344`)
+includes the local workspace. In this implementation, the operator HR facade invokes the existing ActionService/ModelService
+and exact approval boundary. It does not read fixtures or execute mail itself.
+
+```mermaid
+flowchart LR
+    Human["Trusted human record\nlocal demo or pinned issuer exchange"] --> Intersection
+    Agent["Agent grants + original issuance ceiling"] --> Intersection
+    Policy["Current global policy\ntenant, resource, model and destination"] --> Intersection
+    Intersection["Relational intersection\ncurrent transactional recheck"] --> Tools["Governed read / exact approved action"]
+    Intersection --> Model["Governed model admission"]
+    Parent["Immutable parent accounting principal + root"] --> Budget["Existing shared budgets\nnew child cannot reset spend"]
+    Budget --> Tools
+    Budget --> Model
+    Console["Trusted local console or credential session\nHR employee binding and exact review"] --> Intersection
+    Corporate["Corporate IAM deployment\nnot independently accepted"] -. "future deployment acceptance" .-> Human
+```
+
+HR browser handles are session-private references, never agent bearer credentials.
+The synthetic employee can read candidate/CV plus private HR notes, while the
+agent can read candidate/CV plus Finance. Their intersection permits candidate/CV
+only. Same-tenant rows still need both relational grants. Children last at most
+300 seconds and retain the parent's accounting principal/root budgets. The
+optional issuer exchange verifies a pinned person-token profile, then invokes
+the same authority; generated-key tests do not certify corporate IAM.
+
+Summary performs a fresh inspected source read before any provider dispatch.
+Root's [actual standard-v2 HR false positive](hr-release-observation.md) withheld
+the ordinary record on both READ and SUMMARY, after executed reads and with zero
+provider calls. Exact human approval of mail still has zero effect by itself;
+resume can create one local outbox row after current authority revalidation.
+
 ## Two enforcement paths, one authority
 
 ```mermaid

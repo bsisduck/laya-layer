@@ -10,7 +10,7 @@ independent-review resolutions, governs this implementation.
 |---|---|---|---|
 | L0 Accident | Ordinary mistake, accidental disclosure/resource use, benign control | Bounded synthetic-secret/email protection; budgets | No PESEL/IBAN/card recognition |
 | L1 Direct known attempt | Explicit prohibited instruction, model or operation | Registered routing, scopes, deterministic permissions | No universal jailbreak detector |
-| L2 Concealment/evasion | Encoding, representation, fragmentation or paraphrase | Buffered split-secret checks; experimental semantics | No general base64/Unicode normalization; missed paraphrases |
+| L2 Concealment/evasion | Encoding, representation, fragmentation or paraphrase | Closed operation registry and strict identifiers; buffered split-secret checks; experimental semantics | No general base64/Unicode/PII normalization; missed paraphrases |
 | L3 Indirect content | Explicit untrusted document/retrieval/tool carrier | Scoped reads and output inspection | Semantic false positives; active-image exfiltration unsupported |
 | L4 Agent authority/action abuse | Delegated scope, composition, exact approval/root authority | Immutable approvals, scoped reads, shared root accounting | No public delegation API or broad multi-step exfiltration correlation |
 | L5 Control/supply-chain target | Availability/integrity of controls, stores, quotas, artifacts | Last-good policy/feed CAS, audit, quotas, metadata intake | No signatures, four eyes, generic rate limit or GPU-time budget |
@@ -136,8 +136,10 @@ numeric feedback does not defeat adaptation.
 
 No persisted AuditEvent, database, public REST/model/MCP body/reason/status/default,
 telemetry-v1 or export-v1 change is made. See [compatibility](../BACKWARD_COMPATIBILITY.md).
-New DLP, signed feeds, two-person administration, OIDC, delegated user/agent
-permission intersection and risk-scored catalogs are separate future stories.
+General DLP, signed feeds, two-person administration and corporate OIDC deployment
+remain gaps. The [local human/agent intersection](delegated-authority.md) and
+[reviewed heuristic catalog](tool-catalog.md) are integrated; they do not resolve
+the semantic, normalization or external deployment gaps above.
 Installed browser QA is executable in `tests/frontend/threat_ladder.py`; runtime
 artifacts stay ignored. The EN/PL sources add one ladder slide for ten pages each;
 root owns later product-story/deck finalization and independent pre-merge QA.

@@ -9,6 +9,14 @@ Start with the [visual architecture](architecture.md), then follow the
 | [T01–T48 acceptance](acceptance.md) | Executable control mappings, frozen evaluation cases, partial/pending/gap evidence |
 | [Demo and recovery](demo-runbook.md) | Five-minute product demonstration and state-preserving recovery |
 | [Presentation sources](presentation/README.md) | Ten-slide English/Polish decks; generated PDFs stay ignored |
+| [HR workspace](hr-workflow.md) | Primary synthetic flow, preserving setup, session-private binding and normal enforced services |
+| [Optional issuer exchange](issuer-exchange.md) | Pinned person-token profile, short expiry and generated-key fixture evidence |
+| [Trusted local console](local-console.md) | Explicit no-login trusted-computer mode; agent APIs still require credentials |
+| [Human and agent authority](delegated-authority.md) | Relational intersection, short-lived delegation and stable accounting ownership |
+| [Approved tool catalog](tool-catalog.md) | Reviewed actual adapters, local 25/75 heuristic and exact consent |
+| [Department model usage](department-usage.md) | Distinct attempts, trusted attribution, known/unknown consumption and simulated tariffs |
+| [Standards evidence](standards-evidence.md) | Official-source associations with specific controls and remaining obligations |
+| [Threat evidence](threat-model.md) | Authored L0–L5 and exact seven layers, with unknown live sophistication |
 | [Submission template](submission-template.md) | User-owned team/member/URL and organizer fields |
 | [Install and lifecycle](local-app.md) | One-command local app, credentials, offline restart and recovery |
 | [Visual architecture](architecture.md) | Working path, trust boundaries, and target system |
@@ -21,6 +29,7 @@ Start with the [visual architecture](architecture.md), then follow the
 | [Semantic workers](semantic-workers.md) | Real standard/CoreML services, strict/observe behavior, bounds, and quality limitations |
 | [Semantic v1](semantic-evaluation.md) | Frozen poor results and retained failed CoreML warm run |
 | [Semantic v2](semantic-v2-evidence.md) | Fresh imperfect holdout, real CPU gateway smoke and experimental Apple status |
+| [Actual HR semantic observation](hr-release-observation.md) | Ordinary-record false positive at 34bf344, separated from passing fixture controls |
 | [Local telemetry delivery](telemetry-delivery.md) | Actual local protocol, durable retry/dedup; separate from vendor envelopes |
 | [Inference evidence](inference-spike.md) | Actual standard Laya and CoreML loading, predictions, and limitations |
 | [Delivery plan and skills](delivery.md) | Ordered milestones, acceptance evidence, and installed skill choices |

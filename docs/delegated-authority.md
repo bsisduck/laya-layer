@@ -2,9 +2,10 @@
 
 This is a trusted operator-provisioned **local demo**, not corporate IAM, OIDC or
 JWT exchange. Public clients cannot assert a human, department, tenant or agent.
-JWT verification/exchange is a subsequent consumer. Department per-attempt resource
-settlement/reporting is also subsequent: the audit attribution here is ready for
-that consumer; aggregate budget accounts are not a department usage report.
+The optional [pinned issuer exchange](issuer-exchange.md) is a separately accepted
+consumer; it does not change this local-v1 contract. [Department per-attempt
+reporting](department-usage.md) consumes trusted attribution. Aggregate budget
+accounts remain different from the department usage report.
 
 `Identity` serialization remains unchanged. `principal_id` is the issuing agent's
 immutable **accounting owner**. The human requester is separate trusted attribution.
@@ -126,7 +127,8 @@ principal/root accounting. Model providers in pytest are declared deterministic
 fixtures, not real-model evaluation. Installed browser E2E uses the rebuilt wheel,
 server-issued local-demo records/bindings and real operator exact consent/outbox.
 No heavyweight inference is required or claimed. Independent root high-risk review,
-gate/QA and green CI are required before any merge; delivery is draft only.
+gate/QA and green CI are recorded in [release evidence](release-evidence.md).
+These local and fixture results do not establish a corporate identity deployment.
 
 To reproduce the owned installed flow from a prepared checkout:
 
