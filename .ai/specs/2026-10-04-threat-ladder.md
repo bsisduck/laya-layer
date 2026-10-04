@@ -151,3 +151,107 @@ future stories. No heavyweight semantic re-evaluation is needed for metadata/UI.
 Preserve production/default private state and shared Ollama; QA uses an owned
 isolated installation. Existing publication authorization and requested Cezar
 `gpt-6.1-sol` execution carry forward from the project session.
+
+## Independent design review resolutions
+
+Fresh GPT-6.1-Sol scope review `e45d5cc4` found this one coherent capability,
+with four major precision gaps. The following rules resolve and override any
+looser wording above; no implementation had begun during review.
+
+### Level assignment and runtime ambiguity
+
+| Level | Authored scenario assignment rule | Example and limit |
+|---|---|---|
+| L0 Accident | Ordinary mistake, supported accidental disclosure or unintended resource use; benign controls also live here | Email/secret fixture or budget boundary; not evidence of PESEL detection |
+| L1 Direct known attempt | Explicit direct prohibited instruction, model or operation in the authored scenario | Unsupported model; no claim all jailbreaks are caught |
+| L2 Concealment/evasion | Scenario explicitly changes representation, encoding, fragmentation or paraphrase to hide the same content | T45 split secret; base64/Unicode/PESEL normalization remains a gap |
+| L3 Indirect content | Scenario explicitly supplies untrusted retrieved/document/tool content to the agent boundary | Tool output inspection; multimodal image exfiltration unsupported |
+| L4 Agent authority/action abuse | Scenario exercises delegated scope, tool composition, immutable approval or cross-request/root authority | Exact mail approvals and scoped reads; broad multi-step exfiltration correlation missing |
+| L5 Control/supply-chain target | Scenario targets control availability/integrity, audit/budget stores, worker quota, policy/feed or artifact provenance | Last-good state and metadata rejection; signatures/four eyes missing |
+
+Use one primary authored `level` and one or more layers; document the assignment
+rationale where the scenario is ambiguous. Levels are a pedagogical threat-model
+axis, not an ordinal severity score, and can overlap in the real world.
+
+**Runtime events have no authenticated scenario attribution today. Therefore
+all currently emitted runtime `candidate_levels` are empty, with
+`level_status: "unknown"`, `basis: "control_context_only"`, and
+`intent: "not_assessed"`.** Do not guess a level from semantic scores, payload
+text, denied status, repetition counts or request parameters. This deliberately
+keeps benign permission mistakes, ordinary budget exhaustion and known semantic
+false positives unclassified. The dashboard's ladder classifies *scenario types*;
+its timeline explicitly reports unknown live levels while showing the affected
+control layers and related OWASP families. It must explain this distinction,
+never fabricate event-level L0–L5 observations to populate a filter.
+
+Runtime layer/OWASP mapping is an association to the observed control, not a
+confirmed vulnerability. Use a finite reviewed table, default empty on unknown:
+- Identity/auth/resource denial: identity (data additionally for resource scope),
+  related LLM06:2025 / ASI03:2026.
+- Model/operation routing: identity/actions as applicable, LLM06 / ASI02.
+- Synthetic-secret/email protection: data, with input or output only where event
+  type/operation supports it; related LLM02.
+- Semantic signal: input for pre-dispatch denial, output for output_blocked;
+  related LLM01 / ASI01; not a confirmed injection.
+- Approval lifecycle: identity/actions, related LLM06 / ASI09; ordinary approval
+  does not establish trust exploitation.
+- Budget/quota/worker admission: consumption, related LLM10.
+- Audit/control/feed availability/integrity: supply_chain or consumption only
+  for a specifically supported reason; otherwise unknown. Do not treat every
+  operational error or successful control update as an attack.
+Expose the association basis and version; a generic success has no threat label.
+
+### Frozen corpus provenance and measured results
+
+Sidecar datasets declare exact existing corpus SHA-256 values, frozen manifest
+references, dataset IDs and question-set IDs. Validate them against each frozen
+manifest's corpus entry and current corpus bytes, without calling `load_frozen`
+on the changed inference engine or editing old freeze files. Case references must
+match the complete exact ID set, with no duplicates/missing/unknown entries.
+
+This feature **does not import historical measurement reports or recompute
+semantic accuracy**. New acceptance reports retain semantic cases as declared,
+measured elsewhere/not run by this command, and link the existing evidence docs.
+No old observation is attached to a new model/backend/question set. Record the
+metadata-index/taxonomy/corpus digests in the new report. Future semantic-report
+import must additionally validate immutable report hashes, backend, question-set,
+repetition and case identity; it is outside this bounded feature.
+
+### Complete execution and denominator contract
+
+Record actual expected collected pytest node IDs, including parametrizations, and
+reconcile execution by exact node ID. Capture collection/deselection and execution
+in a bounded local pytest hook/plugin or equivalent actual collection mechanism;
+do not infer completeness solely from JUnit function-name prefixes. Nonempty
+collection alone is insufficient: missing parameter executions, deselected
+required cases, duplicate/unexpected observations, setup/teardown failures, skips,
+collection errors and early termination cannot satisfy a selector/scenario.
+Do not let ambient `PYTEST_ADDOPTS` silently narrow the intended mapped gate.
+
+Each level summary has unique declared scenario count, per-evidence-kind counts,
+control-check status counts, and unique observed pytest node counts. Each layer
+uses the same definitions but is **overlapping**: a scenario may appear under
+several layers, so layer totals cannot be summed into a global attack count.
+A shared test node is deduplicated inside a group and is never a new independent
+attack sample. Keep partial readiness despite successful narrow controls; measured
+and gap cases never acquire a synthetic pass count. Add regressions for incomplete
+parametrized results, skip/failure/missing/duplicate/unexpected IDs and overlaps.
+
+### Compatibility acceptance contract
+
+- Runtime context schema version1 is additive on protected admin event projections
+  only; missing context defaults to unknown in UI. The new protected taxonomy
+  endpoint rejects unauthenticated and agent credentials using the existing router.
+- Do not change public REST/model/MCP body keys, coarse reason codes, status codes,
+  side effects or defaults. Score-privacy tests exercise actual boundary adapters.
+- Do not add fields to persisted AuditEvent, database schema or telemetry/export
+  v1. Verify exact v1 record keys and existing collector/consumer compatibility.
+- Preserve acceptance report schema1 fields and add a separately versioned
+  `threat_evidence` object. Legacy inventory/readme commands remain supported;
+  invalid new metadata makes the runner fail, not return a plausible empty chart.
+- Operator labels/filters require neither new privileges nor a mutable user tag.
+  Text rendering, unknown/missing metadata and old admin payloads are covered.
+
+Publication authority comes from the user's explicit prior project requests for
+public repo, tasks, commits and PRs and the continuing delivery request; this spec
+itself grants no authority. User corrections supersede these decisions.
