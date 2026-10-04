@@ -76,6 +76,8 @@ timeout or runtime change conceals that result; the independent passing run is
 reported separately. Root explicitly accepted that configured review gate for
 this docs-only publication.
 
+The author’s final serialized `make validate`, begun at `b2d0a02` with the same pinned Hermes source, then passed **1,005 tests, zero skips in 130.06 seconds**, all configured checks and source/wheel build; the original failure log remains retained.
+
 The initial layout-check failure (slide 9 scroll height 724/720 and note below
 the safe bound) is retained separately in
 `reports/generated/presentation/offline-first-failed-root.log`; the six-pixel
