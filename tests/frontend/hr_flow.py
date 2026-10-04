@@ -241,10 +241,16 @@ def run():
         expect(page.get_by_role("button", name="Activate reviewed HR setup")).to_be_visible()
         assert snapshot(database) == before_start
         click(page, "Activate reviewed HR setup", "/admin/hr/setup")
-        expect(page.get_by_role("button", name="Start HR binding", exact=True)).to_be_visible()
-        _, binding = click(page, "Start HR binding", "/admin/hr/bind")
+        expect(page.get_by_role("button", name="Start HR session", exact=True)).to_be_visible()
+        _, binding = click(page, "Start HR session", "/admin/hr/bind")
         _, allowed = click(page, "Read selected source", "/admin/hr/read")
         assert allowed["executed"] and "Synthetic candidate" in allowed["result"]["content"]
+        read_panel = page.locator("section.panel").filter(
+            has=page.get_by_role("heading", name="2. Read / summarize", exact=True)
+        )
+        expect(read_panel.get_by_role("heading", name="Source decision")).to_be_visible()
+        expect(read_panel).to_contain_text(allowed["result"]["content"])
+        expect(page.locator(".hr-steps")).to_contain_text("Output released")
         effects = {
             t: rows(database, t) for t in ("tool_reservations", "tool_outbox", "model_attempts")
         }
@@ -253,6 +259,7 @@ def run():
             status, denied = click(page, "Read selected source", "/admin/hr/read")
             assert status == 403 and not denied["executed"]
             assert {t: rows(database, t) for t in effects} == effects
+            expect(read_panel).to_contain_text("This operation was not dispatched")
         page.get_by_label("Synthetic source").select_option(
             label="Untrusted CV / benign injection test"
         )
@@ -262,11 +269,33 @@ def run():
         )  # Semantic off is honest, not hardcoded denial.
         page.get_by_label("Synthetic source").select_option(label="Synthetic candidate record")
         subject = "Installed HR " + uuid.uuid4().hex[:12]
+        draft_panel = page.locator("section.panel").filter(
+            has=page.get_by_role("heading", name="3. Draft / review follow-up", exact=True)
+        )
+        attempts = writes.count("/admin/hr/propose")
+        for label, invalid, valid in (
+            ("Message recipient", "", "candidate@demo.internal"),
+            ("Message recipient", "invalid", "candidate@demo.internal"),
+            ("Message subject", "   ", subject),
+            ("Message content", "   ", "Synthetic local follow-up"),
+        ):
+            page.get_by_label(label).fill(invalid)
+            page.get_by_role("button", name="Propose exact message").press("Enter")
+            expect(page.get_by_label(label)).to_be_focused()
+            expect(draft_panel.locator(".status.error")).to_be_visible()
+            assert writes.count("/admin/hr/propose") == attempts
+            page.get_by_label(label).fill(valid)
         page.get_by_label("Message subject").fill(subject)
         _, proposed = click(page, "Propose exact message", "/admin/hr/propose")
         action = proposed["action_id"]
-        card = page.locator("section.panel").filter(
-            has=page.get_by_role("heading", name="Review the exact proposed message", exact=True)
+        card = (
+            page.locator("section.panel")
+            .filter(
+                has=page.get_by_role(
+                    "heading", name="Review the exact proposed message", exact=True
+                )
+            )
+            .last
         )
         expect(card).to_be_visible()
         for value in (
@@ -279,6 +308,7 @@ def run():
         ):
             expect(card).to_contain_text(value)
         assert rows(database, "tool_outbox", action) == 0
+        expect(draft_panel.locator(".hr-feedback")).to_contain_text("not dispatched")
         page.screenshot(path=str(ARTIFACTS / "exact-review.png"), full_page=True)
         page.get_by_label("I reviewed this exact recipient and content").check()
         click(page, "Approve exact message", f"/admin/approvals/{action}/decision")
@@ -293,13 +323,26 @@ def run():
         click(page, "Resume approved message", "/admin/hr/resume")
         expect(page.get_by_role("button", name="Replay exact resume")).to_be_visible()
         assert rows(database, "tool_outbox", action) == 1
+        expect(draft_panel).to_contain_text("Observed local outbox records for this action: 1")
         click(page, "Replay exact resume", "/admin/hr/resume")
         assert rows(database, "tool_outbox", action) == 1
-        page.get_by_role("link", name="Open this audit trace", exact=False).last.click()
+        new_draft = page.get_by_role("button", name="Start new draft")
+        expect(new_draft).to_be_enabled()
+        new_draft.focus()
+        new_draft.press("Enter")
+        expect(page.get_by_label("Message recipient")).to_be_focused()
+        expect(page.get_by_role("heading", name="Review the exact proposed message")).to_have_count(
+            0
+        )
+        _, next_proposed = click(page, "Propose exact message", "/admin/hr/propose")
+        assert next_proposed["action_id"] != action and not next_proposed["executed"]
+        assert rows(database, "tool_outbox", next_proposed["action_id"]) == 0
+        assert rows(database, "tool_outbox", action) == 1
+        page.get_by_role("link", name="Open action audit trace", exact=False).last.click()
         expect(page.get_by_label("Filter loaded events")).not_to_have_value("")
 
         navigate(page, "HR workspace")
-        expect(page.get_by_role("button", name="Start a new HR binding")).to_be_visible()
+        expect(page.get_by_role("button", name="Start a new HR session")).to_be_visible()
         for width in (390, 768):
             page.set_viewport_size({"width": width, "height": 844})
             assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
@@ -309,15 +352,15 @@ def run():
             page.evaluate("Object.keys(localStorage).length + Object.keys(sessionStorage).length")
             == 0
         )
-        click(page, "End HR binding", "/admin/hr/end")
+        click(page, "End HR session", "/admin/hr/end")
         for label in (
-            "End HR binding",
+            "End HR session",
             "Read selected source",
             "Request model summary",
             "Propose exact message",
         ):
             expect(page.get_by_role("button", name=label, exact=True)).to_be_disabled()
-        click(page, "Start a new HR binding", "/admin/hr/bind")
+        click(page, "Start HR session", "/admin/hr/bind")
         # Expiry fault is private owned QA data; no protected mutation replay.
         with sqlite3.connect(database) as db:
             db.execute(
@@ -329,10 +372,10 @@ def run():
         assert status == 410 and "binding expired" in expired["detail"]
         assert snapshot(database) == frozen
         page.reload()
-        expect(page.get_by_role("button", name="Start HR binding", exact=True)).to_be_visible()
+        expect(page.get_by_role("button", name="Start HR session", exact=True)).to_be_visible()
         assert snapshot(database) == frozen
         # Session recovery drops the handle and never retries the interrupted proposal.
-        _, old_binding = click(page, "Start HR binding", "/admin/hr/bind")
+        _, old_binding = click(page, "Start HR session", "/admin/hr/bind")
         cookie = next(
             c for c in context.cookies(base + "/admin/session") if c["name"] == "agentgate_operator"
         )
@@ -345,7 +388,7 @@ def run():
         attempts = writes.count("/admin/hr/propose")
         status, _ = click(page, "Propose exact message", "/admin/hr/propose")
         assert status == 401
-        expect(page.get_by_role("button", name="Start HR binding", exact=True)).to_be_visible()
+        expect(page.get_by_role("button", name="Start HR session", exact=True)).to_be_visible()
         assert writes.count("/admin/hr/propose") == attempts + 1 and snapshot(database) == frozen
         assert not errors, errors
         result["product"] = {
@@ -403,7 +446,7 @@ def run():
         # Install before navigation so the binding's expiry timer belongs to this clock.
         page.clock.install()
         page.goto(base)
-        expect(page.get_by_role("button", name="Start HR binding", exact=True)).to_be_visible()
+        expect(page.get_by_role("button", name="Start HR session", exact=True)).to_be_visible()
         frozen = snapshot(database)
         restarted = api(
             page,
@@ -411,7 +454,7 @@ def run():
             {"handle": old_binding["handle"], "resource": "hr-candidate-001"},
         )
         assert restarted["status"] == 410 and snapshot(database) == frozen
-        _, fresh_binding = click(page, "Start HR binding", "/admin/hr/bind")
+        _, fresh_binding = click(page, "Start HR session", "/admin/hr/bind")
         status, summary = click(page, "Request model summary", "/admin/hr/summary")
         assert (
             status == 200
@@ -423,11 +466,23 @@ def run():
             and ProviderFixture.calls[0]["messages"][-1]["role"] == "tool"
         )
         expect(page.get_by_role("heading", name="Provider summary")).to_be_visible()
+        expect(page.get_by_role("link", name="Open model audit trace", exact=False)).to_have_count(
+            1
+        )
+        expect(page.get_by_role("link", name="Open source audit trace", exact=False)).to_have_count(
+            1
+        )
         page.screenshot(path=str(ARTIFACTS / "fixture-summary.png"), full_page=True)
         ProviderFixture.invalid = True
         status, failure = click(page, "Request model summary", "/admin/hr/summary")
         assert status == 503 and failure["decision"] == "deny" and "completion" not in failure
         expect(page.get_by_text(failure["reason_codes"][0], exact=True)).to_be_visible()
+        expect(page.get_by_role("heading", name="Provider summary")).to_have_count(0)
+        expect(
+            page.get_by_text(
+                "The protected operation ran, but its output was withheld.", exact=False
+            )
+        ).to_be_visible()
         result["fixture_provider"] = {
             "calls": len(ProviderFixture.calls),
             "source_role": "tool",
@@ -472,6 +527,8 @@ def run():
         page.clock.fast_forward(max(0, int(remaining - 5000)))
 
         def expire_during_read(route):
+            expect(page.get_by_label("Synthetic source")).to_be_disabled()
+            expect(page.locator(".hr-steps")).not_to_contain_text("Output released")
             response = route.fetch()
             assert response.status == 200  # Actual authorized release, held before browser receipt.
             page.clock.fast_forward(6000)
@@ -487,11 +544,13 @@ def run():
             "Read selected source",
             "Request model summary",
             "Propose exact message",
-            "End HR binding",
+            "End HR session",
         ):
             expect(page.get_by_role("button", name=label, exact=True)).to_be_disabled()
         expect(
-            page.get_by_text("Binding expired. Old approvals cannot transfer.", exact=False)
+            page.locator(".hr-identity")
+            .locator("..")
+            .get_by_text("HR session expired. Old approvals cannot transfer.", exact=False)
         ).to_be_visible()
         restore(admin, saved)
         assert (

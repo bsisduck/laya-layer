@@ -5,6 +5,7 @@ Start with the [visual architecture](architecture.md), then follow the
 
 | Document | Purpose |
 |---|---|
+| [Production readiness](production-readiness.md) | Working local demo, production blockers beyond auth and bounded dependency audit |
 | [Release evidence](release-evidence.md) | Exact integrated refs, merge states, measured limitations and root QA |
 | [T01–T48 acceptance](acceptance.md) | Executable control mappings, frozen evaluation cases, partial/pending/gap evidence |
 | [Demo and recovery](demo-runbook.md) | Five-minute product demonstration and state-preserving recovery |

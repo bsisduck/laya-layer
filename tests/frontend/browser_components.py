@@ -89,6 +89,15 @@ def main() -> None:
                 )
             elif url.path == "/admin/approvals":
                 data = {"approvals": [] if state["empty"] else [row]}
+            elif url.path == "/admin/department-usage":
+                data = {
+                    "version": 1,
+                    "source": "model-attempt-evidence-v1",
+                    "departments": [],
+                    "totals": {"attempts": 0},
+                    "window": {"start": int(time.time()) - 3600, "end": int(time.time())},
+                    "completeness": {"status": "complete"},
+                }
             elif url.path == "/admin/catalog":
                 if state["catalog"] == "loading":
                     held.append(route)
@@ -162,6 +171,46 @@ def main() -> None:
         expect(page.get_by_role("heading", name="Service state")).to_be_visible()
         expect(page.locator(".stat.allow strong")).to_have_text("7")
         expect(page.locator(".stat.deny strong")).to_have_text("—")
+        sections = page.get_by_role("group", name="Overview sections")
+        expect(sections.get_by_role("link")).to_have_count(4)
+        sections.get_by_role("link", name="Department usage", exact=True).press("Enter")
+        expect(page.get_by_role("heading", name="Department model usage")).to_be_visible()
+        expect(page.get_by_text("No model attempts in this tenant", exact=False)).to_be_visible()
+        totals = page.locator("details").filter(
+            has=page.get_by_text("Inspect zero/unknown totals", exact=True)
+        )
+        expect(totals).not_to_have_attribute("open", "")
+        expect(totals.locator(".kv")).to_be_hidden()
+        evidence = page.locator('[aria-label="Measured department evidence"]')
+        assert (
+            evidence.locator(":scope > :first-child").inner_text().startswith("No model attempts")
+        )
+        page.get_by_text("Inspect zero/unknown totals", exact=True).press("Enter")
+        expect(totals.locator(".kv")).to_be_visible()
+        expect(totals).to_contain_text("selected attempts")
+        expect(totals).to_contain_text("Unknown")
+        assert page.get_by_role("heading", name="Resource ledger").count() == 0
+        expect(page.get_by_role("link", name="Department usage", exact=True)).to_have_attribute(
+            "aria-current", "page"
+        )
+        assert page.url.endswith("#overview?section=usage")
+        expect(
+            page.get_by_role("navigation").get_by_role("link", name="Overview")
+        ).to_have_attribute("aria-current", "page")
+        page.get_by_role("link", name="Standards evidence", exact=True).press("Enter")
+        expect(
+            page.get_by_role("heading", name="Standards controls, evidence and gaps")
+        ).to_be_visible()
+        assert page.get_by_role("heading", name="Department model usage").count() == 0
+        page.go_back()
+        expect(page.get_by_role("heading", name="Department model usage")).to_be_visible()
+        page.go_back()
+        expect(page.get_by_role("heading", name="Service state")).to_be_visible()
+        page.goto(args.url.rstrip("/") + "/#overview?section=standards")
+        expect(
+            page.get_by_role("heading", name="Standards controls, evidence and gaps")
+        ).to_be_visible()
+        assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
 
         def navigate(name):
             page.get_by_role("navigation").get_by_role("link", name=name, exact=False).click()
