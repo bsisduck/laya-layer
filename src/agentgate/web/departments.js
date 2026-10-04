@@ -17,6 +17,7 @@ export function usageState(data) {
 const utc = value => new Date(value * 1000).toISOString().slice(0, 19);
 export function departmentUsage(api) {
   const root = panel('Department model usage');
+  root.classList.add('department-usage-panel');
   const end = Math.floor(Date.now() / 1000);
   const tenant = el('input', {id: 'usage-tenant', value: 'tenant-a', required: true, maxlength: '96', pattern: '[a-zA-Z0-9][a-zA-Z0-9._-]{0,95}'});
   const startField = el('input', {id: 'usage-start', type: 'datetime-local', step: '1', required: true, value: utc(end - 86400)});
@@ -46,6 +47,7 @@ export function departmentUsage(api) {
         outstanding_reserved_simulated_micro_USD: exactMoney(t.outstanding_simulated_micro_usd), over_bound_attempts_frozen: t.over_bound_attempts, zero_simulated_tariff_attempts: t.zero_tariff_attempts}));
       content.append(el('p', {class: 'hint'}, 'Dispatch intent is durable intent, not confirmation of provider receipt. Known amounts are partial sums when usage is unknown. A zero simulated tariff does not mean free enterprise AI or zero compute cost. Unknown reservations remain retained.'));
       if (data.completeness.status === 'truncated') content.append(el('p', {class: 'status error'}, 'Truncated report. Totals cover selected attempts; department rows may cover fewer. Choose a smaller period.'));
+      if (state !== 'empty') content.append(el('p', {class: 'hint table-scroll-hint'}, 'Scroll horizontally to read all columns. Keyboard: focus the table, then use ← / →.'));
       content.append(state === 'empty' ? empty('No model attempts in this tenant and reservation period.') : table(['Department / provenance', 'Attempts / known / unknown', 'Known actual input / output tokens', 'Known simulated micro-USD', 'Outstanding reservations'], data.departments.map(row => {
         const b = row.totals;
         return [el('div', {}, row.department ?? 'Unknown / unassigned', ...(row.provenance || []).map(p => el('p', {class: 'footnote'}, `${p.source === 'local_demo' ? 'local_demo · trusted local demo subject' : p.source} · authority v${p.authority_version}${p.issuer_id ? ` · issuer ${p.issuer_id}` : ''}`))),

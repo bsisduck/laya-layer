@@ -474,8 +474,53 @@ def main(local_console=False):
                 expect(section).to_contain_text(exact)
                 page.set_viewport_size({"width": 390, "height": 844})
                 expect(section.get_by_role("button", name="Load usage")).to_be_visible()
-                section.get_by_role("region", name="Scrollable records").focus()
-                expect(section.get_by_role("region", name="Scrollable records")).to_be_focused()
+                standards = page.locator(".standards-evidence-panel")
+                mobile_tables = {}
+                for name, target in (("department", section), ("standards", standards)):
+                    expect(target.locator(".table-scroll-hint")).to_be_visible()
+                    records = target.get_by_role("region", name="Scrollable records")
+                    geometry = records.evaluate(
+                        """wrap => ({viewport: wrap.clientWidth, content: wrap.scrollWidth,
+                            columns: [...wrap.querySelectorAll('th')].map(cell => cell.getBoundingClientRect().width),
+                            rows: [...wrap.querySelectorAll('tbody tr')].map(row => row.getBoundingClientRect().height)})"""
+                    )
+                    assert geometry["content"] >= 1000 > geometry["viewport"]
+                    assert min(geometry["columns"]) >= 140
+                    if name == "department":
+                        assert max(geometry["rows"]) <= 160, (
+                            "Contributing counts must wrap readably"
+                        )
+                    mobile_tables[name] = geometry
+                    records.screenshot(path=str(artifacts / f"mobile-{name}-left.png"))
+                    records.focus()
+                    expect(records).to_be_focused()
+                    records.press("ArrowRight")
+                    page.wait_for_function(
+                        "wrap => wrap.scrollLeft > 0", arg=records.element_handle()
+                    )
+                    records.evaluate("wrap => wrap.scrollLeft = wrap.scrollWidth")
+                    page.wait_for_function(
+                        "wrap => wrap.scrollLeft + wrap.clientWidth >= wrap.scrollWidth - 1",
+                        arg=records.element_handle(),
+                    )
+                    records.screenshot(path=str(artifacts / f"mobile-{name}-right.png"))
+                    previous = records.evaluate("wrap => wrap.scrollLeft")
+                    records.press("ArrowLeft")
+                    page.wait_for_function(
+                        "([wrap, previous]) => wrap.scrollLeft < previous",
+                        arg=[records.element_handle(), previous],
+                    )
+                    for index in range(1, len(geometry["columns"]) - 1):
+                        records.evaluate(
+                            """(wrap, index) => {wrap.scrollLeft =
+                                wrap.querySelectorAll('th')[index].getBoundingClientRect().left -
+                                wrap.querySelector('table').getBoundingClientRect().left;}""",
+                            index,
+                        )
+                        records.screenshot(
+                            path=str(artifacts / f"mobile-{name}-column-{index + 1}.png")
+                        )
+                    records.evaluate("wrap => wrap.scrollLeft = 0")
                 assert page.evaluate("document.documentElement.scrollWidth <= innerWidth + 1")
                 section.screenshot(path=str(artifacts / "mobile.png"))
                 assert (
@@ -503,6 +548,7 @@ def main(local_console=False):
                     "elapsed_seconds": round(time.monotonic() - started, 2),
                     "initial_authenticated_shell_seconds": shell_seconds,
                     "restart_evidence_unchanged": True,
+                    "mobile_table_geometry": mobile_tables,
                 },
                 indent=2,
             )

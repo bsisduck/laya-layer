@@ -13,9 +13,12 @@ export const standardsEvidence = [
 ];
 const link = (title, href) => el('a', {href, target: '_blank', rel: 'noopener noreferrer'}, title);
 export function standardsView() {
-  return panel('Standards controls, evidence and gaps', el('p', {class: 'hint'}, 'Evidence associations for review. Applicability depends on purpose and deployment. No compliance badge, certification, legal risk score or implementation-deadline claim. OWASP editions are explicitly 2025 / 2026.'),
+  const root = panel('Standards controls, evidence and gaps', el('p', {class: 'hint'}, 'Evidence associations for review. Applicability depends on purpose and deployment. No compliance badge, certification, legal risk score or implementation-deadline claim. OWASP editions are explicitly 2025 / 2026.'),
+    el('p', {class: 'hint table-scroll-hint'}, 'Scroll horizontally to read all columns. Keyboard: focus the table, then use ← / →.'),
     table(['Framework / official source', 'Relevant implemented control', 'Local executable / documented evidence', 'Remaining obligation'], standardsEvidence.map(row => [
       el('div', {}, link(row.framework, row.source), row.context ? el('p', {}, link('Official Commission context', row.context)) : null), row.control,
       el('div', {}, row.evidence.map(path => el('p', {}, link(path, repo + path)))), row.gap,
     ])));
+  root.classList.add('standards-evidence-panel');
+  return root;
 }
