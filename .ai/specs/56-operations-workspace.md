@@ -27,7 +27,8 @@ This is a presentation change; no backend, policy, identity or schema changes.
 - Approval inbox rows show subject, recipient, requester, expiry and state.
   `Review exact payload & authority` discloses the complete immutable payload,
   identity, digests and fingerprint before consent and decision controls.
-  Catalog scope/risk details progressively disclose; unavailable examples remain.
+  Catalog uses three comparable desktop tool cards (returned inventory count), each
+  with one scope/risk/policy disclosure; unavailable examples remain.
 
 ## States and recovery
 

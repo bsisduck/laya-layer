@@ -1,6 +1,8 @@
 # Local HR workspace (hr-local-v1)
 
-The main console flow is synthetic HR. Automatic local-console operator sessions
+The console opens Overview → Operations; `#hr` opens the synthetic HR workbench.
+A compact session toolbar sits above source/results and draft/review panes on
+desktop, with the same order stacked on mobile. Automatic local-console sessions
 remain a trusted-computer mode, not corporate IAM or four-eyes verification.
 Ordinary credential mode and Playground remain available. No ranking, hiring
 choice, SMTP, merge or payment adapter is implemented.
