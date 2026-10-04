@@ -379,6 +379,9 @@ class ModelService:
                         operation="chat.completions",
                         resource=request.model,
                     ),
+                    dispatch_event=lambda: service.event(
+                        context, "dispatch_intent", Reason.ALLOWED, "allow"
+                    ),
                 )
             except ControlsChanged as error:
                 if attempt == 2:

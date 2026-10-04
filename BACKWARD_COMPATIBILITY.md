@@ -1,5 +1,16 @@
 # Contract status
 
+Measured usage adds protected `GET /admin/department-usage` and schema-2
+`model_usage_schema=1` sidecars, with immutable per-attempt attribution and atomic
+actual settlement. Existing public/Identity/authority-v1/approval/export-v1 shapes
+remain. Monetary report totals are exact decimal strings; model counter projections
+also use strings above JS safe integer. Exceptional frozen account spend above
+int64 uses tagged decimal text, preserving actual amounts without SQLite REAL
+promotion. Old binaries cannot safely serve the upgraded database; stop, back up,
+migrate and restart together. Rollback requires a stopped pre-upgrade backup;
+post-backup work would be lost. Historical missing evidence stays unknown. See
+[department usage](docs/department-usage.md) for bounds, units and consumers.
+
 The additive `GET /admin/catalog` contract (`approved-tools-v1`) projects reviewed
 metadata/risk and active policy behind the existing operator session. `/v1/tools`
 retains its keys/list; MCP adds optional standard annotations without changing

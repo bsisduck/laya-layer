@@ -79,6 +79,9 @@ class Store:
             from agentgate.authority import migrate
 
             migrate(connection)
+            from agentgate.model_budgets import migrate as migrate_model
+
+            migrate_model(connection)
             budgets.migrate_root_counters(connection)
             connection.execute("COMMIT")
         self.path.chmod(0o600)
@@ -217,6 +220,14 @@ class Store:
                 ).fetchone():
                     return False
                 connection.execute("SELECT action_id,state FROM tool_actions LIMIT 0")
+                if [r[0] for r in connection.execute("SELECT version FROM model_usage_schema")] != [
+                    1
+                ]:
+                    return False
+                connection.execute("SELECT action_id,attribution FROM model_attribution LIMIT 0")
+                connection.execute(
+                    "SELECT action_id,input_tokens,output_tokens,simulated_micro_usd FROM model_settlement LIMIT 0"
+                )
                 connection.execute("SELECT action_id FROM tool_outbox LIMIT 0")
                 connection.execute("SELECT tenant_id,entry_id FROM memory_entries LIMIT 0")
                 if connection.execute(
