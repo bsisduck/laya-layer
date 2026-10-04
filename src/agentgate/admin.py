@@ -43,10 +43,12 @@ from agentgate.contracts import (
 from agentgate.control_plane import ControlConflict, ControlPlane, ThreatFeed
 from agentgate.models import ChatRequest, ModelService
 from agentgate.policy import Policy
+from agentgate.scoped_contracts import REGISTRY_DIGEST
 from agentgate.semantics import SemanticClient
 from agentgate.service import ActionService, GateError
 from agentgate.storage import StorageUnavailable, Store, credential_digest
 from agentgate.threat_taxonomy import taxonomy, threat_context
+from agentgate.tool_catalog import catalog_document
 
 COOKIE = "agentgate_operator"
 SESSION_SECONDS = 900
@@ -403,6 +405,13 @@ def attach_admin_routes(
     def introspect(request: Request) -> dict[str, object]:
         query(request, set())
         return session_body(request.state.operator_session)
+
+    @router.get("/catalog")
+    def catalog(request: Request) -> dict[str, object]:
+        query(request, set())
+        # Fixed three-tool inventory plus two unavailable examples. The existing
+        # operator middleware protects this endpoint just like policy read.
+        return catalog_document(controls.snapshot().policy, REGISTRY_DIGEST)
 
     @router.delete("/session")
     def logout(request: Request) -> Response:

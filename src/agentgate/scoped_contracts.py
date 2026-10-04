@@ -2,11 +2,21 @@
 
 import hashlib
 import json
+from collections.abc import Mapping
+from types import MappingProxyType
 from typing import Annotated, Literal
 
 from pydantic import Field, field_validator
 
 from agentgate.contracts import Contract, DocumentArguments, Identifier
+from agentgate.tool_catalog import (
+    CATALOG,
+    CATALOG_VERSION,
+    RISK_VERSION,
+    RISK_WEIGHTS,
+    ToolMetadata,
+    score_risk,
+)
 
 
 class MemoryArguments(Contract):
@@ -52,30 +62,49 @@ class ScopedToolPolicy(Contract):
 
 
 # Exact aliases only. Neither prefixes nor client annotations confer authority.
-ALIASES = {
-    "documents.read": "documents.read",
-    "documents_read": "documents.read",
-    "memory.query": "memory.query",
-    "memory_query": "memory.query",
-    "mail.send": "mail.send",
-    "mail_send": "mail.send",
-}
-INPUTS: dict[str, type[Contract]] = {
-    "documents.read": DocumentArguments,
-    "memory.query": MemoryArguments,
-    "mail.send": MailArguments,
-}
-REGISTRY_DIGEST = hashlib.sha256(
-    json.dumps(
-        {
-            "version": "scoped-tools-v1-local-outbox",
-            "aliases": ALIASES,
-            "schemas": {key: value.model_json_schema() for key, value in INPUTS.items()},
-        },
-        sort_keys=True,
-        separators=(",", ":"),
-    ).encode()
-).hexdigest()
+ALIASES = MappingProxyType(
+    {
+        "documents.read": "documents.read",
+        "documents_read": "documents.read",
+        "memory.query": "memory.query",
+        "memory_query": "memory.query",
+        "mail.send": "mail.send",
+        "mail_send": "mail.send",
+    }
+)
+INPUTS: Mapping[str, type[Contract]] = MappingProxyType(
+    {
+        "documents.read": DocumentArguments,
+        "memory.query": MemoryArguments,
+        "mail.send": MailArguments,
+    }
+)
+
+
+def registry_digest(catalog: Mapping[str, ToolMetadata] = CATALOG) -> str:
+    if set(catalog) != set(INPUTS) or any(key != item.operation for key, item in catalog.items()):
+        raise ValueError("Catalog must match reviewed input/executor operations")
+    return hashlib.sha256(
+        json.dumps(
+            {
+                "version": "scoped-tools-v2-approved-catalog",
+                "aliases": dict(ALIASES),
+                "schemas": {key: value.model_json_schema() for key, value in INPUTS.items()},
+                "catalog_version": CATALOG_VERSION,
+                "catalog": {key: item.model_dump(mode="json") for key, item in catalog.items()},
+                "risk": {
+                    key: score_risk(item).model_dump(mode="json") for key, item in catalog.items()
+                },
+                "risk_version": RISK_VERSION,
+                "risk_weights": {key: dict(value) for key, value in RISK_WEIGHTS.items()},
+            },
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode()
+    ).hexdigest()
+
+
+REGISTRY_DIGEST = registry_digest()
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS scoped_tool_schema (version INTEGER PRIMARY KEY CHECK(version=1));

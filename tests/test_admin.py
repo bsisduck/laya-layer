@@ -47,6 +47,7 @@ PROTECTED = [
     ("GET", "/admin/session"),
     ("DELETE", "/admin/session"),
     ("GET", "/admin/overview"),
+    ("GET", "/admin/catalog"),
     ("GET", "/admin/events"),
     ("GET", "/admin/policy"),
     ("POST", "/admin/policy/validate"),

@@ -12,7 +12,7 @@ let expiryTimer;
 let dirty = false;
 let drafts = {};
 const api = createClient(() => lock('Session expired or credential denied. Unlock to continue.'));
-const titles = {overview: ['LIVE OPERATIONS', 'Overview'], timeline: ['CORRELATED EVIDENCE', 'Security timeline'], playground: ['BOUNDED DEMO ACTIONS', 'Playground'], policy: ['VERSIONED CONTROLS', 'Policy studio'], feed: ['DATA-ONLY INDICATORS', 'Threat feed'], approvals: ['EXACT ACTION REVIEW', 'Approvals'], outbox: ['LOCAL DELIVERY EVIDENCE', 'Test outbox'], export: ['BOUNDED SECURITY RECORDS', 'Audit export']};
+const titles = {overview: ['LIVE OPERATIONS', 'Overview'], timeline: ['CORRELATED EVIDENCE', 'Security timeline'], catalog: ['REVIEWED TOOL AUTHORITY', 'Catalog'], playground: ['BOUNDED DEMO ACTIONS', 'Playground'], policy: ['VERSIONED CONTROLS', 'Policy studio'], feed: ['DATA-ONLY INDICATORS', 'Threat feed'], approvals: ['EXACT ACTION REVIEW', 'Approvals'], outbox: ['LOCAL DELIVERY EVIDENCE', 'Test outbox'], export: ['BOUNDED SECURITY RECORDS', 'Audit export']};
 let currentRoute = 'overview';
 function lock(message = 'Console locked. Use your operator credential to continue.') {
   authenticated = false; dirty = false; drafts = {}; revision++; clearTimeout(expiryTimer); api.clear();
@@ -46,6 +46,10 @@ async function navigate() {
     let node;
     if (currentRoute === 'overview') node = await overview(api);
     else if (currentRoute === 'timeline') node = await timeline(api);
+    else if (currentRoute === 'catalog') {
+      const {catalogView} = await import('./catalog.js');
+      node = await catalogView(api);
+    }
     else {
       const {actionView} = await import('./actions.js');
       node = await actionView(currentRoute, api, value => { if (ticket === revision) dirty = value; }, drafts);

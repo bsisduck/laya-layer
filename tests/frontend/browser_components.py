@@ -7,6 +7,9 @@ from urllib.parse import parse_qs, urlsplit
 
 from playwright.sync_api import expect, sync_playwright
 
+from agentgate.policy import Policy
+from agentgate.tool_catalog import catalog_document
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -26,8 +29,11 @@ def main() -> None:
             "empty": False,
             "credential": "active",
             "epoch": 0,
+            "catalog": "ready",
         }
         hostile = '<img src=x onerror="window.injected=true">'
+        catalog = catalog_document(Policy(policy_id="component", revision=1), "d" * 64)
+        catalog["tools"][0]["description"] = hostile
         row = {
             "action_id": "action-fixture",
             "tenant_id": "tenant-a",
@@ -81,6 +87,18 @@ def main() -> None:
                 )
             elif url.path == "/admin/approvals":
                 data = {"approvals": [] if state["empty"] else [row]}
+            elif url.path == "/admin/catalog":
+                if state["catalog"] == "loading":
+                    held.append(route)
+                    return
+                if state["catalog"] == "unavailable":
+                    code, data = 503, {"detail": "Catalog outage"}
+                elif state["catalog"] == "missing":
+                    data = {"version": "old"}
+                elif state["catalog"] == "empty":
+                    data = catalog | {"tools": []}
+                else:
+                    data = catalog
             elif url.path.endswith("/decision"):
                 state["approved"] = bool(body["approve"])
                 data = {
@@ -145,6 +163,29 @@ def main() -> None:
 
         def navigate(name):
             page.get_by_role("navigation").get_by_role("link", name=name, exact=False).click()
+
+        state["catalog"] = "loading"
+        with page.expect_request(lambda request: request.url.endswith("/admin/catalog")):
+            navigate("Catalog")
+        expect(page.get_by_text("Loading operator state…")).to_be_visible()
+        expect(page.locator("#view")).to_have_attribute("aria-busy", "true")
+        assert held
+        held.pop().fulfill(status=200, content_type="application/json", body=json.dumps(catalog))
+        expect(page.get_by_role("heading", name="Approved tool catalog")).to_be_visible()
+        expect(page.get_by_text("Exact human approval required", exact=True)).to_be_visible()
+        expect(page.get_by_text("Automatic after hard authorization", exact=True)).to_have_count(2)
+        expect(page.get_by_text(hostile, exact=True)).to_be_visible()
+        assert page.locator("#view img").count() == 0 and page.evaluate("window.injected") is None
+        assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
+        for mode, outcome in [
+            ("missing", "Catalog metadata is unavailable or incompatible."),
+            ("empty", "No implemented tools reported"),
+            ("unavailable", "Service unavailable."),
+        ]:
+            state["catalog"] = mode
+            page.get_by_role("button", name="Refresh").click()
+            expect(page.get_by_text(outcome, exact=False)).to_be_visible()
+            assert page.get_by_role("heading", name="mail.send", exact=True).count() == 0
 
         navigate("Playground")
         page.get_by_role("button", name="Mail", exact=True).click()
@@ -215,7 +256,7 @@ def main() -> None:
         assert not errors, errors
         browser.close()
     print(
-        "PASS: MOCKED browser consumers: loading/empty/401/503, exact approvals, mail draft/key retry, XSS text rendering, mobile controls. No backend execution proof."
+        "PASS: MOCKED browser consumers: catalog loading/missing/empty/503/XSS/mobile, loading/empty/401/503, exact approvals, mail draft/key retry, XSS text rendering, mobile controls. No backend execution proof."
     )
 
 

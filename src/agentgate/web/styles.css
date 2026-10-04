@@ -529,6 +529,11 @@ tbody tr:last-child td {
   display:grid;
   gap:18px;
 }
+.catalog-example+.catalog-example {
+  border-top:1px solid var(--line);
+  margin-top:18px;
+  padding-top:18px;
+}
 .actions,.filters {
   display:flex;
   gap:10px;

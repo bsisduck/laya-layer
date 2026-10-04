@@ -1,5 +1,9 @@
 # Scoped tools, exact approvals and MCP (E01-S03)
 
+The [approved tool catalog](tool-catalog.md) binds reviewed effect/risk/adapter and
+approval metadata into the registry, adds protected operator discovery and
+generated MCP hints, and documents pending-approval reproposal during upgrades.
+
 Implemented: credential-owned `documents.read`, `memory.query`, and `mail.send`
 through the same service and REST/MCP adapters. Mail writes **only a local fixture
 outbox**. No SMTP, remote MCP proxy, memory writes, operator authentication, model
