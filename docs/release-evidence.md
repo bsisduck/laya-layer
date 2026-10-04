@@ -18,7 +18,7 @@ on a trusted host, not a production security certification.
 | Installed HR | Exact approval/mobile/scope/expiry/session PASS; two attributed provider-fixture attempts, one known settlement and one uncertain invalid-provider outcome with output withheld | Approval zero effects; resume/replay one local outbox row; no SMTP |
 | Independent installed console at `34bf344` | Actual credential and local-console flows, MCP, unchanged HR startup state, sessions/CSRF, replay and desktop/mobile visuals PASS | Mocked-component loading/error/safety checks explicitly UI-only; no inference |
 | Acceptance runner at `34bf344` | 140 cases / 420 setup-call-teardown phases; zero failures, skips or reconciliation problems | Separate runner denominator, never summed with pytest or treated as attack samples |
-| Final ladder entrypoint `c9c47b8` | Author and independent reruns PASS | Test-only `/#overview` landing fix; initial failure and failure-entry test retained; no runtime change |
+| Final ladder entrypoint `c9c47b8` | Author and independent reruns PASS | Test-only `/#overview` landing fix; original test-entrypoint failure evidence/log retained; no runtime change |
 | Actual standard/v2/enforce HR | Ordinary READ and SUMMARY source read both `SEMANTIC_BLOCKED`, `executed=true`; output withheld; zero provider attempts/outbox | Material false positive, unsuitable as a successful normal HR semantic demonstration |
 
 The independent minimized report is retained in ignored

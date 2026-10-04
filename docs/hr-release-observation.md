@@ -27,8 +27,10 @@ outbox and startup failure. Mocked-component checks supply UI-only evidence.
 The acceptance runner executed **140 cases / 420 setup-call-teardown phases**
 with zero failures, skips or reconciliation problems. These are separate
 runner counts, not additions to the 1,005 pytest tests. The final fixed ladder
-entrypoint at `c9c47b8` passed author and independent QA; its startup-failure
-entry test remains. Root also reports 18 passing Node contract checks, separately
+entrypoint at `c9c47b8` passed author and independent QA. The original
+test-entrypoint failure evidence/log is retained: it assumed the default Overview,
+then was fixed by explicit `/#overview` navigation. This is separate from the
+local-console startup/no-authority-mutation checks above. Root also reports 18 passing Node contract checks, separately
 from the Python and acceptance counts. The separately observed preserving
 primary upgrade and deliberate HR setup are recorded in the
 [release ledger](release-evidence.md#existing-primary-installation-preservation-then-deliberate-setup);
