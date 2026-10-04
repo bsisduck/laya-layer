@@ -149,7 +149,7 @@ def main() -> None:
             route.fulfill(status=code, content_type="application/json", body=json.dumps(data))
 
         page.route("**/admin/**", handle)
-        page.goto(args.url)
+        page.goto(args.url.rstrip("/") + "/#overview")
         expect(page.get_by_text("Loading operator state…")).to_be_visible()
         expect(page.locator("#view")).to_have_attribute("aria-busy", "true")
         assert held

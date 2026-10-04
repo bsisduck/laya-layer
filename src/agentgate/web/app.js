@@ -1,5 +1,7 @@
 import {createClient} from './api.js';
 import {createLocalRecovery} from './session.js';
+import {hrView, clearHR} from './hr.js';
+const hrMemory = {};
 import {el, empty, timestamp} from './ui.js';
 import {overview, timeline} from './observe.js';
 const $ = selector => document.querySelector(selector);
@@ -17,10 +19,10 @@ let dirty = false;
 let drafts = {};
 const api = createClient(expired);
 const recoverLocal = createLocalRecovery(api);
-const titles = {overview: ['LIVE OPERATIONS', 'Overview'], timeline: ['CORRELATED EVIDENCE', 'Security timeline'], catalog: ['REVIEWED TOOL AUTHORITY', 'Catalog'], playground: ['BOUNDED DEMO ACTIONS', 'Playground'], policy: ['VERSIONED CONTROLS', 'Policy studio'], feed: ['DATA-ONLY INDICATORS', 'Threat feed'], approvals: ['EXACT ACTION REVIEW', 'Approvals'], outbox: ['LOCAL DELIVERY EVIDENCE', 'Test outbox'], export: ['BOUNDED SECURITY RECORDS', 'Audit export']};
-let currentRoute = 'overview';
+const titles = {hr: ['GOVERNED EMPLOYEE WORKFLOW', 'HR workspace'], overview: ['LIVE OPERATIONS', 'Overview'], timeline: ['CORRELATED EVIDENCE', 'Security timeline'], catalog: ['REVIEWED TOOL AUTHORITY', 'Catalog'], playground: ['BOUNDED DEMO ACTIONS', 'Playground'], policy: ['VERSIONED CONTROLS', 'Policy studio'], feed: ['DATA-ONLY INDICATORS', 'Threat feed'], approvals: ['EXACT ACTION REVIEW', 'Approvals'], outbox: ['LOCAL DELIVERY EVIDENCE', 'Test outbox'], export: ['BOUNDED SECURITY RECORDS', 'Audit export']};
+let currentRoute = 'hr';
 function lock(message = 'Console locked. Use your operator credential to continue.') {
-  authenticated = false; dirty = false; drafts = {}; revision++; clearTimeout(expiryTimer); api.clear();
+  authenticated = false; dirty = false; drafts = {}; clearHR(hrMemory); revision++; clearTimeout(expiryTimer); api.clear();
   view.replaceChildren(); notice.textContent = ''; $('#session-expiry').textContent = '';
   serviceScreen.hidden = true; shell.hidden = true; lockscreen.hidden = false; $('#credential').value = '';
   $('#login-status').textContent = message; $('#credential').focus();
@@ -35,11 +37,11 @@ function unlock(session) {
 }
 async function navigate() {
   if (!authenticated) return;
-  const next = location.hash.slice(1) || 'overview';
+  const next = location.hash.slice(1).split('?')[0] || 'hr';
   if (dirty && !window.confirm('Discard the unsaved editor changes?')) {
     history.replaceState(null, '', `#${currentRoute}`); return;
   }
-  dirty = false; currentRoute = Object.hasOwn(titles, next) ? next : 'overview';
+  dirty = false; currentRoute = Object.hasOwn(titles, next) ? next : 'hr';
   const ticket = ++revision;
   notice.textContent = ''; view.replaceChildren(empty('Loading operator state…'));
   view.setAttribute('aria-busy', 'true');
@@ -49,7 +51,8 @@ async function navigate() {
   $('#workspace').focus();
   try {
     let node;
-    if (currentRoute === 'overview') node = await overview(api);
+    if (currentRoute === 'hr') node = await hrView(api, hrMemory);
+    else if (currentRoute === 'overview') node = await overview(api);
     else if (currentRoute === 'timeline') node = await timeline(api);
     else if (currentRoute === 'catalog') {
       const {catalogView} = await import('./catalog.js');
@@ -89,7 +92,7 @@ function expired() {
   } else lock('Session expired or credential denied. Unlock to continue.');
 }
 function serviceState(message, retry = false) {
-  authenticated = false; dirty = false; drafts = {}; revision++; clearTimeout(expiryTimer); api.clear();
+  authenticated = false; dirty = false; drafts = {}; clearHR(hrMemory); revision++; clearTimeout(expiryTimer); api.clear();
   view.replaceChildren(); notice.textContent = ''; $('#session-expiry').textContent = '';
   shell.hidden = true; lockscreen.hidden = true; serviceScreen.hidden = false;
   $('#credential').value = '';

@@ -2,7 +2,8 @@
 
 import asyncio
 import json
-from functools import partial
+import sqlite3
+from dataclasses import dataclass
 from typing import Annotated, Literal, Protocol, Self, cast
 from urllib.parse import urlsplit
 
@@ -11,7 +12,7 @@ from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator
 
 from agentgate.budgets import BudgetExceeded
 from agentgate.contracts import ActionResponse, Contract, Identifier, Reason
-from agentgate.control_plane import ControlsChanged, ThreatBlocked
+from agentgate.control_plane import ControlsChanged, ControlSnapshot, ThreatBlocked
 from agentgate.model_budgets import ModelLedger
 from agentgate.policy import Policy
 from agentgate.semantics import SemanticBudgetExceeded, SemanticInvalid, SemanticUnavailable
@@ -238,6 +239,53 @@ def redact_content(value: JsonValue, field: str = "") -> JsonValue:
     return value
 
 
+@dataclass(frozen=True)
+class ReleasedSource:
+    """Trusted fresh tool release; never parsed from an agent/browser request."""
+
+    controls: ControlSnapshot
+    credential_digest: str
+    resource: str
+    binding_digest: str
+
+    def check(
+        self,
+        service: ActionService,
+        context: Context,
+        snapshot: ControlSnapshot,
+        db: sqlite3.Connection | None = None,
+    ) -> None:
+        from agentgate.authority import digest
+
+        if snapshot != self.controls or context.credential_digest != self.credential_digest:
+            raise GateError(409, Reason.POLICY_CHANGED)
+        metadata = service.registry.lookup(self.resource)
+        assert context.identity is not None
+        reason = snapshot.policy.authorize(context.identity, metadata)
+        if reason is not None or metadata is None:
+            raise GateError(403, reason or Reason.RESOURCE_NOT_ALLOWED)
+        if db is None:
+            service.authorize_authority(
+                context, snapshot.policy, "documents.read", self.resource, metadata.classification
+            )
+        else:
+            service.check_dispatch_authority(
+                db,
+                context=context,
+                snapshot=snapshot,
+                operation="documents.read",
+                resource=self.resource,
+                classification=metadata.classification,
+            )
+        authority = context.authority
+        if (
+            authority is None
+            or authority.binding is None
+            or digest(authority.binding.model_dump(mode="json")) != self.binding_digest
+        ):
+            raise GateError(409, Reason.POLICY_CHANGED)
+
+
 class ModelService:
     def __init__(self, actions: ActionService, provider: Provider) -> None:
         self.actions = actions
@@ -318,7 +366,9 @@ class ModelService:
         except (ValueError, UnicodeError, RecursionError) as error:
             raise GateError(403, invalid) from error
 
-    def complete(self, context: Context, request: ChatRequest) -> dict[str, JsonValue]:
+    def complete(
+        self, context: Context, request: ChatRequest, *, source: ReleasedSource | None = None
+    ) -> dict[str, JsonValue]:
         # Keep one immutable policy snapshot through reservation/inspection/evidence.
         service = self.actions
         context.operation = "chat.completions"
@@ -330,6 +380,8 @@ class ModelService:
         for attempt in range(3):
             snapshot = service.current_controls()
             context.controls = snapshot
+            if source is not None:
+                source.check(service, context, snapshot)
             policy: Policy = snapshot.policy
             limits = policy.models
             if limits is None or request.model not in limits.aliases:
@@ -363,6 +415,20 @@ class ModelService:
                 and policy.output.redact_emails
             )
             input_bound = len(inspected.encode()) + limits.template_token_allowance
+
+            def before_dispatch(
+                db: sqlite3.Connection, snapshot: ControlSnapshot = snapshot
+            ) -> None:
+                if source is not None:
+                    source.check(service, context, snapshot, db)
+                service.check_dispatch_authority(
+                    db,
+                    context=context,
+                    snapshot=snapshot,
+                    operation="chat.completions",
+                    resource=request.model,
+                )
+
             try:
                 self.ledger.reserve(
                     digest,
@@ -372,18 +438,14 @@ class ModelService:
                     input_bound,
                     request.max_tokens,
                     service.clock,
-                    partial(
-                        service.check_dispatch_authority,
-                        context=context,
-                        snapshot=snapshot,
-                        operation="chat.completions",
-                        resource=request.model,
-                    ),
+                    before_dispatch,
                     dispatch_event=lambda: service.event(
                         context, "dispatch_intent", Reason.ALLOWED, "allow"
                     ),
                 )
             except ControlsChanged as error:
+                if source is not None:
+                    raise GateError(409, Reason.POLICY_CHANGED) from error
                 if attempt == 2:
                     raise GateError(409, Reason.CONTROLS_CHANGED) from error
                 continue

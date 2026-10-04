@@ -33,7 +33,7 @@ def main() -> None:
         page = context.new_page()
         errors = []
         page.on("pageerror", lambda error: errors.append(str(error)))
-        page.goto(args.url)
+        page.goto(args.url.rstrip("/") + "/#overview")
         page.wait_for_load_state("networkidle")
         assert "Laya Sec Layer" in page.title(), "QA port is not the AgentGate application"
         expect(page.get_by_role("button", name="Unlock console")).to_be_enabled()

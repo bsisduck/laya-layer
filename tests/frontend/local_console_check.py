@@ -125,6 +125,18 @@ def main():
         "credential_renewals",
     )
     authority_before = snapshot(database, preserved)
+    startup_before = snapshot(
+        database,
+        (
+            *preserved,
+            "active_controls",
+            "control_events",
+            "budget_counters",
+            "tool_actions",
+            "tool_outbox",
+            "audit_events",
+        ),
+    )
     tokens_before = {p.name: p.read_bytes() for p in state.glob("*.token")}
     counts = []
     with sync_playwright() as playwright:
@@ -148,11 +160,17 @@ def main():
             )
             started = time.monotonic()
             page.goto(base)
-            expect(page.get_by_role("heading", name="Service state")).to_be_visible()
+            expect(
+                page.get_by_role("heading", name="Synthetic candidate workspace")
+            ).to_be_visible()
             startup_ms = round((time.monotonic() - started) * 1000)
             expect(page.locator("#console-mode")).to_be_visible()
             no_credentials(page, state)
             assert writes.count("/admin/session/bootstrap") == 1
+            assert "/admin/hr/setup" not in writes and "/admin/hr/bind" not in writes
+            navigate(page, "Overview")
+            expect(page.get_by_role("heading", name="Service state")).to_be_visible()
+            assert startup_before == snapshot(database, startup_before.keys())
             cookie = next(
                 c
                 for c in context.cookies(base + "/admin/session")
@@ -372,8 +390,11 @@ def main():
                         [(digest,) for digest in fault_rows],
                     )
                 p.get_by_role("button", name="Retry connection").press("Enter")
-                expect(p.get_by_role("heading", name="Service state")).to_be_visible()
+                expect(
+                    p.get_by_role("heading", name="Synthetic candidate workspace")
+                ).to_be_visible()
                 assert len(failures) == 2
+                assert all(url.endswith("/admin/session/bootstrap") for url in failures)
                 failure.close()
             finally:
                 with sqlite3.connect(database) as db:

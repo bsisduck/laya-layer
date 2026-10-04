@@ -12,7 +12,7 @@ export function createClient(onUnauthorized = () => {}, transport = globalThis.f
     for (const controller of pending) controller.abort();
     pending.clear();
   }
-  async function request(path, { method = 'GET', body, decision = false, download = false, notifyUnauthorized = true } = {}) {
+  async function request(path, { method = 'GET', body, decision = false, evidence = false, download = false, notifyUnauthorized = true } = {}) {
     if (!path.startsWith('/admin/') || path.includes('#') || path.includes('\\')) {
       throw new ApiError(0, 'Invalid operator endpoint.');
     }
@@ -53,7 +53,7 @@ export function createClient(onUnauthorized = () => {}, transport = globalThis.f
       }
       if (!response.ok) {
         // Enforcement denial is evidence, not a transport success or an executed action.
-        if (decision && response.status !== 503 && typeof data?.decision === 'string' && typeof data?.executed === 'boolean') return data;
+        if (decision && (response.status !== 503 || evidence) && typeof data?.decision === 'string' && typeof data?.executed === 'boolean') return data;
         const detail = typeof data?.detail === 'string' ? data.detail : 'Request rejected.';
         const prefix = response.status === 503 ? 'Service unavailable. ' :
           response.status === 404 || response.status === 501 ? 'This capability is unavailable in this installation. ' :

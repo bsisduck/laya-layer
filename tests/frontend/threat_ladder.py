@@ -36,7 +36,7 @@ def main():
         started = time.monotonic()
         try:
             assert context.request.get(base + "/admin/threat-taxonomy").status == 401
-            page.goto(base)
+            page.goto(base + "/#overview")
             expect(page.get_by_role("button", name="Unlock console")).to_be_enabled()
             shell_ms = round((time.monotonic() - started) * 1000, 1)
             page.get_by_label("Operator credential").fill((state / "operator.token").read_text())

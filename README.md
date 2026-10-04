@@ -3,7 +3,7 @@
 [![Validate](https://github.com/bsisduck/laya-sec-agent/actions/workflows/validate.yml/badge.svg)](https://github.com/bsisduck/laya-sec-agent/actions/workflows/validate.yml)
 
 [Architecture](docs/architecture.md) · [Quickstart](docs/local-app.md) ·
-[Demo runbook](docs/demo-runbook.md) · [T01–T48 evidence](docs/acceptance.md) ·
+[HR workspace](docs/hr-workflow.md) · [Demo runbook](docs/demo-runbook.md) · [T01–T48 evidence](docs/acceptance.md) ·
 [Challenge mapping](docs/challenge-alignment.md) · [Documentation](docs/README.md)
 
 Laya Sec Layer governs model requests and registered tool execution through one
@@ -20,6 +20,12 @@ restricted REST/MCP/Hermes agents. These components are integrated; exact valida
 are tracked in the [commit/PR evidence ledger](docs/release-evidence.md).
 Enterprise deployment and the limits below require separate acceptance.
 Cezar is development orchestration, separate from the product.
+
+The primary console workflow is synthetic HR: explicit setup preview and activation,
+a bounded local-demo employee/agent binding, scoped source reads, optional actual
+provider summary, and exact message approval/resume into the local fixture outbox.
+Setup preserves live semantic/feed/budget controls; page visits issue no authority.
+See [HR setup and limits](docs/hr-workflow.md).
 
 ## Run the local application
 
