@@ -1,5 +1,16 @@
 # Contract status
 
+The additive `GET /admin/catalog` contract (`approved-tools-v1`) projects reviewed
+metadata/risk and active policy behind the existing operator session. `/v1/tools`
+retains its keys/list; MCP adds optional standard annotations without changing
+names/arguments/results. The `scoped-tools-v2-approved-catalog` registry binds the
+metadata/local heuristic, invalidating stale pending/approved actions with existing
+`POLICY_CHANGED`. Deliberate reproposal needs a new key and exact approval;
+immutable snapshots, consumed replay, budgets, auth, action/reason/status contracts,
+SQLite and export-v1 are preserved. No migration or new executor is added. Stop
+serving before registry upgrade/rollback; never run mixed binaries against one
+authority. See [tool catalog](docs/tool-catalog.md).
+
 AgentGate is unreleased. Its first implemented contracts are documented in
 `docs/document-slice.md`: REST action execution and health endpoints, strict
 document arguments, the partial policy schema, minimized audit events, local CLI,

@@ -34,11 +34,11 @@ real inference; no new inference evaluation is performed.
 
 ### Phase 1: Trusted authority
 
-- [x] 1.1 Implement metadata, risk, registry and approval/replay evidence — 75b088b
+- [x] 1.1 Implement metadata, risk, registry and approval/replay evidence — fcac351
 
 ### Phase 2: Catalog surfaces
 
-- [ ] 2.1 Implement protected API, MCP hints, UI and functional/wire tests
+- [x] 2.1 Implement protected API, MCP hints, UI and functional/wire tests — dda23a8
 
 ### Phase 3: Verification
 

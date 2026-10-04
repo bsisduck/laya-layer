@@ -10,6 +10,7 @@ import json
 import sqlite3
 from pathlib import Path
 
+from catalog_flows import catalog_flow
 from fullstack_flows import model_generation, observe_delivery, restore_controls, tools_and_renewal
 from playwright.sync_api import expect, sync_playwright
 
@@ -62,6 +63,8 @@ def main() -> None:
             def navigate(name: str) -> None:
                 page.get_by_role("navigation").get_by_role("link", name=name, exact=False).click()
                 expect(page.locator("#workspace")).to_be_focused()
+
+            catalog_flow(page, navigate, args.state_dir, args.artifacts)
 
             navigate("Playground")
             expect(page.get_by_label("Example preset")).to_be_visible()
@@ -193,7 +196,7 @@ def main() -> None:
         assert any(event["decision"] == "redact" and event["executed"] for event in events)
         assert any(event["decision"] == "deny" and not event["executed"] for event in events)
     print(
-        "PASS: real document/memory/approval/outbox/renewal/control-plane browser flows, CAS conflict, feed enforcement, export, session revocation, keyboard and 390/768/1440px layouts; "
+        "PASS: real catalog metadata/REST zero-effects and document/memory/approval/outbox/renewal/control-plane browser flows, CAS conflict, feed enforcement, export, session revocation, keyboard and 390/768/1440px layouts; "
         + ("real configured model generation verified." if args.model else "no inference.")
     )
 

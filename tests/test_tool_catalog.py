@@ -237,3 +237,49 @@ def test_even_credential_scope_cannot_register_unknown_or_destructive_tools(tool
         == []
     )
     assert tools.executor.calls == [] and tools.store.budget_counters() == []
+
+
+@pytest.mark.parametrize("hint", ["annotations", "metadata", "risk", "approval", "destructiveHint"])
+def test_rest_hint_injection_cannot_downgrade_mail(tools, hint):
+    denied = mail(tools, **{hint: False})
+    assert denied.status_code == 422 and denied.json()["executed"] is False
+    assert (
+        rows(tools, "tool_actions")
+        == rows(tools, "tool_outbox")
+        == rows(tools, "tool_reservations")
+        == []
+    )
+    assert tools.executor.calls == [] and tools.store.budget_counters() == []
+
+
+@pytest.mark.parametrize(
+    "operation,arguments",
+    [
+        ("documents.read", {"document_id": "tenant-a-notes"}),
+        ("memory.query", {"query": "Quarterly"}),
+        (
+            "mail.send",
+            {
+                "recipient": "a@demo.internal",
+                "subject": "Review",
+                "body": "Exact",
+                "idempotency_key": "unregistered",
+            },
+        ),
+    ],
+)
+def test_missing_catalog_authority_denies_before_any_effect(
+    tools, monkeypatch, operation, arguments
+):
+    changed = {key: item for key, item in CATALOG.items() if key != operation}
+    monkeypatch.setattr("agentgate.tool_catalog.CATALOG", changed)
+    assert operation not in tools.client.get("/v1/tools", headers=tools.headers).json()["tools"]
+    denied = execute(tools, operation, arguments)
+    assert denied.status_code == 403 and denied.json()["executed"] is False
+    assert (
+        rows(tools, "tool_actions")
+        == rows(tools, "tool_outbox")
+        == rows(tools, "tool_reservations")
+        == []
+    )
+    assert tools.executor.calls == [] and tools.store.budget_counters() == []

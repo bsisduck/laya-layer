@@ -4,14 +4,21 @@ import {el, empty, panel, pairs, tag} from './ui.js';
 export function catalogState(data) {
   if (data?.version !== 'approved-tools-v1' || !Array.isArray(data.tools) || data.tools.length > 3 ||
       !Array.isArray(data.examples) || data.examples.length > 2) return 'missing';
+  const seen = new Set();
   for (const tool of data.tools) {
     if (typeof tool?.operation !== 'string' || tool.executable !== true ||
+        !['documents.read', 'memory.query', 'mail.send'].includes(tool.operation) || seen.has(tool.operation) ||
         !['read', 'write', 'destructive'].includes(tool.effect) || typeof tool.data_scope !== 'string' ||
         typeof tool.adapter !== 'string' || typeof tool.reversibility !== 'string' || typeof tool.affects_person !== 'boolean' ||
         !['automatic_read', 'exact_approval'].includes(tool.policy?.disposition) ||
         tool.risk?.version !== 'tool-policy-heuristic-v1' || !Number.isInteger(tool.risk?.score) ||
         tool.risk.score < 0 || tool.risk.score > 100 || !['low', 'moderate', 'high'].includes(tool.risk.band) ||
         !tool.risk.components || typeof tool.risk.components !== 'object' || Array.isArray(tool.risk.components)) return 'missing';
+    const components = ['effect', 'potential_data', 'exposure', 'reversibility', 'affects_person'].map(key => tool.risk.components[key]);
+    if (components.some(value => !Number.isInteger(value) || value < 0 || value > 100) ||
+        components.reduce((sum, value) => sum + value, 0) !== tool.risk.score ||
+        tool.risk.band !== (tool.risk.score < 25 ? 'low' : tool.risk.score < 60 ? 'moderate' : 'high')) return 'missing';
+    seen.add(tool.operation);
   }
   if (data.examples.some(row => row?.executable !== false || typeof row.operation !== 'string' || typeof row.description !== 'string')) return 'missing';
   return data.tools.length ? 'ready' : 'empty';
