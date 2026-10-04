@@ -1,4 +1,6 @@
 import {eventContext, ladder, levels, layers} from './threats.js';
+import {departmentUsage} from './departments.js';
+import {standardsView} from './standards.js';
 import {el, text, tag, panel, pairs, details, table, empty, field, timestamp} from './ui.js';
 export async function overview(api) {
   const data = await api.request('/admin/overview');
@@ -23,6 +25,7 @@ export async function overview(api) {
     pairs({sender_running: delivery.sender_running, acknowledged_events: delivery.acknowledged_events, backlog_sequences: delivery.source_lag_sequences, last_delivery_ms: delivery.last_delivery_ms}),
     details('Delivery evidence', delivery)));
   root.append(await ladder(api));
+  root.append(departmentUsage(api), standardsView());
   return root;
 }
 export function filterEvents(events, decision, query, level = '', layer = '') {

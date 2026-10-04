@@ -5,6 +5,7 @@ import sqlite3
 from collections.abc import Callable
 from datetime import UTC, datetime
 
+from agentgate import department_usage
 from agentgate.budgets import BudgetExceeded
 from agentgate.contracts import AuditEvent, Identity
 from agentgate.model_config import ModelPolicy
@@ -32,14 +33,24 @@ CREATE TABLE IF NOT EXISTS model_reservations (
     PRIMARY KEY(action_id,scope,resource),
     FOREIGN KEY(scope,scope_key,resource) REFERENCES model_accounts(scope,scope_key,resource)
 );
+CREATE INDEX IF NOT EXISTS model_attempt_period ON model_attempts(tenant_id,created_at,action_id);
 """
+
+
+def migrate(db: sqlite3.Connection) -> None:
+    for statement in SCHEMA.split(";"):
+        if statement.strip():
+            db.execute(statement)
+    department_usage.migrate(db)
 
 
 class ModelLedger:
     def __init__(self, store: Store) -> None:
         self.store = store
         with store.connection() as db:
-            db.executescript("BEGIN IMMEDIATE;" + SCHEMA + "COMMIT;")
+            db.execute("BEGIN IMMEDIATE")
+            migrate(db)
+            db.execute("COMMIT")
 
     def reserve(
         self,
@@ -51,6 +62,8 @@ class ModelLedger:
         output_bound: int,
         clock: Callable[[], float],
         before_dispatch: Callable[[sqlite3.Connection], None] | None = None,
+        *,
+        dispatch_event: Callable[[], AuditEvent] | None = None,
     ) -> None:
         amounts = {
             "calls": 1,
@@ -65,6 +78,12 @@ class ModelLedger:
                 raise CredentialInvalid
             if before_dispatch is not None:
                 before_dispatch(db)
+            if dispatch_event is not None:
+                # Refresh only after the transactional trusted resolver/recheck.
+                current_event = dispatch_event()
+                if current_event.action_id != event.action_id:
+                    raise sqlite3.IntegrityError("Changed model attempt identity")
+                event = current_event
             # Uncertain requests may still be computing and retain an admission slot.
             active = db.execute(
                 "SELECT COUNT(*) FROM model_attempts WHERE state!='settled'"
@@ -94,9 +113,13 @@ class ModelLedger:
                     policy.output_micro_usd,
                 ),
             )
+            department_usage.capture(db, event.action_id, identity.principal_id, event.authority)
             for scope, components, limits in scopes:
                 key = json.dumps(components, separators=(",", ":"))
                 for resource, amount in amounts.items():
+                    if amount > getattr(limits, resource):
+                        # Reject before binding a possibly >int64 reservation to SQL.
+                        raise BudgetExceeded
                     db.execute(
                         "INSERT OR IGNORE INTO model_accounts(scope,scope_key,resource) "
                         "VALUES (?,?,?)",
@@ -134,6 +157,13 @@ class ModelLedger:
                 )
             else:
                 inp, out = usage
+                if (
+                    type(inp) is not int
+                    or type(out) is not int
+                    or not 0 <= inp <= 10000000
+                    or not 0 <= out <= 10000000
+                ):
+                    raise sqlite3.IntegrityError("Invalid actual model usage")
                 bounded = inp <= row["input_bound"] and out <= row["output_bound"]
                 actual = {
                     "calls": 1,
@@ -146,13 +176,28 @@ class ModelLedger:
                 if len(reservations) != 9:
                     raise sqlite3.IntegrityError("Incomplete model reservation")
                 for reservation in reservations:
+                    account = db.execute(
+                        "SELECT spent FROM model_accounts WHERE scope=? AND scope_key=? AND resource=?",
+                        (reservation["scope"], reservation["scope_key"], reservation["resource"]),
+                    ).fetchone()
+                    if account is None:
+                        raise sqlite3.IntegrityError("Missing model account")
+                    spent = (
+                        int(str(account["spent"]).removeprefix("exact:"))
+                        + actual[reservation["resource"]]
+                    )
+                    # INTEGER affinity silently promotes overflow to REAL. Exceptional
+                    # overrun accounts are frozen; tagged decimals preserve exact spend.
+                    exact_spent: int | str = (
+                        spent if spent <= 9223372036854775807 else f"exact:{spent}"
+                    )
                     changed = db.execute(
-                        "UPDATE model_accounts SET reserved=reserved-?,spent=spent+?,"
+                        "UPDATE model_accounts SET reserved=reserved-?,spent=?,"
                         "frozen=MAX(frozen,?) WHERE scope=? AND scope_key=? AND resource=? "
                         "AND reserved>=?",
                         (
                             reservation["amount"],
-                            actual[reservation["resource"]],
+                            exact_spent,
                             int(not bounded),
                             reservation["scope"],
                             reservation["scope_key"],
@@ -166,6 +211,10 @@ class ModelLedger:
                     "UPDATE model_attempts SET state='settled' WHERE action_id=?",
                     (event.action_id,),
                 )
+                db.execute(
+                    "INSERT INTO model_settlement VALUES (?,1,?,?,?,?)",
+                    (event.action_id, inp, out, str(actual["micro_usd"]), int(not bounded)),
+                )
             self.store._append(db, event)
             db.execute("COMMIT")
             return bounded
@@ -174,6 +223,11 @@ class ModelLedger:
         with self.store.connection() as db:
             return [
                 dict(row)
+                | {
+                    "spent": str(row["spent"]).removeprefix("exact:")
+                    if isinstance(row["spent"], str) or row["spent"] > 9007199254740991
+                    else row["spent"]
+                }
                 for row in db.execute(
                     "SELECT * FROM model_accounts ORDER BY scope,scope_key,resource LIMIT 1000"
                 )

@@ -5,6 +5,29 @@ import {filterEvents} from '../../src/agentgate/web/observe.js';
 import {parseEditor} from '../../src/agentgate/web/ui.js';
 import {playgroundBody} from '../../src/agentgate/web/actions.js';
 import {catalogState} from '../../src/agentgate/web/catalog.js';
+import {exactMoney, knownMeasure, usageState} from '../../src/agentgate/web/departments.js';
+import {standardsEvidence} from '../../src/agentgate/web/standards.js';
+test('department money stays exact past JS and SQLite integer bounds with contributing counts', () => {
+  for (const value of ['0', '9007199254740993', '10000000000000000021']) {
+    assert.equal(exactMoney(value), value);
+    assert.equal(knownMeasure(value, 1, 2, true), `${value} · 1/2 contributing attempts`);
+  }
+  for (const value of [9007199254740993, '1e19', '-1', '01', null]) assert.equal(exactMoney(value), 'Unknown');
+  assert.equal(knownMeasure('0', 0, 2, true), 'Unknown · 0/2 contributing attempts');
+  assert.equal(knownMeasure('0', 3, 2, true), 'Unknown');
+  assert.equal(usageState(null), 'missing');
+  assert.equal(usageState({version: 1, source: 'model-attempt-evidence-v1', departments: [], totals: {attempts: 0}, window: {}, completeness: {status: 'complete'}}), 'empty');
+});
+test('standards bind explicit official editions to local evidence and remaining obligations', () => {
+  assert.equal(standardsEvidence.length, 9);
+  for (const row of standardsEvidence) {
+    assert.ok(['eur-lex.europa.eu', 'ai-act-service-desk.ec.europa.eu', 'www.esma.europa.eu', 'genai.owasp.org'].includes(new URL(row.source).hostname));
+    assert.ok(row.evidence.length && row.gap.length);
+    for (const path of row.evidence) assert.match(path, /^(docs|tests)\//);
+  }
+  assert.ok(standardsEvidence.some(row => row.framework.includes('edition 2025')));
+  assert.ok(standardsEvidence.some(row => row.framework.includes('edition 2026')));
+});
 const session = {authenticated: true, csrf_token: 'test-csrf', expires_at: 9999999999};
 const response = (body, status = 200) => new Response(JSON.stringify(body), {status, headers: {'Content-Type': 'application/json'}});
 test('catalog consumer separates unsupported, missing, empty and trusted versioned metadata', () => {

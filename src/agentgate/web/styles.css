@@ -841,3 +841,14 @@ table {
 @media (max-width: 700px) {.threat-ladder {grid-template-columns: 1fr;}}
 
 .timeline-panel table {min-width: 880px;}
+
+.department-usage-panel table {min-width: 1100px; table-layout: fixed;}
+.department-usage-panel th:nth-child(1) {width: 22%;}
+.department-usage-panel th:nth-child(2) {width: 14%;}
+.department-usage-panel th:nth-child(3) {width: 22%;}
+.department-usage-panel th:nth-child(4) {width: 20%;}
+.department-usage-panel th:nth-child(5) {width: 22%;}
+.standards-evidence-panel table {min-width: 1080px; table-layout: fixed;}
+.department-usage-panel :is(th, td, .footnote), .standards-evidence-panel :is(th, td) {overflow-wrap: break-word;}
+.table-scroll-hint {display: none;}
+@media (max-width: 700px) {.table-scroll-hint {display: block;}}

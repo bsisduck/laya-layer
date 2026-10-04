@@ -41,6 +41,7 @@ from agentgate.contracts import (
     Reason,
 )
 from agentgate.control_plane import ControlConflict, ControlPlane, ThreatFeed
+from agentgate.department_usage import report as department_report
 from agentgate.local_console import local_request, validate_local_console
 from agentgate.models import ChatRequest, ModelService
 from agentgate.policy import Policy
@@ -551,6 +552,19 @@ def attach_admin_routes(
                 | {"feed_version": event.feed_version, "threat_context": threat_context(event)}
             )
         return {"events": records, "control_events": controls.events(limit)}
+
+    @router.get("/department-usage")
+    def department_usage(request: Request) -> dict[str, object]:
+        params = query(request, {"tenant_id", "start", "end", "departments"})
+        if not {"tenant_id", "start", "end"} <= params.keys():
+            raise AdminError(422, "Exact tenant and UTC start/end required")
+        return department_report(
+            service.store,
+            params["tenant_id"],
+            number(params["start"], 0, 4102444800),
+            number(params["end"], 1, 4102444800),
+            number(params.get("departments", "64"), 1, 64),
+        )
 
     @router.get("/overview")
     def overview(request: Request) -> dict[str, object]:
