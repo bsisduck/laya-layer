@@ -24,8 +24,8 @@ function number(s,n,x,y,color=C.ink){t(s,String(n).padStart(2,'0'),x,y,1.1,.8,44
 function small(s,text,x,y,w=11,color=C.muted){t(s,text,x,y,w,.38,14,color);}
 function base(title,{dark=false}={}){const s=pptx.addSlide();s.background={color:dark?C.ink:C.paper};const ink=dark?C.paper:C.ink;
  if(title)t(s,title,.7,.57,11.9,.85,35,ink,true);
- small(s,'LAYA LAYER',.7,6.92,2,dark?'C2CEBF':C.muted);
- small(s,`${String(pptx._slides.length).padStart(2,'0')} / 10`,11.7,6.92,.9,dark?'C2CEBF':C.muted);
+ small(s,'LAYA LAYER',.7,6.78,2,dark?'C2CEBF':C.muted);
+ small(s,`${String(pptx._slides.length).padStart(2,'0')} / 10`,11.7,6.78,.9,dark?'C2CEBF':C.muted);
  return s;}
 function note(s,title,body,sources=[]){s.addNotes(`${body}\n\nŹródła / dowody:\n${sources.join('\n')}`);notes.push({title,body,sources});}
 function label(s,text,x,y,w,color=C.green){t(s,text,x,y,w,.4,16,color,true);}

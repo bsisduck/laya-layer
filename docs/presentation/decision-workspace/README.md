@@ -14,7 +14,9 @@ not a full implementation of either. Sources are in speaker notes and
 
 ## Build
 
-Node.js 20+; dependencies are pinned in the local lockfile, separate from the app.
+Node.js 20+; dependencies are pinned in the local lockfile, separate from the app. The image-size transitive parser is overridden to patched
+2.0.4; npm audit reports zero known vulnerabilities for the locked build tools.
+This deck uses only native text and shapes and does not parse external images.
 Run from the project root:
 
 ```sh
