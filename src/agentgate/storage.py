@@ -76,6 +76,9 @@ class Store:
                 + TOOL_SCHEMA
                 + "PRAGMA user_version=2;"
             )
+            from agentgate.authority import migrate
+
+            migrate(connection)
             budgets.migrate_root_counters(connection)
             connection.execute("COMMIT")
         self.path.chmod(0o600)
@@ -105,6 +108,23 @@ class Store:
         ).fetchone()
         if row is None:
             raise CredentialInvalid
+        from agentgate.authority import lifecycle
+
+        columns = {r[1] for r in connection.execute("PRAGMA table_info(credentials)")}
+        # Preserve read-only credential resolution for genuine schema-1 backups
+        # and failed migrations. Such databases are never ready to serve.
+        legacy_backup = (
+            "authority_kind" not in columns
+            and connection.execute("PRAGMA user_version").fetchone()[0] == 1
+            and connection.execute(
+                "SELECT 1 FROM sqlite_master WHERE name IN ('authority_schema','delegated_bindings','human_subjects','action_authority') LIMIT 1"
+            ).fetchone()
+            is None
+        )
+        if not legacy_backup:
+            if "authority_kind" not in columns:
+                raise StorageUnavailable
+            lifecycle(connection, digest, now)
         return Identity.model_validate_json(row["identity"])
 
     def resolve(self, digest: str, now: float) -> Identity:
@@ -176,6 +196,25 @@ class Store:
                     ).fetchone()
                     is None
                 ):
+                    return False
+                if (
+                    connection.execute(
+                        "SELECT version FROM authority_schema WHERE version=1"
+                    ).fetchone()
+                    is None
+                ):
+                    return False
+                connection.execute("SELECT authority_kind FROM credentials LIMIT 0")
+                connection.execute("SELECT subject_id,record FROM human_subjects LIMIT 0")
+                connection.execute(
+                    "SELECT child_digest,parent_digest,subject_id,binding,binding_digest FROM delegated_bindings LIMIT 0"
+                )
+                connection.execute(
+                    "SELECT action_id,binding,attribution FROM action_authority LIMIT 0"
+                )
+                if connection.execute(
+                    "SELECT 1 FROM credentials c LEFT JOIN delegated_bindings b ON b.child_digest=c.digest WHERE c.authority_kind='delegated' AND b.child_digest IS NULL LIMIT 1"
+                ).fetchone():
                     return False
                 connection.execute("SELECT action_id,state FROM tool_actions LIMIT 0")
                 connection.execute("SELECT action_id FROM tool_outbox LIMIT 0")

@@ -61,6 +61,11 @@ def attach_model_routes(app: FastAPI, models: ModelService) -> None:
                 "x-run-id",
                 "x-root-run-id",
                 "x-role",
+                "x-human-id",
+                "x-subject-id",
+                "x-delegation-id",
+                "x-on-behalf-of",
+                "x-department",
             )
         ):
             raise GateError(422, Reason.IDENTITY_OVERRIDE)
@@ -81,14 +86,23 @@ def attach_model_routes(app: FastAPI, models: ModelService) -> None:
         try:
             await authenticate(request, credentials, context)
             assert context.identity is not None
-            policy = actions.policy.models
+            current_policy = actions.policy
+            authority = actions.resolve_authority(context, current_policy)
+            policy = current_policy.models
             aliases = (
                 policy.aliases
                 if policy is not None and "chat.completions" in context.identity.operations
                 else ()
             )
             return JSONResponse(
-                {"object": "list", "data": [{"id": alias, "object": "model"} for alias in aliases]},
+                {
+                    "object": "list",
+                    "data": [
+                        {"id": alias, "object": "model"}
+                        for alias in aliases
+                        if authority.allows("chat.completions", alias)
+                    ],
+                },
                 headers={"Cache-Control": "no-store"},
             )
         except (GateError, StorageUnavailable) as error:

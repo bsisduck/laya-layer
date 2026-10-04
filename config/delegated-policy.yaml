@@ -1,0 +1,47 @@
+# Opt-in LOCAL DEMO authority, not corporate IAM/JWT exchange.
+# The synthetic quarterly notes/memory represent HR; contact/leak/other records
+# remain outside this subject's exact grants, even within tenant-a.
+schema_version: 1
+policy_id: delegated-local-demo
+revision: 1
+semantic_required: false
+models:
+  aliases: [local-demo]
+tool_budgets:
+  tenant_day: 1000
+  principal_day: 500
+  root_run: 100
+delegation:
+  version: 1
+  required:
+    - tenant_id: tenant-a
+      agent_id: demo-reader
+      operations: [documents.read, memory.query, mail.send, chat.completions]
+    - tenant_id: tenant-a
+      agent_id: demo-client
+      operations: [documents.read, memory.query, mail.send, chat.completions]
+  profiles:
+    - role_id: local-hr
+      grants:
+        - operation: documents.read
+          resources: [tenant-a-notes]
+          classifications: [internal]
+        - operation: memory.query
+          resources: [demo-notes]
+          classifications: [internal]
+        - operation: mail.send
+          domains: [demo.internal]
+        - operation: chat.completions
+          models: [local-demo]
+    - role_id: analyst
+      grants:
+        - operation: documents.read
+          resources: [tenant-a-notes, tenant-a-contact]
+          classifications: [public, internal]
+        - operation: memory.query
+          resources: [demo-notes, finance-notes]
+          classifications: [public, internal]
+        - operation: mail.send
+          domains: [demo.internal]
+        - operation: chat.completions
+          models: [local-demo]

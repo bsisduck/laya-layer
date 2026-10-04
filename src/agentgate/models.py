@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+from functools import partial
 from typing import Annotated, Literal, Protocol, Self, cast
 from urllib.parse import urlsplit
 
@@ -333,6 +334,7 @@ class ModelService:
             limits = policy.models
             if limits is None or request.model not in limits.aliases:
                 raise GateError(403, Reason.MODEL_NOT_ALLOWED)
+            service.authorize_authority(context, policy, "chat.completions", request.model)
             if request.max_tokens > limits.max_output_tokens:
                 raise GateError(422, Reason.MALFORMED_REQUEST)
             payload = request.model_dump(mode="json", exclude_none=True)
@@ -370,7 +372,13 @@ class ModelService:
                     input_bound,
                     request.max_tokens,
                     service.clock,
-                    snapshot.assert_current,
+                    partial(
+                        service.check_dispatch_authority,
+                        context=context,
+                        snapshot=snapshot,
+                        operation="chat.completions",
+                        resource=request.model,
+                    ),
                 )
             except ControlsChanged as error:
                 if attempt == 2:

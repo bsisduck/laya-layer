@@ -598,3 +598,39 @@ def test_forwarded_tool_response_http_status(state, status):
     from agentgate.app import response_status
 
     assert response_status(SimpleNamespace(action_state=state)) == status
+
+
+def test_supplied_legacy_explicit_decision_hook_keeps_original_signature(admin):
+    calls = []
+
+    class LegacyTools:
+        def list_approvals(self, *, tenant_id, limit=100):
+            return []
+
+        def outbox(self, *, tenant_id, limit=100):
+            return []
+
+        def decide(self, *, tenant_id, action_id, fingerprint, approve, actor):
+            calls.append((tenant_id, action_id, fingerprint, approve, actor))
+            return {"status": "approved"}
+
+    # Test the documented attach_admin_routes supplied adapter, not just an
+    # implementation with **kwargs that would conceal a compatibility break.
+    from agentgate.admin import attach_admin_routes
+    from agentgate.app import create_app
+
+    app = create_app(admin.gateway.service)
+    attach_admin_routes(app, admin.gateway.service, origin=ORIGIN, tools=LegacyTools())
+    with TestClient(app, base_url=ORIGIN) as client:
+        session = client.post(
+            "/admin/session", headers={"Origin": ORIGIN}, json={"token": admin.token}
+        )
+        assert session.status_code == 200
+        headers = {"Origin": ORIGIN, "X-CSRF-Token": session.json()["csrf_token"]}
+        result = client.post(
+            "/admin/approvals/act-legacy/decision",
+            headers=headers,
+            json={"tenant_id": "tenant-a", "fingerprint": "a" * 64, "approve": True},
+        )
+        assert result.status_code == 200 and result.json()["status"] == "approved"
+        assert calls == [("tenant-a", "act-legacy", "a" * 64, True, "operator")]

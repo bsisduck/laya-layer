@@ -108,10 +108,13 @@ class ScopedTools:
 
     @staticmethod
     def policy_digest(snapshot: ToolSnapshot) -> str:
+        policy_document = snapshot.policy.model_dump(mode="json")
+        if snapshot.policy.delegation is None:
+            policy_document.pop("delegation", None)
         return hashlib.sha256(
             canonical(
                 {
-                    "policy": snapshot.policy.model_dump(mode="json"),
+                    "policy": policy_document,
                     "controls": snapshot.binding,
                 }
             ).encode()
@@ -136,7 +139,42 @@ class ScopedTools:
         if context.identity is None:
             raise GateError(401, Reason.AUTHENTICATION_REQUIRED)
         policy = self.snapshot(context).policy
-        return [op for op in CATALOG if self.allowed(context.identity, policy, op)]
+        authority = self.service.resolve_authority(context, policy)
+        if authority.human is None:
+            return [
+                op
+                for op in CATALOG
+                if self.allowed(context.identity, policy, op) and authority.allows(op)
+            ]
+        with self.service.store.connection() as db:
+            memory_predicate, memory_values = authority.record_predicate("memory.query")
+            memory_available = (
+                db.execute(
+                    "SELECT 1 FROM memory_entries WHERE tenant_id=? AND classification IN (SELECT value FROM json_each(?)) AND "
+                    + memory_predicate
+                    + " LIMIT 1",
+                    (
+                        context.identity.tenant_id,
+                        json.dumps(policy.scoped_tools.memory_classifications),
+                        *memory_values,
+                    ),
+                ).fetchone()
+                is not None
+            )
+        availability = {
+            "documents.read": any(
+                authority.allows("documents.read", m.document_id, m.classification)
+                and policy.authorize(context.identity, m) is None
+                for m in self.service.registry.metadata()
+            ),
+            "memory.query": memory_available,
+            "mail.send": any(
+                authority.allows("mail.send", domain) for domain in policy.scoped_tools.mail_domains
+            ),
+        }
+        return [
+            op for op in CATALOG if self.allowed(context.identity, policy, op) and availability[op]
+        ]
 
     def execute(self, context: Context, request: ActionRequest) -> ActionResponse:
         from agentgate.service import GateError
@@ -183,8 +221,10 @@ class ScopedTools:
                 if row["payload"] != payload:
                     raise GateError(409, Reason.IDEMPOTENCY_CONFLICT)
                 return self.resume_row(connection, context, row, snapshot)
-            self.check_mail(context, arguments, snapshot)
+            self.check_mail(context, arguments, snapshot, connection)
             expires = self.service.clock() + snapshot.policy.scoped_tools.approval_ttl_seconds
+            if context.authority is not None and context.authority.binding is not None:
+                expires = min(expires, context.authority.binding.expires)
             fingerprint = self.fingerprint(context, snapshot, expires)
             connection.execute(
                 "INSERT INTO tool_actions (action_id,tenant_id,principal_id,root_run_id,"
@@ -210,6 +250,18 @@ class ScopedTools:
                     Reason.REQUIRES_APPROVAL.value,
                 ),
             )
+            if context.authority is not None and context.authority.human is not None:
+                assert context.authority.attribution is not None
+                connection.execute(
+                    "INSERT INTO action_authority VALUES (?,?,?)",
+                    (
+                        context.action_id,
+                        canonical(
+                            context.authority.consent_binding(arguments.recipient.rsplit("@", 1)[1])
+                        ),
+                        context.authority.attribution.model_dump_json(),
+                    ),
+                )
             self.service.store._append(
                 connection,
                 self.service.event(
@@ -224,20 +276,19 @@ class ScopedTools:
 
     def fingerprint(self, context: Context, snapshot: ToolSnapshot, expires: float) -> str:
         assert context.identity is not None
+        fields = {
+            "identity": context.identity.model_dump(mode="json"),
+            "credential": context.credential_digest,
+            "operation": "mail.send",
+            "payload": context.payload_digest,
+            "policy": self.policy_digest(snapshot),
+            "registry": REGISTRY_DIGEST,
+            "expires": expires,
+        }
+        if context.authority is not None and context.authority.human is not None:
+            fields["authority"] = context.authority.consent_binding(context.authority_resource)
         return hmac.new(
-            self.service.audit_key,
-            canonical(
-                {
-                    "identity": context.identity.model_dump(mode="json"),
-                    "credential": context.credential_digest,
-                    "operation": "mail.send",
-                    "payload": context.payload_digest,
-                    "policy": self.policy_digest(snapshot),
-                    "registry": REGISTRY_DIGEST,
-                    "expires": expires,
-                }
-            ).encode(),
-            hashlib.sha256,
+            self.service.audit_key, canonical(fields).encode(), hashlib.sha256
         ).hexdigest()
 
     def revalidate(
@@ -257,9 +308,14 @@ class ScopedTools:
         except CredentialInvalid as error:
             raise GateError(401, Reason.INVALID_CREDENTIAL) from error
         snapshot.assert_current(connection)
+        self.service.resolve_authority(context, snapshot.policy, connection)
 
     def check_mail(
-        self, context: Context, arguments: MailArguments, snapshot: ToolSnapshot
+        self,
+        context: Context,
+        arguments: MailArguments,
+        snapshot: ToolSnapshot,
+        connection: sqlite3.Connection | None = None,
     ) -> None:
         from agentgate.service import GateError
 
@@ -268,6 +324,10 @@ class ScopedTools:
             raise GateError(403, Reason.OPERATION_NOT_ALLOWED)
         if arguments.recipient.rsplit("@", 1)[1] not in snapshot.policy.scoped_tools.mail_domains:
             raise GateError(403, Reason.RECIPIENT_DOMAIN_NOT_ALLOWED)
+        context.authority_resource = arguments.recipient.rsplit("@", 1)[1]
+        self.service.authorize_authority(
+            context, snapshot.policy, "mail.send", context.authority_resource, db=connection
+        )
         text = "\n".join((arguments.recipient, arguments.subject, arguments.body))
         snapshot.inspect("tool_action", text)
         self.service.inspect_text(context, text, input_text=True)
@@ -284,18 +344,41 @@ class ScopedTools:
         with self.service.store.connection() as connection:
             connection.execute("BEGIN IMMEDIATE")
             self.revalidate(connection, context, snapshot)
+            assert context.authority is not None
+            predicate, values = context.authority.record_predicate("memory.query")
+            classifications = snapshot.policy.scoped_tools.memory_classifications
+            if (
+                context.authority.human is None
+                and "memory.query" in context.authority.required_operations
+            ):
+                raise GateError(403, Reason.OPERATION_NOT_ALLOWED)
+            if (
+                context.authority.human is not None
+                and connection.execute(
+                    "SELECT 1 FROM memory_entries WHERE tenant_id=? AND classification IN (SELECT value FROM json_each(?)) AND "
+                    + predicate
+                    + " LIMIT 1",
+                    (context.identity.tenant_id, json.dumps(classifications), *values),
+                ).fetchone()
+                is None
+            ):
+                raise GateError(403, Reason.RESOURCE_NOT_ALLOWED)
             self.reserve(connection, context, snapshot)
             connection.execute("COMMIT")
+        # Intent is durable before content is inspected. A later revocation cannot
+        # recall this committed read; captured relational grants still filter SQL.
         context.executed = True
-        classifications = snapshot.policy.scoped_tools.memory_classifications
         with self.service.store.connection() as connection:
             rows = connection.execute(
                 "SELECT entry_id,content FROM memory_entries WHERE tenant_id=? "
                 "AND classification IN (SELECT value FROM json_each(?)) "
-                "AND instr(lower(content),lower(?))>0 ORDER BY entry_id LIMIT ?",
+                "AND "
+                + predicate
+                + " AND instr(lower(content),lower(?))>0 ORDER BY entry_id LIMIT ?",
                 (
                     context.identity.tenant_id,
                     json.dumps(classifications),
+                    *values,
                     arguments.query,
                     arguments.limit,
                 ),
@@ -389,13 +472,32 @@ class ScopedTools:
         snapshot: ToolSnapshot,
     ) -> sqlite3.Row:
         """Terminal states never become executable again; expire/invalidate active ones."""
+        from agentgate.service import GateError
+
         context.action_id = row["action_id"]
         context.operation = "mail.send"
         self.service.digest_payload(context, row["payload"].encode())
         if row["state"] in ("pending", "approved"):
             reason = None
+            try:
+                self.revalidate(connection, context, snapshot)
+                arguments = MailArguments.model_validate_json(row["payload"])
+                context.authority_resource = arguments.recipient.rsplit("@", 1)[1]
+                assert context.authority is not None
+                stored = connection.execute(
+                    "SELECT binding FROM action_authority WHERE action_id=?", (row["action_id"],)
+                ).fetchone()
+                current = context.authority.consent_binding(context.authority_resource)
+                if (
+                    current is not None and (stored is None or stored[0] != canonical(current))
+                ) or (current is None and stored is not None):
+                    reason = Reason.APPROVAL_MISMATCH
+            except GateError:
+                reason = Reason.APPROVAL_MISMATCH
             state = "denied"
-            if not hmac.compare_digest(context.payload_digest or "", row["payload_digest"]):
+            if reason is not None:
+                pass
+            elif not hmac.compare_digest(context.payload_digest or "", row["payload_digest"]):
                 reason = Reason.APPROVAL_MISMATCH
             elif self.service.clock() >= row["expires_at"]:
                 reason, state = Reason.APPROVAL_EXPIRED, "expired"
@@ -436,7 +538,7 @@ class ScopedTools:
         row = self.refresh(connection, context, row, snapshot)
         if row["state"] == "approved":
             arguments = MailArguments.model_validate_json(row["payload"])
-            self.check_mail(context, arguments, snapshot)
+            self.check_mail(context, arguments, snapshot, connection)
             self.revalidate(connection, context, snapshot)
             row = self.refresh(connection, context, row, snapshot)
             if row["state"] != "approved":
@@ -512,11 +614,19 @@ class ScopedTools:
                 "FROM tool_actions WHERE tenant_id=? ORDER BY created_at DESC,action_id LIMIT ?",
                 (tenant_id, limit),
             ).fetchall()
+            attributions = {
+                row["action_id"]: json.loads(row["attribution"])
+                for row in connection.execute(
+                    "SELECT action_id,attribution FROM action_authority WHERE action_id IN (SELECT action_id FROM tool_actions WHERE tenant_id=? ORDER BY created_at DESC,action_id LIMIT ?)",
+                    (tenant_id, limit),
+                )
+            }
         result = []
         for row in rows:
             entry = dict(row)
             entry["payload"] = json.loads(entry["payload"])
             entry["operation"] = "mail.send"
+            entry["authority"] = attributions.get(row["action_id"])
             if (
                 entry["state"] in ("pending", "approved")
                 and self.service.clock() >= entry["expires_at"]
@@ -527,14 +637,28 @@ class ScopedTools:
         return result
 
     def decide(
-        self, *, tenant_id: str, action_id: str, fingerprint: str, approve: bool, actor: str
+        self,
+        *,
+        tenant_id: str,
+        action_id: str,
+        fingerprint: str,
+        approve: bool,
+        actor: str,
+        actor_mode: Literal[
+            "credential", "local_console", "trusted_local_hook"
+        ] = "trusted_local_hook",
     ) -> ActionResponse:
         """Trusted operator hook, never registered as an agent operation or MCP tool."""
         from agentgate.service import GateError
 
         if not actor or len(actor) > 96 or not isinstance(approve, bool):
             raise ValueError("Invalid operator decision")
+        from agentgate.authority_contracts import ApprovalActor
+
         context = self.service.new_context()
+        context.approval_actor = ApprovalActor(actor_id=actor, mode=actor_mode).model_dump(
+            mode="json"
+        )
         snapshot = self.snapshot(context)
         context.policy = snapshot.policy
         with self.service.store.connection() as connection:
@@ -556,7 +680,7 @@ class ScopedTools:
             try:
                 self.revalidate(connection, context, snapshot)
                 self.check_mail(
-                    context, MailArguments.model_validate_json(row["payload"]), snapshot
+                    context, MailArguments.model_validate_json(row["payload"]), snapshot, connection
                 )
             except GateError:
                 approve = False

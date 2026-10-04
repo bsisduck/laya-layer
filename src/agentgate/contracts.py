@@ -127,6 +127,8 @@ class AuditEvent(Contract):
     ]
     semantic: SemanticResult | None = None
     feed_version: str | None = None
+    authority: dict[str, JsonValue] | None = None
+    approval_actor: dict[str, JsonValue] | None = None
 
 
 class SemanticCoverage(Contract):

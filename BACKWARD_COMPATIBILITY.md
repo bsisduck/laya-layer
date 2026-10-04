@@ -193,3 +193,20 @@ actor is `local-console`, not an individually authenticated human. Old installat
 stay credential mode and omitted reinstall flags preserve deliberate choices.
 See [local console](docs/local-console.md) for boundaries, off switch, embedding,
 expiry/retry and rollback limits; stop before switching/upgrading binaries.
+
+Local delegated authority adds an optional bounded `delegation` policy block,
+trusted local-human/delegation/revocation CLI commands, and schema-2 authority-v1
+sidecars plus `credentials.authority_kind` (legacy default). Immutable Identity,
+tool_actions and ActionResponse serialization stay unchanged; absent delegation
+is omitted from the legacy approval policy digest. Old-code pending/consumed
+snapshots survive migration/restart. Missing authority schema fails readiness;
+old binaries must not serve an authority-bearing database. Audit adds nullable
+versioned `authority`/`approval_actor` data while export-v1 keys stay unchanged.
+The trusted operator decision hook accepts optional `actor_mode` (default
+`trusted_local_hook`); owned admin decisions select `credential` or `local_console`
+from the trusted route setting. The supplied public
+OperatorTools adapter retains the old explicit decide(..., actor) invocation;
+only owned ScopedTools receives actor_mode. Neither actor label nor mode derives
+from an agent payload. See
+`docs/delegated-authority.md` for bounds, migration/backup rollback, expiry/revocation
+boundary, separate human/accounting semantics and excluded JWT/resource consumers.

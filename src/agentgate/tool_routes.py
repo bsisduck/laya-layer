@@ -15,6 +15,11 @@ IDENTITY_HEADERS = (
     "x-run-id",
     "x-root-run-id",
     "x-role",
+    "x-human-id",
+    "x-subject-id",
+    "x-delegation-id",
+    "x-on-behalf-of",
+    "x-department",
 )
 
 
